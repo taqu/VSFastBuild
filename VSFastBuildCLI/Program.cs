@@ -94,6 +94,7 @@ namespace VSFastBuildCLI
                     List<string> projectFiles = solutionProjects.ConvertAll(x => x.AbsolutePath);
                     vsFastBuild.ProjectFiles.AddRange(projectFiles);                }
             }
+            vsFastBuild.Build();
         }
     }
 }
