@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="utf-8"?>
+<CommandTable xmlns="http://schemas.microsoft.com/VisualStudio/2005-10-18/CommandTable" xmlns:xs="http://www.w3.org/2001/XMLSchema">
+
+  <Extern href="stdidcmd.h"/>
+  <Extern href="vsshlids.h"/>
+  <Include href="KnownImageIds.vsct"/>
+  <Include href="VSGlobals.vsct"/>
+
+  <Commands package="VSFastBuildVSIX">
+	  <Groups>
+		  <Group guid="VSFastBuildVSIX" id="VSFastBuildProjectGroup" priority="0x600"/>
+	  </Groups>
+	  <Buttons>
+		  <Button guid="VSFastBuild" id="CommandBuild" priority="0x1000" type="Button">
+			  <CommandFlag>TextOnly</CommandFlag>
+			  <Strings>
+				  <ButtonText>Window</ButtonText>
+				  <CommandName>Window</CommandName>
+			  </Strings>
+		  </Button>
+	  </Buttons>
+  </Commands>
+
+  <CommandPlacements>
+		  <CommandPlacement guid="VSFastBuildVSIX" id="VSFastBuildProjectGroup" priority="0x1000">
+			  <Parent guid="VSMainMenu" id="ProjectNode"/>
+		  </CommandPlacement>
+		  <CommandPlacement guid="VSFastBuildVSIX" id="CommandBuild" priority="0x1000">
+			  <Parent guid="VSFastBuildVSIX" id="VSFastBuildProjectGroup"/>
+		  </CommandPlacement>
+	  </CommandPlacements>
+
+  <Symbols>
+    <GuidSymbol name="VSFastBuildVSIX" value="{73d9eb2b-a45e-4cf2-81ec-517c78ad7093}">
+		<IDSymbol name="VSFastBuildProjectGroup" value="0x1001" />
+		<IDSymbol name="CommandBuild" value="0x2001" />
+	</GuidSymbol>
+  </Symbols>
+</CommandTable>
