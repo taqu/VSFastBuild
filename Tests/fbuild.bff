@@ -7,19 +7,22 @@
 .VSBinPath = 'C:\Program Files\Microsoft Visual Studio\2022\Professional\VC\Tools\MSVC\14.44.35207\bin\Hostx64\x64'
 .VSSDKRoot = 'C:\Program Files\Microsoft Visual Studio\2022\Professional\VC\Tools\MSVC\14.44.35207'
 .WindowsSDKBasePath = 'C:\Program Files (x86)\Microsoft SDKs\Windows\v10.0A'
+#import INCLUDE
+#import LIBPATH
+#import PATH
 
 // Settings
 //------------------------------------------------------------------------------
 Settings
 {
-    .Environment    = { "PATH=$VSBasePath$\Common7\IDE\;$VSBinPath$",
+    .Environment    = { "$PATH$",
                         "TMP=C:\Windows\Temp",
                         "SystemRoot=C:\Windows" }
 }
 
 // X86 ToolChain
 //------------------------------------------------------------------------------
-.Compiler           = '$VSBinPath$\cl.exe'
+.Compiler           = 'cl.exe'
 .CompilerOptions    = '"%1"'           // Input
                     + ' /Fo"%2"'       // Output
                     + ' /Z7'           // Debug format (in .obj)
@@ -27,7 +30,7 @@ Settings
                     + ' /nologo'       // No compiler spam
                     + ' /W4'           // Warning level 4
                     + ' /WX'           // Warnings as errors
-.Linker             = '$VSBinPath$\link.exe'
+.Linker             = 'link.exe'
 .LinkerOptions      = ' /OUT:"%2"'     // Output
                     + ' "%1"'          // Input
                     + ' /WX'           // Warnings as errors
@@ -38,13 +41,12 @@ Settings
 // Include paths
 //------------------------------------------------------------------------------
 .BaseIncludePaths   = ' /I"./"'
-                    + ' /I"$VSSDKRoot$"/include/"'
+                    + ' /I"$INCLUDE$"'
 .CompilerOptions    + .BaseIncludePaths
 
 // Library paths
 //------------------------------------------------------------------------------
-.LibPaths           = ' /LIBPATH:"$WindowsSDKBasePath$\Lib"'
-                    + ' /LIBPATH:"$VSBasePath$\VC\lib"'
+.LibPaths           = ' /LIBPATH:"$LIBPATH$"'
 .LinkerOptions      + .LibPaths
 
 // HelloWorld
