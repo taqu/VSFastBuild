@@ -15,6 +15,9 @@ namespace VSFastBuildVSIX
     {
         public const string VSFastBuildVSIXString = "73d9eb2b-a45e-4cf2-81ec-517c78ad7093";
         public static Guid VSFastBuildVSIX = new Guid(VSFastBuildVSIXString);
+
+        public const string VSFastBuildImagesString = "334e00cc-d085-4475-a258-7b02c3133597";
+        public static Guid VSFastBuildImages = new Guid(VSFastBuildImagesString);
     }
 
     /// <summary>
@@ -22,7 +25,11 @@ namespace VSFastBuildVSIX
     /// </summary>
     internal sealed partial class PackageIds
     {
-        public const int VSFastBuildProjectGroup = 0x1001;
-        public const int CommandBuild = 0x2001;
+        public const int VSFastBuildBuildMenu = 0x1000;
+        public const int VSFastBuildSolutionMenuGroup = 0x1001;
+        public const int VSFastBuildProjectGroup = 0x1002;
+        public const int CommandFBuildSolution = 0x2000;
+        public const int CommandFBuildProject = 0x2001;
+        public const int icon_menu = 0x0001;
     }
 }

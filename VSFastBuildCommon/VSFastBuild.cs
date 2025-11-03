@@ -1,39 +1,18 @@
 using Microsoft.Build.Evaluation;
 using Microsoft.Build.Utilities;
 using System;
+using System.Collections;
 using System.Collections.Generic;
-using System.Data.HashFunction.xxHash;
+using System.Diagnostics;
+using System.IO;
+using System.Linq;
 using System.Reflection;
-using System.Security.Cryptography;
 using System.Text;
 
 namespace VSFastBuildCommon
 {
     public class VSFastBuild
     {
-        public string RootDirectory
-        {
-            get
-            {
-                return rootDirectory_;
-            }
-            set
-            {
-                rootDirectory_ = value.Replace(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
-                if (rootDirectory_.Last() != Path.AltDirectorySeparatorChar)
-                {
-                    rootDirectory_ += Path.AltDirectorySeparatorChar;
-                }
-            }
-        }
-        public List<string> ProjectFiles { get; private set; } = new List<string>();
-        public string Configuration { get; set; } = "Debug";
-        public string Platform { get; set; } = "x64";
-        public string FBuildPath { get; set; } = "FBuild.exe";
-        public string FBuildArgs { get; set; } = "-dist";
-        public bool UnityBuild { get; set; } = false;
-        private string rootDirectory_ = string.Empty;
-
         private enum BuildType
         {
             Application,
@@ -63,7 +42,7 @@ namespace VSFastBuildCommon
                 compilerInputFiles_.Add(inputFile);
                 compiler_ = compiler;
                 compilerOutputPath_ = compilerOutputPath;
-                compilerOptions_ = compilerOptions;
+                compilerOptions_ = compilerOptions.Replace("/TP", string.Empty).Replace("/TC", string.Empty);
                 compilerOutputExtension_ = compilerOutputExtension;
                 precompiledHeaderString_ = precompiledHeaderString;
             }
@@ -123,22 +102,61 @@ namespace VSFastBuildCommon
             }
         }
 
+        public string RootDirectory
+        {
+            get
+            {
+                return rootDirectory_;
+            }
+            set
+            {
+                rootDirectory_ = GetDirectoryPath(value);
+            }
+        }
+
+        private string GetDirectoryPath(string path)
+        {
+            path = path.Replace(Path.AltDirectorySeparatorChar, Path.DirectorySeparatorChar);
+            if (path.Last() != Path.DirectorySeparatorChar)
+            {
+                path += Path.DirectorySeparatorChar;
+            }
+            return path;
+        }
+
+        public bool GenerateOnly { get; set; } = false;
+        public List<string> ProjectFiles { get; private set; } = new List<string>();
+        public string Configuration { get; set; } = "Debug";
+        public string Platform { get; set; } = "x64";
+        public string FBuildPath { get; set; } = "FBuild.exe";
+        public string FBuildArgs { get; set; } = "-dist";
+        public bool UnityBuild { get; set; } = false;
+        private string rootDirectory_ = string.Empty;
+        private VSEnvironment vSEnvironment_;
+        private string VCTargetsPath_;
+        private string MSBuildPath_;
+
+        public VSFastBuild()
+        {
+            vSEnvironment_ = VSEnvironment.Create("17", "10.0");
+            string vsVersion = string.Format("v{0}0", vSEnvironment_.VSVersion);
+            VCTargetsPath_ = Path.Combine(vSEnvironment_.ToolsInstall, "MSBuild", "Microsoft", "VC", vsVersion) + Path.DirectorySeparatorChar;
+            MSBuildPath_ = Path.Combine(vSEnvironment_.ToolsInstall, "MSBuild", "Current", "Bin");
+        }
 
         private static bool HasFileChanged(string inputFile, string platform, string config, string bbfOutputFilePath, out string hash)
         {
+            System.Security.Cryptography.SHA256Managed sha256managed = new System.Security.Cryptography.SHA256Managed();
+            using (FileStream stream = File.OpenRead(inputFile))
             {
-                xxHashConfig xxHashConfig = new xxHashConfig()
+                byte[] computedhash = sha256managed.ComputeHash(stream);
+                StringBuilder stringBuilder = new StringBuilder();
+                stringBuilder.AppendFormat("// {0}_{1}_{2}_", inputFile, platform, config);
+                foreach (byte b in computedhash)
                 {
-                    Seed = 12297049036950667264,
-                    HashSizeInBits = 64
-                };
-                IxxHash xxHash = xxHashFactory.Instance.Create(xxHashConfig);
-                using (FileStream stream = File.OpenRead(inputFile))
-                {
-                    System.Data.HashFunction.IHashValue bytehash = xxHash.ComputeHash(stream);
-                    hash = "// " + inputFile + "_" + platform + "_" + config + "_" + bytehash.AsHexString().ToLower();
+                    stringBuilder.AppendFormat("{0:X2}", b);
                 }
-
+                hash = stringBuilder.ToString();
             }
             if (!File.Exists(bbfOutputFilePath))
             {
@@ -149,7 +167,7 @@ namespace VSFastBuildCommon
             return firstLine != hash;
         }
 
-        public void Build()
+        public IEnumerable<Process> Build()
         {
             List<FastBuildProject> projects = new List<FastBuildProject>();
             bool hasCompileActions = true;
@@ -183,13 +201,16 @@ namespace VSFastBuildCommon
                 if (File.Exists(BuildDllPath))
                 {
                     CPPTasksAssembly = Assembly.LoadFrom(BuildDllPath);
-                    if (null != CPPTasksAssembly
-                        && null != CPPTasksAssembly.GetType("Microsoft.Build.CPPTasks.CL")
-                        && null != CPPTasksAssembly.GetType("Microsoft.Build.CPPTasks.RC")
-                        && null != CPPTasksAssembly.GetType("Microsoft.Build.CPPTasks.Link")
-                        && null != CPPTasksAssembly.GetType("Microsoft.Build.CPPTasks.LIB"))
+                    if (null != CPPTasksAssembly)
                     {
-                        foundDll = false;
+                        Type typeCL = CPPTasksAssembly.GetType("Microsoft.Build.CPPTasks.CL");
+                        Type typeRC = CPPTasksAssembly.GetType("Microsoft.Build.CPPTasks.RC");
+                        Type typeLink = CPPTasksAssembly.GetType("Microsoft.Build.CPPTasks.Link");
+                        Type typeLIB = CPPTasksAssembly.GetType("Microsoft.Build.CPPTasks.LIB");
+                        if (null != typeCL && null != typeRC && null != typeLink && null != typeLIB)
+                        {
+                            foundDll = true;
+                        }
                     }
                 }
                 if (!foundDll)
@@ -205,10 +226,17 @@ namespace VSFastBuildCommon
                 string WindowsSDKTarget = string.Empty;
                 GenerateBffFromVcxproj(bffOutputFilePath, project, CPPTasksAssembly, ref hasCompileActions, out VCBasePath, out WindowsSDKTarget);
 
+                if (!GenerateOnly)
                 {
-                    if (hasCompileActions && !ExecuteBffFile(bffOutputFilePath, project.project_.FullPath, Platform, VCBasePath, WindowsSDKTarget))
+                    if (hasCompileActions)
                     {
-                        break;
+                        System.Diagnostics.Process FBProcess = ExecuteBffFile(bffOutputFilePath, project.project_.FullPath, Platform, VCBasePath, WindowsSDKTarget);
+                        if (null == FBProcess)
+                        {
+                            break;
+                        }
+                        ++projectsBuilt;
+                        yield return FBProcess;
                     }
                     else
                     {
@@ -239,18 +267,38 @@ namespace VSFastBuildCommon
                     else
                     {
                         ProjectCollection projColl = new ProjectCollection();
-                        if (!string.IsNullOrEmpty(RootDirectory))
+                        if (string.IsNullOrEmpty(RootDirectory))
+                        {
+                            projColl.SetGlobalProperty("SolutionDir", GetDirectoryPath(projectPath));
+
+                        }
+                        else
                         {
                             projColl.SetGlobalProperty("SolutionDir", RootDirectory);
                         }
+                        if (!string.IsNullOrEmpty(VCTargetsPath_))
+                        {
+                            projColl.SetGlobalProperty("VCTargetsPath", VCTargetsPath_);
+                            //Environment.SetEnvironmentVariable("VCTargetsPath", VCTargetsPath_);
+                        }
+                        if (!string.IsNullOrEmpty(MSBuildPath_))
+                        {
+                            //projColl.SetGlobalProperty("MSBuild", MSBuildPath_);
+                            //Environment.SetEnvironmentVariable("MSBuild", MSBuildPath_);
+                            //Environment.SetEnvironmentVariable("MSBUILD_EXE_PATH", MSBuildPath_);
+                        }
                         newProj = new FastBuildProject();
-                        Project proj = projColl.LoadProject(projectPath);
+                        Microsoft.Build.Evaluation.Project proj = projColl.LoadProject(projectPath);
 
                         if (null != proj)
                         {
                             proj.SetGlobalProperty("Configuration", Configuration);
                             proj.SetGlobalProperty("Platform", Platform);
-                            if (!string.IsNullOrEmpty(RootDirectory))
+                            if (string.IsNullOrEmpty(RootDirectory))
+                            {
+                                proj.SetGlobalProperty("SolutionDir", GetDirectoryPath(projectPath));
+                            }
+                            else
                             {
                                 proj.SetGlobalProperty("SolutionDir", RootDirectory);
                             }
@@ -277,6 +325,7 @@ namespace VSFastBuildCommon
                 {
 #if DEBUG
                     Console.WriteLine("Failed to parse project file " + projectPath + "!");
+                    Console.WriteLine("StackTrace: " + e.StackTrace);
                     Console.WriteLine("Exception: " + e.Message);
 #endif
                     return;
@@ -303,11 +352,11 @@ namespace VSFastBuildCommon
         {
             string config = Configuration;
             string platform = Platform;
-            Project activeProject = project.project_;
-            string xxHash = string.Empty;
+            Microsoft.Build.Evaluation.Project activeProject = project.project_;
+            string filehash = string.Empty;
             string preBuildBatchFile = string.Empty;
             string postBuildBatchFile = string.Empty;
-            bool fileChanged = HasFileChanged(activeProject.FullPath, platform, config, bffOutputFilePath, out xxHash);
+            bool fileChanged = HasFileChanged(activeProject.FullPath, platform, config, bffOutputFilePath, out filehash);
             VCBasePath = string.Empty;
             WindowsSDKTarget = string.Empty;
 
@@ -330,7 +379,7 @@ namespace VSFastBuildCommon
             string intDir = activeProject.GetProperty("IntDir").EvaluatedValue;
             string outDir = activeProject.GetProperty("OutDir").EvaluatedValue;
 
-            StringBuilder outputString = new StringBuilder(xxHash + "\n\n");
+            StringBuilder outputString = new StringBuilder(filehash + "\n\n");
 
             outputString.AppendFormat(".VSBasePath = '{0}'\n", activeProject.GetProperty("VSInstallDir").EvaluatedValue);
             VCBasePath = activeProject.GetProperty("VCInstallDir").EvaluatedValue;
@@ -372,9 +421,9 @@ namespace VSFastBuildCommon
             compilerString.Append("\t\t'$Root$/c1xx.dll'\n");
             compilerString.Append("\t\t'$Root$/c2.dll'\n");
 
-            if (File.Exists(compilerRoot + "1033/clui.dll")) //Check English first...
+            if (File.Exists(compilerRoot + "1041/clui.dll")) //Check English first...
             {
-                compilerString.Append("\t\t'$Root$/1033/clui.dll'\n");
+                compilerString.Append("\t\t'$Root$/1041/clui.dll'\n");
             }
             else
             {
@@ -472,20 +521,26 @@ namespace VSFastBuildCommon
                 if (Item.DirectMetadata.Any())
                 {
                     if (Item.DirectMetadata.Where(dmd => dmd.Name == "ExcludedFromBuild" && dmd.EvaluatedValue == "true").Any())
+                    {
                         continue;
+                    }
                     if (Item.DirectMetadata.Where(dmd => dmd.Name == "PrecompiledHeader" && dmd.EvaluatedValue == "Create").Any())
+                    {
                         continue;
+                    }
                     if (Item.DirectMetadata.Where(dmd => dmd.Name == "PrecompiledHeader" && dmd.EvaluatedValue == "NotUsing").Any())
+                    {
                         ExcludePrecompiledHeader = true;
+                    }
                 }
 
                 ToolTask Task = (ToolTask)Activator.CreateInstance(CPPTasksAssembly.GetType("Microsoft.Build.CPPTasks.CL"));
                 Task.GetType().GetProperty("Sources").SetValue(Task, new TaskItem[] { new TaskItem() }); //CPPTasks throws an exception otherwise...
                 string TempCompilerOptions = GenerateTaskCommandLine(Task, new string[] { "ObjectFileName", "AssemblerListingLocation" }, Item.Metadata) + " /FS";
-                if (Path.GetExtension(Item.EvaluatedInclude) == ".c")
-                    TempCompilerOptions += " /TC";
-                else
-                    TempCompilerOptions += " /TP";
+                //if (Path.GetExtension(Item.EvaluatedInclude) == ".c")
+                //    TempCompilerOptions += " /TC";
+                //else
+                //    TempCompilerOptions += " /TP";
                 CompilerOptions = TempCompilerOptions;
                 string FormattedCompilerOptions = string.Format("\"%1\" /Fo\"%2\" {0}", TempCompilerOptions);
                 var MatchingNodes = ObjectLists.Where(el => el.AddIfMatches(Item.EvaluatedInclude, "msvc", intDir, FormattedCompilerOptions, ExcludePrecompiledHeader ? "" : PrecompiledHeaderString));
@@ -502,8 +557,9 @@ namespace VSFastBuildCommon
             {
                 if (Item.DirectMetadata.Any())
                 {
-                    if (Item.DirectMetadata.Where(dmd => dmd.Name == "ExcludedFromBuild" && dmd.EvaluatedValue == "true").Any())
+                    if (Item.DirectMetadata.Where(dmd => dmd.Name == "ExcludedFromBuild" && dmd.EvaluatedValue == "true").Any()) {
                         continue;
+                        }
                 }
 
                 ToolTask Task = (ToolTask)Activator.CreateInstance(CPPTasksAssembly.GetType("Microsoft.Build.CPPTasks.RC"));
@@ -540,7 +596,7 @@ namespace VSFastBuildCommon
                 outputString.AppendFormat("{0}('output')\n{{", buildType == BuildType.Application ? "Executable" : "DLL");
                 outputString.Append("\t.Linker = '$VCExePath$\\link.exe'\n");
 
-                var LinkDefinitions = activeProject.ItemDefinitions["Link"];
+                ProjectItemDefinition LinkDefinitions = activeProject.ItemDefinitions["Link"];
                 string OutputFile = LinkDefinitions.GetMetadataValue("OutputFile").Replace('\\', '/');
 
                 if (hasCompileActions)
@@ -680,8 +736,33 @@ namespace VSFastBuildCommon
             return GenCmdLineMethod.Invoke(task, new object[] { Type.Missing, Type.Missing }) as string;
         }
 
-        private bool ExecuteBffFile(string bffOutputFilePath, string projectPath, string platform, string VCBasePath, string WindowsSDKTarget)
+        private System.Diagnostics.Process ExecuteBffFile(string bffOutputFilePath, string projectPath, string platform, string VCBasePath, string WindowsSDKTarget)
         {
+#if true
+            string projectDir = Path.GetDirectoryName(projectPath);
+            try
+            {
+                System.Diagnostics.Process FBProcess = new System.Diagnostics.Process();
+                FBProcess.StartInfo.FileName = FBuildPath;
+                FBProcess.StartInfo.Arguments = "-config \"" + bffOutputFilePath + "\" " + FBuildArgs;
+                FBProcess.StartInfo.RedirectStandardOutput = true;
+                FBProcess.StartInfo.RedirectStandardError = true;
+                FBProcess.StartInfo.CreateNoWindow = true;
+                FBProcess.StartInfo.UseShellExecute = false;
+                FBProcess.StartInfo.WorkingDirectory = projectDir;
+                FBProcess.StartInfo.StandardOutputEncoding = Console.OutputEncoding;
+                return FBProcess;
+            }
+            catch (Exception e)
+            {
+#if DEBUG
+                Console.WriteLine("Failed to launch FASTBuild!");
+                Console.WriteLine("Exception: " + e.Message);
+#endif
+                return null;
+            }
+
+#else
             string projectDir = Path.GetDirectoryName(projectPath) + "\\";
 
             string BatchFileText = "@echo off\n"
@@ -701,19 +782,11 @@ namespace VSFastBuildCommon
                 FBProcess.StartInfo.FileName = projectDir + "fb.bat";
                 FBProcess.StartInfo.Arguments = "-config \"" + bffOutputFilePath + "\" " + FBuildArgs;
                 FBProcess.StartInfo.RedirectStandardOutput = true;
+                FBProcess.StartInfo.RedirectStandardError = true;
                 FBProcess.StartInfo.UseShellExecute = false;
                 FBProcess.StartInfo.WorkingDirectory = projectDir;
                 FBProcess.StartInfo.StandardOutputEncoding = Console.OutputEncoding;
-
-                FBProcess.Start();
-#if DEBUG
-                while (!FBProcess.StandardOutput.EndOfStream)
-                {
-                    Console.Write(FBProcess.StandardOutput.ReadLine() + "\n");
-                }
-#endif
-                FBProcess.WaitForExit();
-                return FBProcess.ExitCode == 0;
+                return FBProcess;
             }
             catch (Exception e)
             {
@@ -721,8 +794,9 @@ namespace VSFastBuildCommon
                 Console.WriteLine("Failed to launch FASTBuild!");
                 Console.WriteLine("Exception: " + e.Message);
 #endif
-                return false;
+                return null;
             }
+#endif
         }
 
     }

@@ -1,9 +1,0 @@
-{
-  "profiles": {
-    "VSFastBuildCLI": {
-      "commandName": "Project",
-      "commandLineArgs": "--fbargs \"-dist -debug\" test.vcxproj -u true",
-      "workingDirectory": "D:\\Projects\\VSFastBuild\\Tests"
-    }
-  }
-}

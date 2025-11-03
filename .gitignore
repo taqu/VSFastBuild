@@ -1,5 +1,6 @@
 *.user
 # directories
-/.vs
+/packages
+.vs/
 bin/
 obj/

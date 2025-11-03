@@ -9,6 +9,8 @@
     <Import_RootNamespace>VSFastBuildCommon</Import_RootNamespace>
   </PropertyGroup>
   <ItemGroup>
+    <Compile Include="$(MSBuildThisFileDirectory)Version.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)VSEnvironment.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)VSFastBuild.cs" />
   </ItemGroup>
 </Project>

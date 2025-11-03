@@ -1,0 +1,52 @@
+using System.ComponentModel;
+using System.Runtime.InteropServices;
+
+namespace VSFastBuildVSIX.Options
+{
+    internal partial class OptionsProvider
+    {
+        // Register the options with this attribute on your package class:
+        // [ProvideOptionPage(typeof(OptionsProvider.OptionsPageOptions), "VSFastBuildVSIX.Config", "OptionsPage", 0, 0, true, SupportsProfiles = true)]
+        [ComVisible(true)]
+        public class OptionsPageOptions : BaseOptionPage<OptionsPage> { }
+    }
+
+    public class OptionsPage : BaseOptionModel<OptionsPage>
+    {
+        public const string DefaultPath = "FBuild.exe";
+        public const bool DefaultDistributed = true;
+        public const string DefaultArguments = "-ide -monitor";
+        public const bool DefaultGenOnly = false;
+        public const bool DefaultUnity = false;
+
+        [Category("Options")]
+        [DisplayName("FBuild Path")]
+        [Description("Path to the FBuile.exe.")]
+        [DefaultValue(true)]
+        public string Path { get; set; } = DefaultPath;
+
+        [Category("Options")]
+        [DisplayName("Distributed")]
+        [Description("Whether to compile distributed.")]
+        [DefaultValue(true)]
+        public bool Distributed { get; set; } = DefaultDistributed;
+
+        [Category("Options")]
+        [DisplayName("Arguments")]
+        [Description("Arguments which will be passed to FASTBuild (default \"-ide -monitor\").")]
+        [DefaultValue(true)]
+        public string Arguments { get; set; } = DefaultArguments;
+
+        [Category("Options")]
+        [DisplayName("Generate Only")]
+        [Description("Generate bff file only.")]
+        [DefaultValue(true)]
+        public bool GenOnly { get; set; } = DefaultGenOnly;
+
+        [Category("Options")]
+        [DisplayName("Unity")]
+        [Description("Whether to do unity build.")]
+        [DefaultValue(true)]
+        public bool Unity { get; set; } = DefaultUnity;
+    }
+}
