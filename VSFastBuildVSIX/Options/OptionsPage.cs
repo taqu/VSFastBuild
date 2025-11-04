@@ -15,7 +15,7 @@ namespace VSFastBuildVSIX.Options
     {
         public const string DefaultPath = "FBuild.exe";
         public const bool DefaultDistributed = true;
-        public const string DefaultArguments = "-ide -monitor";
+        public const string DefaultArguments = "-dist -cache -ide -monitor";
         public const bool DefaultGenOnly = false;
         public const bool DefaultUnity = false;
 
@@ -33,7 +33,7 @@ namespace VSFastBuildVSIX.Options
 
         [Category("Options")]
         [DisplayName("Arguments")]
-        [Description("Arguments which will be passed to FASTBuild (default \"-ide -monitor\").")]
+        [Description("Arguments which will be passed to FASTBuild (default \"-dist -cache -ide -monitor\").")]
         [DefaultValue(true)]
         public string Arguments { get; set; } = DefaultArguments;
 

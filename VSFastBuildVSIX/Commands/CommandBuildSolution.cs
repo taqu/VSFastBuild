@@ -51,7 +51,7 @@ namespace VSFastBuildVSIX.Commands
             {
                 foreach (SolutionContext context in solutionConfiguration.SolutionContexts)
                 {
-                    if(context.ProjectName == System.IO.Path.GetFileName(project.FileName)
+                    if(System.IO.Path.GetFileName(context.ProjectName) == System.IO.Path.GetFileName(project.FileName)
                         && context.ConfigurationName == solutionConfiguration.Name
                         && context.PlatformName == solutionConfiguration.PlatformName
                         && context.ShouldBuild)

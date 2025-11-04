@@ -13,6 +13,7 @@ namespace VSFastBuildCommon
 {
     public class VSFastBuild
     {
+        public const string MSVC = "msvc";
         private enum BuildType
         {
             Application,
@@ -20,6 +21,12 @@ namespace VSFastBuildCommon
             DynamicLib
         }
 
+        private enum PrecomiledHeaderType
+        {
+            NotUsing,
+            Create,
+            Use,
+        }
         private class FastBuildProject
         {
             public Microsoft.Build.Evaluation.Project project_;
@@ -33,10 +40,10 @@ namespace VSFastBuildCommon
             private string compilerOutputPath_;
             private string compilerOptions_;
             private string compilerOutputExtension_;
-            private string precompiledHeaderString_;
+            private string precompiledHeaderFile_;
             private List<string> compilerInputFiles_;
 
-            public ObjectListNode(string inputFile, string compiler, string compilerOutputPath, string compilerOptions, string precompiledHeaderString, string compilerOutputExtension = "")
+            public ObjectListNode(string inputFile, string compiler, string compilerOutputPath, string compilerOptions, string precompiledHeaderFile="", string compilerOutputExtension = "")
             {
                 compilerInputFiles_ = new List<string>();
                 compilerInputFiles_.Add(inputFile);
@@ -44,12 +51,13 @@ namespace VSFastBuildCommon
                 compilerOutputPath_ = compilerOutputPath;
                 compilerOptions_ = compilerOptions.Replace("/TP", string.Empty).Replace("/TC", string.Empty);
                 compilerOutputExtension_ = compilerOutputExtension;
-                precompiledHeaderString_ = precompiledHeaderString;
+                precompiledHeaderFile_ = precompiledHeaderFile;
+
             }
 
-            public bool AddIfMatches(string inputFile, string compiler, string compilerOutputPath, string compilerOptions, string precompiledHeaderString)
+            public bool AddIfMatches(string inputFile, string compiler, string compilerOutputPath, string compilerOptions, string precompiledHeaderFile="")
             {
-                if (compiler_ == compiler && compilerOutputPath_ == compilerOutputPath && compilerOptions_ == compilerOptions && precompiledHeaderString_ == precompiledHeaderString)
+                if (compiler_ == compiler && compilerOutputPath_ == compilerOutputPath && compilerOptions_ == compilerOptions && precompiledHeaderFile_ == precompiledHeaderFile)
                 {
                     compilerInputFiles_.Add(inputFile);
                     return true;
@@ -59,46 +67,44 @@ namespace VSFastBuildCommon
 
             public string ToString(int actionNumber, string preBuildBatchFile, bool unityBuild)
             {
+                StringBuilder stringBuilder = new StringBuilder(128);
                 bool usedUnity = false;
-                string resultString = "";
                 if (unityBuild && compiler_ != "rc" && 1 < compilerInputFiles_.Count)
                 {
-                    StringBuilder UnityListString = new StringBuilder(string.Format("Unity('unity_{0}')\n{{\n", actionNumber));
-                    UnityListString.AppendFormat("\t.UnityInputFiles = {{ {0} }}\n", string.Join(",", compilerInputFiles_.ConvertAll(el => string.Format("'{0}'", el)).ToArray()));
-                    UnityListString.AppendFormat("\t.UnityOutputPath = \"{0}\"\n", compilerOutputPath_);
-                    UnityListString.AppendFormat("\t.UnityNumFiles = {0}\n", 1 + compilerInputFiles_.Count / 10);
-                    UnityListString.Append("}\n\n");
+                    stringBuilder.AppendFormat("Unity('unity_{0}')\n{{\n", actionNumber);
+                    stringBuilder.AppendFormat("\t.UnityInputFiles = {{ {0} }}\n", string.Join(",", compilerInputFiles_.ConvertAll(el => string.Format("'{0}'", el)).ToArray()));
+                    stringBuilder.AppendFormat("\t.UnityOutputPath = \"{0}\"\n", compilerOutputPath_);
+                    stringBuilder.AppendFormat("\t.UnityNumFiles = {0}\n", 1 + compilerInputFiles_.Count / 10);
+                    stringBuilder.Append("}\n\n");
                     usedUnity = true;
-                    resultString = UnityListString.ToString();
                 }
 
-                StringBuilder objectListString = new StringBuilder(string.Format("ObjectList('action_{0}')\n{{\n", actionNumber));
-                objectListString.AppendFormat("\t.Compiler = '{0}'\n", compiler_);
-                objectListString.AppendFormat("\t.CompilerOutputPath = \"{0}\"\n", compilerOutputPath_);
+                stringBuilder.AppendFormat("ObjectList('action_{0}')\n{{\n", actionNumber);
+                stringBuilder.AppendFormat("\t.Compiler = '{0}'\n", compiler_);
+                stringBuilder.AppendFormat("\t.CompilerOutputPath = \"{0}\"\n", compilerOutputPath_);
                 if (usedUnity)
                 {
-                    objectListString.AppendFormat("\t.CompilerInputUnity = {{ {0} }}\n", string.Format("'unity_{0}'", actionNumber));
+                    stringBuilder.AppendFormat("\t.CompilerInputUnity = {{ {0} }}\n", string.Format("'unity_{0}'", actionNumber));
                 }
                 else
                 {
-                    objectListString.AppendFormat("\t.CompilerInputFiles = {{ {0} }}\n", string.Join(",", compilerInputFiles_.ConvertAll(el => string.Format("'{0}'", el)).ToArray()));
+                    stringBuilder.AppendFormat("\t.CompilerInputFiles = {{ {0} }}\n", string.Join(",", compilerInputFiles_.ConvertAll(el => string.Format("'{0}'", el)).ToArray()));
                 }
-                objectListString.AppendFormat("\t.CompilerOptions = '{0}'\n", compilerOptions_);
+                stringBuilder.AppendFormat("\t.CompilerOptions = '{0}'\n", compilerOptions_);
                 if (!string.IsNullOrEmpty(compilerOutputExtension_))
                 {
-                    objectListString.AppendFormat("\t.CompilerOutputExtension = '{0}'\n", compilerOutputExtension_);
+                    stringBuilder.AppendFormat("\t.CompilerOutputExtension = '{0}'\n", compilerOutputExtension_);
                 }
-                if (!string.IsNullOrEmpty(precompiledHeaderString_))
+                if (!string.IsNullOrEmpty(precompiledHeaderFile_))
                 {
-                    objectListString.Append(precompiledHeaderString_);
+                    stringBuilder.AppendFormat("\t.PCHOutputFile = '{0}'\n", precompiledHeaderFile_);
                 }
                 if (!string.IsNullOrEmpty(preBuildBatchFile))
                 {
-                    objectListString.Append("\t.PreBuildDependencies  = 'prebuild'\n");
+                    stringBuilder.Append("\t.PreBuildDependencies  = 'prebuild'\n");
                 }
-                objectListString.Append("}\n\n");
-                resultString += objectListString.ToString();
-                return resultString;
+                stringBuilder.Append("}\n\n");
+                return stringBuilder.ToString();
             }
         }
 
@@ -129,7 +135,7 @@ namespace VSFastBuildCommon
         public string Configuration { get; set; } = "Debug";
         public string Platform { get; set; } = "x64";
         public string FBuildPath { get; set; } = "FBuild.exe";
-        public string FBuildArgs { get; set; } = "-dist";
+        public string FBuildArgs { get; set; } = "-dist -cache";
         public bool UnityBuild { get; set; } = false;
         private string rootDirectory_ = string.Empty;
         private VSEnvironment vSEnvironment_;
@@ -476,61 +482,86 @@ namespace VSFastBuildCommon
                     var mdPi = buildEvent.Metadata.First();
                     if (!string.IsNullOrEmpty(mdPi.EvaluatedValue))
                     {
-                        string BatchText = "call \"" + VCBasePath + "Auxiliary\\Build\\vcvarsall.bat\" "
-                            + (platform == "Win32" ? "x86" : "x64") + " " + WindowsSDKTarget + "\n";
+                        string BatchText = "call \"" + VCBasePath + "Auxiliary\\Build\\vcvarsall.bat\" " + (platform == "Win32" ? "x86" : "x64") + " " + WindowsSDKTarget + "\n";
                         preBuildBatchFile = Path.Combine(activeProject.DirectoryPath, Path.GetFileNameWithoutExtension(activeProject.FullPath) + "_prebuild.bat");
                         File.WriteAllText(preBuildBatchFile, BatchText + mdPi.EvaluatedValue);
-                        outputString.Append("Exec('prebuild') \n{\n");
-                        outputString.AppendFormat("\t.ExecExecutable = '{0}' \n", preBuildBatchFile);
-                        outputString.AppendFormat("\t.ExecInput = '{0}' \n", preBuildBatchFile);
-                        outputString.AppendFormat("\t.ExecOutput = '{0}' \n", preBuildBatchFile + ".txt");
-                        outputString.Append("\t.ExecUseStdOutAsOutput = true \n");
+                        outputString.Append("Exec('prebuild')\n{\n");
+                        outputString.AppendFormat("\t.ExecExecutable = '{0}'\n", preBuildBatchFile);
+                        outputString.AppendFormat("\t.ExecInput = '{0}'\n", preBuildBatchFile);
+                        outputString.AppendFormat("\t.ExecOutput = '{0}'\n", preBuildBatchFile + ".txt");
+                        outputString.Append("\t.ExecUseStdOutAsOutput = true\n");
                         outputString.Append("}\n\n");
                     }
                 }
             }
 
-            string CompilerOptions = "";
+            string CompilerOptions = string.Empty;
 
-            List<ObjectListNode> ObjectLists = new List<ObjectListNode>();
-            var CompileItems = activeProject.GetItems("ClCompile");
-            string PrecompiledHeaderString = "";
+            List<ObjectListNode> objectLists = new List<ObjectListNode>();
+            ICollection<ProjectItem> compileItems = activeProject.GetItems("ClCompile");
+            List<Tuple<string, string, string>> precompiledHeaderBuilds = new List<Tuple<string, string, string>>();
 
-            foreach (var Item in CompileItems)
+            foreach (ProjectItem item in compileItems)
             {
-                if (Item.DirectMetadata.Any())
+                string evalInclude = item.EvaluatedInclude;
+                if (item.DirectMetadata.Any())
                 {
-                    if (Item.DirectMetadata.Where(dmd => dmd.Name == "ExcludedFromBuild" && dmd.EvaluatedValue == "true").Any())
+                    if (item.DirectMetadata.Where(dmd => dmd.Name == "ExcludedFromBuild" && dmd.EvaluatedValue == "true").Any()) {
                         continue;
-                    if (Item.DirectMetadata.Where(dmd => dmd.Name == "PrecompiledHeader" && dmd.EvaluatedValue == "Create").Any())
+                    }
+                }
+                if (item.Metadata.Where(dmd => dmd.Name == "PrecompiledHeader" && dmd.EvaluatedValue == "Create").Any())
+                {
+                    ToolTask CLtask = (ToolTask)Activator.CreateInstance(CPPTasksAssembly.GetType("Microsoft.Build.CPPTasks.CL"));
+                    CLtask.GetType().GetProperty("Sources").SetValue(CLtask, new TaskItem[] { new TaskItem() });
+                    string pchCompilerOptions = GenerateTaskCommandLine(CLtask, new string[] { "PrecompiledHeaderOutputFile", "ObjectFileName", "AssemblerListingLocation" }, item.Metadata) + " /FS";
+                    pchCompilerOptions = pchCompilerOptions.Replace("/TP", string.Empty);
+                    //PrecompiledHeaderString = "\t.PCHOptions = '" + string.Format("\"%1\" /Fp\"%2\" /Fo\"%3\" {0} '\n", pchCompilerOptions);
+                    //PrecompiledHeaderString += "\t.PCHInputFile = '" + Item.EvaluatedInclude + "'\n";
+                    //PrecompiledHeaderString += "\t.PCHOutputFile = '" + Item.GetMetadataValue("PrecompiledHeaderOutputFile") + "'\n";
+                    Tuple<string, string, string> newPrecompiledHeaderBuild = new Tuple<string, string, string>(item.GetMetadataValue("PrecompiledHeaderFile"), item.GetMetadataValue("PrecompiledHeaderOutputFile"), pchCompilerOptions);
+                    if (null == precompiledHeaderBuilds.Find((x) => newPrecompiledHeaderBuild.Equals(x)))
                     {
-                        ToolTask CLtask = (ToolTask)Activator.CreateInstance(CPPTasksAssembly.GetType("Microsoft.Build.CPPTasks.CL"));
-                        CLtask.GetType().GetProperty("Sources").SetValue(CLtask, new TaskItem[] { new TaskItem() });
-                        string pchCompilerOptions = GenerateTaskCommandLine(CLtask, new string[] { "PrecompiledHeaderOutputFile", "ObjectFileName", "AssemblerListingLocation" }, Item.Metadata) + " /FS";
-                        PrecompiledHeaderString = "\t.PCHOptions = '" + string.Format("\"%1\" /Fp\"%2\" /Fo\"%3\" {0} '\n", pchCompilerOptions);
-                        PrecompiledHeaderString += "\t.PCHInputFile = '" + Item.EvaluatedInclude + "'\n";
-                        PrecompiledHeaderString += "\t.PCHOutputFile = '" + Item.GetMetadataValue("PrecompiledHeaderOutputFile") + "'\n";
-                        break; //Assumes only one pch...
+                        precompiledHeaderBuilds.Add(newPrecompiledHeaderBuild);
                     }
                 }
             }
 
-            foreach (var Item in CompileItems)
+            int precompiledHeaderBuildIndex = 0;
+            foreach (Tuple<string, string, string> precompiledHeaderBuild in precompiledHeaderBuilds)
             {
-                bool ExcludePrecompiledHeader = false;
+                outputString.AppendFormat("ObjectList('createPCH{0}'){{\n", precompiledHeaderBuildIndex);
+                outputString.AppendFormat("\t.PCHInputFile = '{0}'\n", precompiledHeaderBuild.Item1);
+                outputString.AppendFormat("\t.PCHOutputFile = '{0}'\n", precompiledHeaderBuild.Item2);
+                if (!string.IsNullOrEmpty(precompiledHeaderBuild.Item3)) {
+                    outputString.AppendFormat("\t.PCHOptions = '{0}'\n", precompiledHeaderBuild.Item3);
+                }
+                outputString.Append("}\n");
+                ++precompiledHeaderBuildIndex;
+            }
+
+            foreach (var Item in compileItems)
+            {
+                string pchFile = string.Empty;
                 if (Item.DirectMetadata.Any())
                 {
                     if (Item.DirectMetadata.Where(dmd => dmd.Name == "ExcludedFromBuild" && dmd.EvaluatedValue == "true").Any())
                     {
                         continue;
                     }
-                    if (Item.DirectMetadata.Where(dmd => dmd.Name == "PrecompiledHeader" && dmd.EvaluatedValue == "Create").Any())
+                }
+                {
+                    if (Item.Metadata.Where(dmd => dmd.Name == "PrecompiledHeader" && dmd.EvaluatedValue == "Use").Any())
                     {
-                        continue;
+                        pchFile = Item.GetMetadataValue("PrecompiledHeaderOutputFile");
                     }
-                    if (Item.DirectMetadata.Where(dmd => dmd.Name == "PrecompiledHeader" && dmd.EvaluatedValue == "NotUsing").Any())
+                    if (Item.Metadata.Where(dmd => dmd.Name == "PrecompiledHeader" && dmd.EvaluatedValue == "Create").Any())
                     {
-                        ExcludePrecompiledHeader = true;
+                        pchFile = Item.GetMetadataValue("PrecompiledHeaderOutputFile");
+                    }
+                    if (Item.Metadata.Where(dmd => dmd.Name == "PrecompiledHeader" && dmd.EvaluatedValue == "NotUsing").Any())
+                    {
+                        pchFile = string.Empty;
                     }
                 }
 
@@ -543,14 +574,12 @@ namespace VSFastBuildCommon
                 //    TempCompilerOptions += " /TP";
                 CompilerOptions = TempCompilerOptions;
                 string FormattedCompilerOptions = string.Format("\"%1\" /Fo\"%2\" {0}", TempCompilerOptions);
-                var MatchingNodes = ObjectLists.Where(el => el.AddIfMatches(Item.EvaluatedInclude, "msvc", intDir, FormattedCompilerOptions, ExcludePrecompiledHeader ? "" : PrecompiledHeaderString));
+                var MatchingNodes = objectLists.Where(el => el.AddIfMatches(Item.EvaluatedInclude, "msvc", intDir, FormattedCompilerOptions, pchFile));
                 if (!MatchingNodes.Any())
                 {
-                    ObjectLists.Add(new ObjectListNode(Item.EvaluatedInclude, "msvc", intDir, FormattedCompilerOptions, ExcludePrecompiledHeader ? "" : PrecompiledHeaderString));
+                    objectLists.Add(new ObjectListNode(Item.EvaluatedInclude, "msvc", intDir, FormattedCompilerOptions, pchFile));
                 }
             }
-
-            PrecompiledHeaderString = "";
 
             var ResourceCompileItems = activeProject.GetItems("ResourceCompile");
             foreach (var Item in ResourceCompileItems)
@@ -566,15 +595,15 @@ namespace VSFastBuildCommon
                 string ResourceCompilerOptions = GenerateTaskCommandLine(Task, new string[] { "ResourceOutputFileName", "DesigntimePreprocessorDefinitions" }, Item.Metadata);
 
                 string formattedCompilerOptions = string.Format("{0} /fo\"%2\" \"%1\"", ResourceCompilerOptions);
-                var MatchingNodes = ObjectLists.Where(el => el.AddIfMatches(Item.EvaluatedInclude, "rc", intDir, formattedCompilerOptions, PrecompiledHeaderString));
+                var MatchingNodes = objectLists.Where(el => el.AddIfMatches(Item.EvaluatedInclude, "rc", intDir, formattedCompilerOptions, string.Empty));
                 if (!MatchingNodes.Any())
                 {
-                    ObjectLists.Add(new ObjectListNode(Item.EvaluatedInclude, "rc", intDir, formattedCompilerOptions, PrecompiledHeaderString, ".res"));
+                    objectLists.Add(new ObjectListNode(Item.EvaluatedInclude, "rc", intDir, formattedCompilerOptions, string.Empty, ".res"));
                 }
             }
 
             int actionNumber = 0;
-            foreach (ObjectListNode ObjList in ObjectLists)
+            foreach (ObjectListNode ObjList in objectLists)
             {
                 outputString.Append(ObjList.ToString(actionNumber, preBuildBatchFile, UnityBuild));
                 actionNumber++;
@@ -598,14 +627,23 @@ namespace VSFastBuildCommon
 
                 ProjectItemDefinition LinkDefinitions = activeProject.ItemDefinitions["Link"];
                 string OutputFile = LinkDefinitions.GetMetadataValue("OutputFile").Replace('\\', '/');
+                string OutputDirectory = Path.GetDirectoryName(OutputFile);
+                if (!System.IO.Directory.Exists(OutputDirectory))
+                {
+                    System.IO.Directory.CreateDirectory(OutputDirectory);
+                }
 
                 if (hasCompileActions)
                 {
                     string DependencyOutputPath = LinkDefinitions.GetMetadataValue("ImportLibrary");
                     if (Path.IsPathRooted(DependencyOutputPath))
+                    {
                         DependencyOutputPath = DependencyOutputPath.Replace('\\', '/');
+                    }
                     else
+                    {
                         DependencyOutputPath = Path.Combine(activeProject.DirectoryPath, DependencyOutputPath).Replace('\\', '/');
+                    }
 
                     foreach (var deps in project.dependents_)
                     {
@@ -639,14 +677,21 @@ namespace VSFastBuildCommon
 
                 var LibDefinitions = activeProject.ItemDefinitions["Lib"];
                 string OutputFile = LibDefinitions.GetMetadataValue("OutputFile").Replace('\\', '/');
+                string OutputDirectory = Path.GetDirectoryName(OutputFile);
+                if (!System.IO.Directory.Exists(OutputDirectory))
+                {
+                    System.IO.Directory.CreateDirectory(OutputDirectory);
+                }
 
                 if (hasCompileActions)
                 {
                     string DependencyOutputPath = "";
-                    if (Path.IsPathRooted(OutputFile))
+                    if (Path.IsPathRooted(OutputFile)) {
                         DependencyOutputPath = Path.GetFullPath(OutputFile).Replace('\\', '/');
-                    else
+                    }
+                    else {
                         DependencyOutputPath = Path.Combine(activeProject.DirectoryPath, OutputFile).Replace('\\', '/');
+                        }
 
                     foreach (var deps in project.dependents_)
                     {
