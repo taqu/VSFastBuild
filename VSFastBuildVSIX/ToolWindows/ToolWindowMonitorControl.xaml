@@ -22,13 +22,18 @@
             <TabControl Height="Auto" VerticalAlignment="Stretch" Grid.Row="0">
                 <TabItem x:Name="TabItemTimeBar">
                     <TabItem.Header>
-                        <TextBlock Text="TimeLine" />
+                        <StackPanel Orientation="Horizontal">
+                            <Image Height="16" Width="16" Source="/VSFastBuildVSIX;component/ToolWindows/icon_output.png"/>
+                            <TextBlock Text="TimeLine" />
+                        </StackPanel>
                     </TabItem.Header>
-                    <Grid Background="#FFE5E5E5"/>
-                </TabItem>
+                                    </TabItem>
                 <TabItem x:Name="TabItemOutput">
                     <TabItem.Header>
-                        <TextBlock Text="Output" />
+                        <StackPanel Orientation="Horizontal">
+                            <Image Height="16" Width="16" Source="/VSFastBuildVSIX;component/ToolWindows/icon_timeline.png"/>
+                            <TextBlock Text="Output" />
+                        </StackPanel>
                     </TabItem.Header>
                     <Grid Background="#FFE5E5E5">
                         <Grid.RowDefinitions>
