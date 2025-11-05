@@ -1,5 +1,6 @@
 using Microsoft.Build.Evaluation;
 using Microsoft.Build.Utilities;
+using Microsoft.VisualStudio.VCProjectEngine;
 using System;
 using System.Collections;
 using System.Collections.Generic;
@@ -49,7 +50,7 @@ namespace VSFastBuildCommon
                 compilerInputFiles_.Add(inputFile);
                 compiler_ = compiler;
                 compilerOutputPath_ = compilerOutputPath;
-                compilerOptions_ = compilerOptions.Replace("/TP", string.Empty).Replace("/TC", string.Empty);
+                compilerOptions_ = compilerOptions;
                 compilerOutputExtension_ = compilerOutputExtension;
                 precompiledHeaderFile_ = precompiledHeaderFile;
 
@@ -499,7 +500,7 @@ namespace VSFastBuildCommon
 
             List<ObjectListNode> objectLists = new List<ObjectListNode>();
             ICollection<ProjectItem> compileItems = activeProject.GetItems("ClCompile");
-            List<Tuple<string, string, string>> precompiledHeaderBuilds = new List<Tuple<string, string, string>>();
+            List<Tuple<string, string, string, string>> precompiledHeaderBuilds = new List<Tuple<string, string, string, string>>();
 
             foreach (ProjectItem item in compileItems)
             {
@@ -519,7 +520,7 @@ namespace VSFastBuildCommon
                     //PrecompiledHeaderString = "\t.PCHOptions = '" + string.Format("\"%1\" /Fp\"%2\" /Fo\"%3\" {0} '\n", pchCompilerOptions);
                     //PrecompiledHeaderString += "\t.PCHInputFile = '" + Item.EvaluatedInclude + "'\n";
                     //PrecompiledHeaderString += "\t.PCHOutputFile = '" + Item.GetMetadataValue("PrecompiledHeaderOutputFile") + "'\n";
-                    Tuple<string, string, string> newPrecompiledHeaderBuild = new Tuple<string, string, string>(item.GetMetadataValue("PrecompiledHeaderFile"), item.GetMetadataValue("PrecompiledHeaderOutputFile"), pchCompilerOptions);
+                    Tuple<string, string, string, string> newPrecompiledHeaderBuild = new Tuple<string, string, string, string>(item.EvaluatedInclude, item.GetMetadataValue("PrecompiledHeaderFile"), item.GetMetadataValue("PrecompiledHeaderOutputFile"), pchCompilerOptions);
                     if (null == precompiledHeaderBuilds.Find((x) => newPrecompiledHeaderBuild.Equals(x)))
                     {
                         precompiledHeaderBuilds.Add(newPrecompiledHeaderBuild);
@@ -528,9 +529,11 @@ namespace VSFastBuildCommon
             }
 
             int precompiledHeaderBuildIndex = 0;
-            foreach (Tuple<string, string, string> precompiledHeaderBuild in precompiledHeaderBuilds)
+            foreach (Tuple<string, string, string, string> precompiledHeaderBuild in precompiledHeaderBuilds)
             {
                 outputString.AppendFormat("ObjectList('createPCH{0}'){{\n", precompiledHeaderBuildIndex);
+                outputString.AppendFormat("\t.Compiler = 'msvc'\n");
+                outputString.AppendFormat("\t.CompilerOptions = '\"%1\"' /Fo \n", precompiledHeaderBuild.Item1);
                 outputString.AppendFormat("\t.PCHInputFile = '{0}'\n", precompiledHeaderBuild.Item1);
                 outputString.AppendFormat("\t.PCHOutputFile = '{0}'\n", precompiledHeaderBuild.Item2);
                 if (!string.IsNullOrEmpty(precompiledHeaderBuild.Item3)) {
@@ -557,7 +560,7 @@ namespace VSFastBuildCommon
                     }
                     if (Item.Metadata.Where(dmd => dmd.Name == "PrecompiledHeader" && dmd.EvaluatedValue == "Create").Any())
                     {
-                        pchFile = Item.GetMetadataValue("PrecompiledHeaderOutputFile");
+                        continue;
                     }
                     if (Item.Metadata.Where(dmd => dmd.Name == "PrecompiledHeader" && dmd.EvaluatedValue == "NotUsing").Any())
                     {
@@ -573,11 +576,11 @@ namespace VSFastBuildCommon
                 //else
                 //    TempCompilerOptions += " /TP";
                 CompilerOptions = TempCompilerOptions;
-                string FormattedCompilerOptions = string.Format("\"%1\" /Fo\"%2\" {0}", TempCompilerOptions);
-                var MatchingNodes = objectLists.Where(el => el.AddIfMatches(Item.EvaluatedInclude, "msvc", intDir, FormattedCompilerOptions, pchFile));
+                string formattedCompilerOptions = string.Format("\"%1\" /Fo\"%2\" {0}", TempCompilerOptions).Replace("/TP", string.Empty).Replace("/TC", string.Empty);
+                var MatchingNodes = objectLists.Where(el => el.AddIfMatches(Item.EvaluatedInclude, "msvc", intDir, formattedCompilerOptions, pchFile));
                 if (!MatchingNodes.Any())
                 {
-                    objectLists.Add(new ObjectListNode(Item.EvaluatedInclude, "msvc", intDir, FormattedCompilerOptions, pchFile));
+                    objectLists.Add(new ObjectListNode(Item.EvaluatedInclude, "msvc", intDir, formattedCompilerOptions, pchFile));
                 }
             }
 
@@ -594,7 +597,7 @@ namespace VSFastBuildCommon
                 ToolTask Task = (ToolTask)Activator.CreateInstance(CPPTasksAssembly.GetType("Microsoft.Build.CPPTasks.RC"));
                 string ResourceCompilerOptions = GenerateTaskCommandLine(Task, new string[] { "ResourceOutputFileName", "DesigntimePreprocessorDefinitions" }, Item.Metadata);
 
-                string formattedCompilerOptions = string.Format("{0} /fo\"%2\" \"%1\"", ResourceCompilerOptions);
+                string formattedCompilerOptions = string.Format("{0} /fo\"%2\" \"%1\"", ResourceCompilerOptions).Replace("/TP", string.Empty).Replace("/TC", string.Empty);
                 var MatchingNodes = objectLists.Where(el => el.AddIfMatches(Item.EvaluatedInclude, "rc", intDir, formattedCompilerOptions, string.Empty));
                 if (!MatchingNodes.Any())
                 {
