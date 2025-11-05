@@ -30,6 +30,7 @@ namespace VSFastBuildVSIX
         public const int VSFastBuildProjectGroup = 0x1002;
         public const int CommandFBuildSolution = 0x2000;
         public const int CommandFBuildProject = 0x2001;
+        public const int CommandFBuildMonitor = 0x2002;
         public const int icon_menu = 0x0001;
     }
 }

@@ -15,6 +15,7 @@ namespace VSFastBuildVSIX
     [InstalledProductRegistration(Vsix.Name, Vsix.Description, Vsix.Version)]
     [ProvideMenuResource("Menus.ctmenu", 1)]
     [ProvideOptionPage(typeof(OptionsProvider.OptionsPageOptions), "FASTBuild", "General", 0, 0, true, SupportsProfiles = true)]
+    [ProvideToolWindow(typeof(ToolWindowMonitor.Pane), Style = VsDockStyle.Tabbed, Window = WindowGuids.MainWindow, Orientation = ToolWindowOrientation.Left)]
     [Guid(PackageGuids.VSFastBuildVSIXString)]
     public sealed class VSFastBuildVSIXPackage : ToolkitPackage
     {
@@ -123,6 +124,7 @@ namespace VSFastBuildVSIX
         {
             await JoinableTaskFactory.SwitchToMainThreadAsync(cancellationToken);
             await this.RegisterCommandsAsync();
+            this.RegisterToolWindows();
 
             package_ = new WeakReference<VSFastBuildVSIXPackage>(this);
             dte2_ = await GetServiceAsync(typeof(EnvDTE.DTE)) as EnvDTE80.DTE2;

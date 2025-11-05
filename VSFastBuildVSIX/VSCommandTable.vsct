@@ -35,6 +35,14 @@
 					<CommandName>FBuildProject</CommandName>
 				</Strings>
 			</Button>
+			<Button guid="VSFastBuildVSIX" id="CommandFBuildMonitor" priority="0x100" type="Button">
+				<Icon guid="VSFastBuildImages" id="icon_menu" />
+				<CommandFlag>TextChanges</CommandFlag>
+				<Strings>
+					<ButtonText>FastBuild Monitor</ButtonText>
+					<CommandName>FBuildMonitor</CommandName>
+				</Strings>
+			</Button>
 		</Buttons>
 		<Bitmaps>
 			<Bitmap guid="VSFastBuildImages" href="Resources\icon_menu.png" usedList="icon_menu" />
@@ -56,6 +64,10 @@
 		<CommandPlacement guid="VSFastBuildVSIX" id="CommandFBuildProject" priority="0x3000">
 			<Parent guid="VSMainMenu" id="ProjectNode.BuildGroup"/>
 		</CommandPlacement>
+
+		<CommandPlacement guid="VSFastBuildVSIX" id="CommandFBuildMonitor" priority="0x3000">
+			<Parent guid="VSMainMenu" id="View.DevWindowsGroup.OtherWindows.Group1"/>
+		</CommandPlacement>
 	</CommandPlacements>
 
 	<Symbols>
@@ -65,6 +77,7 @@
 			<IDSymbol name="VSFastBuildProjectGroup" value="0x1002" />
 			<IDSymbol name="CommandFBuildSolution" value="0x2000" />
 			<IDSymbol name="CommandFBuildProject" value="0x2001" />
+			<IDSymbol name="CommandFBuildMonitor" value="0x2002" />
 		</GuidSymbol>
 		<GuidSymbol name="VSFastBuildImages" value="{334E00CC-D085-4475-A258-7B02C3133597}">
 			<IDSymbol name="icon_menu" value="1" />
