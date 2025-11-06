@@ -30,12 +30,12 @@ namespace VSFastBuildVSIX.ToolWindows
 
                 if (null != buildEvent_)
                 {
-                    result = buildEvent_._name.Substring(1, _buildEvent._name.Length - 2);
+                    result = buildEvent_.name_.Substring(1, buildEvent_.name_.Length - 2);
                 }
                 else
                 {
                     // fallback
-                    result = _internalName;
+                    result = name_;
                 }
 
                 const int charactersToDisplay = 50;
@@ -50,7 +50,7 @@ namespace VSFastBuildVSIX.ToolWindows
 
             set
             {
-                _internalName = value;
+                name_ = value;
             }
         }
     }

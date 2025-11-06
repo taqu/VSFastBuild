@@ -10,6 +10,7 @@ using Microsoft.VisualStudio.VCProjectEngine;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
+using System.Threading.Tasks;
 using VSFastBuildCommon;
 using VSFastBuildVSIX.Options;
 
@@ -38,6 +39,7 @@ namespace VSFastBuildVSIX
             if (!package.EnterBuildProcess())
             {
                 package.CancelBuildProcess();
+                await StopMonitor();
                 return;
             }
             commandText_ = Command.Text;
@@ -140,11 +142,16 @@ namespace VSFastBuildVSIX
                 Configuration = solutionConfiguration.Name,
                 Platform = solutionConfiguration.PlatformName,
                 FBuildPath = options.Path,
+                FBuildArgs = options.Arguments,
                 GenerateOnly = options.GenOnly,
                 UnityBuild = options.Unity
             };
             vsFastBuild.RootDirectory = System.IO.Path.GetDirectoryName(solution.FullName);
             vsFastBuild.ProjectFiles.AddRange(projectsToBuild);
+            if (!vsFastBuild.GenerateOnly)
+            {
+                await StartMonitor();
+            }
             foreach (System.Diagnostics.Process process in vsFastBuild.Build())
             {
                 try
@@ -182,6 +189,31 @@ namespace VSFastBuildVSIX
             LeaveProcess(package, command, originalText);
         }
 
+        public static async Task StartMonitor()
+        {
+            ToolWindowMonitor.Pane pane = await ToolWindowMonitor.ShowAsync() as ToolWindowMonitor.Pane;
+            if(null != pane)
+            {
+                ToolWindowMonitorControl toolWindowMonitorControl = pane.Content as ToolWindowMonitorControl;
+                if(null != toolWindowMonitorControl)
+                {
+                    toolWindowMonitorControl.StartTimer();
+                }
+            }
+        }
+
+        public static async Task StopMonitor()
+        {
+            ToolWindowMonitor.Pane pane = await ToolWindowMonitor.ShowAsync() as ToolWindowMonitor.Pane;
+            if(null != pane)
+            {
+                ToolWindowMonitorControl toolWindowMonitorControl = pane.Content as ToolWindowMonitorControl;
+                if(null != toolWindowMonitorControl)
+                {
+                    toolWindowMonitorControl.StopTimer();
+                }
+            }
+        }
 #if false
         private static IVsHierarchy GetVsHierarchyForProject(EnvDTE.Project project)
         {

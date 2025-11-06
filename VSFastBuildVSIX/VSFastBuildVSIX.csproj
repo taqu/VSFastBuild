@@ -60,7 +60,13 @@
     <Compile Include="ToolWindows\BuildEvent.cs" />
     <Compile Include="ToolWindows\BuildHost.cs" />
     <Compile Include="ToolWindows\CPUCore.cs" />
+    <Compile Include="ToolWindows\GIFImage.cs" />
+    <Compile Include="ToolWindows\HitTest.cs" />
     <Compile Include="ToolWindows\OutputFilterItem.cs" />
+    <Compile Include="ToolWindows\SystemPerformanceGraphsCanvas.cs" />
+    <Compile Include="ToolWindows\TextUtils.cs" />
+    <Compile Include="ToolWindows\Timebar.cs" />
+    <Compile Include="ToolWindows\ToolImages.cs" />
     <Compile Include="ToolWindows\ToolWindowMonitor.cs" />
     <Compile Include="ToolWindows\ToolWindowMonitorControl.xaml.cs">
       <DependentUpon>ToolWindowMonitorControl.xaml</DependentUpon>
@@ -86,8 +92,9 @@
   </ItemGroup>
   <ItemGroup>
     <Content Include="Resources\icon_menu.png" />
-    <Content Include="Resources\icon_output.png" />
-    <Content Include="Resources\icon_timeline.png" />
+    <Resource Include="Resources\icon_output.png" />
+    <Resource Include="Resources\icon_timeline.png" />
+    <Resource Include="Resources\icon_settings.png" />
     <Content Include="ToolWindows\icon_output.png" />
     <None Include="source.extension.vsixmanifest">
       <SubType>Designer</SubType>
@@ -105,6 +112,7 @@
     <Reference Include="System" />
     <Reference Include="System.Design" />
     <Reference Include="System.ComponentModel.Composition" />
+    <Reference Include="System.Drawing" />
     <Reference Include="System.Xaml" />
     <Reference Include="System.Xml" />
     <Reference Include="WindowsBase" />

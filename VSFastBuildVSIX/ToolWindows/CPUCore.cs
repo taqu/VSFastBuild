@@ -8,150 +8,149 @@ using static VSFastBuildVSIX.ToolWindowMonitorControl;
 
 namespace VSFastBuildVSIX.ToolWindows
 {
-    internal class CPUCore : Canvas
+    public class CPUCore : Canvas
     {
         private class VisibleElement // Represents an element (event or LOD block) that has been successfully rendered in the last frame
             {
                 public VisibleElement(Rect rect, string toolTipText, BuildEvent buildEvent)
                 {
-                    _rect = rect;
-                    _toolTipText = toolTipText;
-                    _buildEvent = buildEvent;
+                    rect_ = rect;
+                    toolTipText_ = toolTipText;
+                    buildEvent_ = buildEvent;
                 }
 
                 public bool HitTest(Point localMousePosition)
                 {
-                    return _rect.Contains(localMousePosition);
+                    return rect_.Contains(localMousePosition);
                 }
 
-                public Rect _rect;  // boundaries of the element
-                public string _toolTipText;
-                public BuildEvent _buildEvent;
+                public Rect rect_;  // boundaries of the element
+                public string toolTipText_;
+                public BuildEvent buildEvent_;
             }
+private ToolWindowMonitorControl parent_;
+            public BuildHost buildHost_;
+            public int coreIndex_ = 0;
+            public BuildEvent activeEvent_ = null;
+            public List<BuildEvent> completedEvents_ = new List<BuildEvent>();
 
-            public BuildHost _parent;
-            public int _coreIndex = 0;
-            public BuildEvent _activeEvent = null;
-            public List<BuildEvent> _completedEvents = new List<BuildEvent>();
-
-            public double _x = 0.0f;
-            public double _y = 0.0f;
+            public double x_ = 0.0f;
+            public double y_ = 0.0f;
 
             //WPF stuff
-            public TextBlock _textBlock = new TextBlock();
-            public static Image _sLODImage = null;
-            public ToolTip _toolTip = new ToolTip();
-            public Line _lineSeparator = new Line();
+            public TextBlock textBlock_ = new TextBlock();
+            public static Image sLODImage_ = null;
+            public ToolTip toolTip_ = new ToolTip();
+            public Line lineSeparator_ = new Line();
 
             //LOD handling
-            public bool _isLODBlockActive = false;
-            public Rect _currentLODRect = new Rect();
-            public int _currentLODCount = 0;
+            public bool isLODBlockActive_ = false;
+            public Rect currentLODRect_ = new Rect();
+            public int currentLODCount_ = 0;
+            
+            private List<VisibleElement> visibleElements_ = new List<VisibleElement>();
+
+        public CPUCore(ToolWindowMonitorControl parent, BuildHost host, int coreIndex)
+            {
+            parent_ = parent;
+                buildHost_ = host;
+
+                coreIndex_ = coreIndex;
+
+                textBlock_.Text = string.Format("{0} (Core # {1})", buildHost_._name, coreIndex_);
+
+                parent_.CoresCanvas.Children.Add(textBlock_);
+
+                parent_.EventsCanvas.Children.Add(this);
 
 
-            public void StartNewLODBlock(Rect rect)
+                this.Height = ToolWindowMonitorControl.PIX_HEIGHT;
+
+                if (sLODImage_ == null)
+                {
+
+                    sLODImage_ = new Image();
+                    sLODImage_.Source = GetBitmapImage(VSFastBuildVSIX.Resources.Images.lod);
+                }
+
+                this.ToolTip = toolTip_;
+            }
+
+        public void StartNewLODBlock(Rect rect)
             {
                 // Make sure the previous block is closed 
-                Debug.Assert(_isLODBlockActive == false && _currentLODCount == 0);
+                Debug.Assert(isLODBlockActive_ == false && currentLODCount_ == 0);
 
-                _currentLODRect = rect;
-                _currentLODCount = 1;
-                _isLODBlockActive = true;
+                currentLODRect_ = rect;
+                currentLODCount_ = 1;
+                isLODBlockActive_ = true;
             }
 
             public void CloseCurrentLODBlock()
             {
                 // Make sure the current block has been started previously
-                Debug.Assert(_isLODBlockActive == true && _currentLODCount > 0);
+                Debug.Assert(isLODBlockActive_ == true && currentLODCount_ > 0);
 
-                _currentLODCount = 0;
-                _isLODBlockActive = false;
+                currentLODCount_ = 0;
+                isLODBlockActive_ = false;
             }
 
             public bool IsLODBlockActive()
             {
-                return _isLODBlockActive;
+                return isLODBlockActive_;
             }
 
             public void UpdateCurrentLODBlock(double newWitdh)
             {
                 // Make sure the current block has been started previously
-                Debug.Assert(_isLODBlockActive == true && _currentLODCount > 0);
+                Debug.Assert(isLODBlockActive_ == true && currentLODCount_ > 0);
 
-                _currentLODCount++;
+                currentLODCount_++;
 
-                _currentLODRect.Width = newWitdh;
-            }
-
-            
-            private List<VisibleElement> _visibleElements = new List<VisibleElement>();
-
-        public CPUCore(BuildHost parent, int coreIndex)
-            {
-                _parent = parent;
-
-                _coreIndex = coreIndex;
-
-                _textBlock.Text = string.Format("{0} (Core # {1})", parent._name, _coreIndex);
-
-                _StaticWindow.CoresCanvas.Children.Add(_textBlock);
-
-                _StaticWindow.EventsCanvas.Children.Add(this);
-
-
-                this.Height = pix_height;
-
-                if (_sLODImage == null)
-                {
-
-                    _sLODImage = new Image();
-                    _sLODImage.Source = GetBitmapImage(FASTBuildMonitorVSIX.Resources.Images.LODBlock);
-                }
-
-                this.ToolTip = _toolTip;
+                currentLODRect_.Width = newWitdh;
             }
 
             public void AddVisibleElement(Rect rect, string toolTipText, BuildEvent buildEvent = null)
             {
-                _visibleElements.Add(new VisibleElement(rect, toolTipText, buildEvent));
+                visibleElements_.Add(new VisibleElement(rect, toolTipText, buildEvent));
             }
 
             public void ClearAllVisibleElements()
             {
-                _visibleElements.Clear();
+                visibleElements_.Clear();
             }
 
             
             public bool ScheduleEvent(BuildEvent ev)
             {
-                bool bOK = _activeEvent == null;
+                bool bOK = activeEvent_ == null;
 
                 if (bOK)
                 {
-                    _activeEvent = ev;
+                    activeEvent_ = ev;
 
-                    _activeEvent.Start(this);
+                    activeEvent_.Start(this);
                 }
 
                 return bOK;
             }
 
-            public bool UnScheduleEvent(Int64 timeCompleted, string eventName, BuildEventState jobResult, bool bIsLocalJob, string outputMessages, bool bForce = false)
+            public bool UnScheduleEvent(long timeCompleted, string eventName, BuildEventState jobResult, bool bIsLocalJob, string outputMessages, bool bForce = false)
             {
-                bool bOK = (_activeEvent != null && (_activeEvent._name == eventName || bForce));
+                bool bOK = (activeEvent_ != null && (activeEvent_.name_ == eventName || bForce));
 
                 if (bOK)
                 {
                     if (!bForce && outputMessages.Length > 0)
                     {
-                        _activeEvent.SetOutputMessages(outputMessages);
+                        activeEvent_.SetOutputMessages(outputMessages);
                     }
 
-                    _activeEvent.Stop(timeCompleted, jobResult, bIsLocalJob);
+                    activeEvent_.Stop(timeCompleted, jobResult, bIsLocalJob);
 
-                    _completedEvents.Add(_activeEvent);
+                    completedEvents_.Add(activeEvent_);
 
-                    _activeEvent = null;
+                    activeEvent_ = null;
                 }
 
                 return bOK;
@@ -162,7 +161,7 @@ namespace VSFastBuildVSIX.ToolWindows
                 // First let's reset the list of visible elements since we will be recalculating it
                 ClearAllVisibleElements();
 
-                foreach (BuildEvent ev in _completedEvents)
+                foreach (BuildEvent ev in completedEvents_)
                 {
                     ev.OnRender(dc);
                 }
@@ -171,12 +170,12 @@ namespace VSFastBuildVSIX.ToolWindows
                 if (IsLODBlockActive())
                 {
                     // compute the absolute Rect given the origin of the current core
-                    Rect absoluteRect = new Rect(_x + _currentLODRect.X, _y + _currentLODRect.Y, _currentLODRect.Width, _currentLODRect.Height);
+                    Rect absoluteRect = new Rect(x_ + currentLODRect_.X, y_ + currentLODRect_.Y, currentLODRect_.Width, currentLODRect_.Height);
 
-                    if (IsObjectVisible(absoluteRect))
+                    if (IsObjectVisible(absoluteRect, parent_.ViewPort))
                     {
                         VisualBrush brush = new VisualBrush();
-                        brush.Visual = _sLODImage;
+                        brush.Visual = sLODImage_;
                         brush.Stretch = Stretch.None;
                         brush.TileMode = TileMode.Tile;
                         brush.AlignmentY = AlignmentY.Top;
@@ -184,27 +183,27 @@ namespace VSFastBuildVSIX.ToolWindows
                         brush.ViewportUnits = BrushMappingMode.Absolute;
                         brush.Viewport = new Rect(0, 0, 40, 20);
 
-                        dc.DrawRectangle(brush, new Pen(Brushes.Black, 1), _currentLODRect);
+                        dc.DrawRectangle(brush, new Pen(Brushes.Black, 1), currentLODRect_);
 
-                        AddVisibleElement(_currentLODRect, string.Format("{0} events", _currentLODCount));
+                        AddVisibleElement(currentLODRect_, string.Format("{0} events", currentLODCount_));
                     }
 
                     CloseCurrentLODBlock();
                 }
 
-                if (_activeEvent != null)
+                if (activeEvent_ != null)
                 {
-                    _activeEvent.OnRender(dc);
+                    activeEvent_.OnRender(dc);
                 }
             }
 
-            public HitTestResult HitTest(Point localMousePosition)
+            public HitTest HitTest(Point localMousePosition)
             {
-                foreach (VisibleElement element in _visibleElements)
+                foreach (VisibleElement element in visibleElements_)
                 {
                     if (element.HitTest(localMousePosition))
                     {
-                        return new HitTestResult(this._parent, this, element._buildEvent);
+                        return new HitTest(this.buildHost_, this, element.buildEvent_);
                     }
                 }
 
@@ -213,11 +212,11 @@ namespace VSFastBuildVSIX.ToolWindows
 
             public bool UpdateToolTip(Point localMousePosition)
             {
-                foreach (VisibleElement element in _visibleElements)
+                foreach (VisibleElement element in visibleElements_)
                 {
                     if (element.HitTest(localMousePosition))
                     {
-                        _toolTip.Content = element._toolTipText;
+                        toolTip_.Content = element.toolTipText_;
 
                         return true;
                     }
@@ -229,31 +228,31 @@ namespace VSFastBuildVSIX.ToolWindows
             public void RenderUpdate(ref double X, ref double Y)
             {
                 // WPF Layout update
-                Canvas.SetLeft(_textBlock, X);
-                Canvas.SetTop(_textBlock, Y + 2);
+                Canvas.SetLeft(textBlock_, X);
+                Canvas.SetTop(textBlock_, Y + 2);
 
-                if (_x != X)
+                if (x_ != X)
                 {
                     Canvas.SetLeft(this, X);
-                    _x = X;
+                    x_ = X;
                 }
 
-                if (_y != Y)
+                if (y_ != Y)
                 {
                     Canvas.SetTop(this, Y);
-                    _y = Y;
+                    y_ = Y;
                 }
 
                 double relX = 0.0f;
 
-                foreach (BuildEvent ev in _completedEvents)
+                foreach (BuildEvent ev in completedEvents_)
                 {
                     ev.RenderUpdate(ref relX, 0);
                 }
 
-                if (_activeEvent != null)
+                if (activeEvent_ != null)
                 {
-                    _activeEvent.RenderUpdate(ref relX, 0);
+                    activeEvent_.RenderUpdate(ref relX, 0);
                 }
 
 

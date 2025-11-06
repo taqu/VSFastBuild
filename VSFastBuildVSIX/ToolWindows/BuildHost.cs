@@ -1,19 +1,16 @@
-using System;
 using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
+using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Media;
 using System.Windows.Shapes;
-using static VSFastBuildVSIX.ToolWindowMonitorControl;
 
 namespace VSFastBuildVSIX.ToolWindows
 {
-        internal class BuildHost
+        public class BuildHost
         {
         public const string LocalostName = "local";
 
+        private ToolWindowMonitorControl parent_;
             public string _name;
             public List<CPUCore> _cores = new List<CPUCore>();
             public bool bLocalHost = false;
@@ -23,12 +20,13 @@ namespace VSFastBuildVSIX.ToolWindows
 
             public BuildHost(string name, ToolWindowMonitorControl parent)
             {
+            parent_ = parent;
                 _name = name;
 
                 bLocalHost = name.Contains(LocalostName);
 
                 // Add line separator
-                _StaticWindow.CoresCanvas.Children.Add(_lineSeparator);
+                parent_.CoresCanvas.Children.Add(_lineSeparator);
 
                 _lineSeparator.Stroke = new SolidColorBrush(Colors.LightGray);
                 _lineSeparator.StrokeThickness = 1;
@@ -48,7 +46,6 @@ namespace VSFastBuildVSIX.ToolWindows
                 {
                     if (_cores[i].ScheduleEvent(newEvent))
                     {
-                        //Console.WriteLine("START {0} (Core {1}) [{2}]", _name, i, newEvent._name);
                         bAssigned = true;
                         break;
                     }
@@ -57,17 +54,15 @@ namespace VSFastBuildVSIX.ToolWindows
                 // we discovered a new core
                 if (!bAssigned)
                 {
-                    CPUCore core = new CPUCore(this, _cores.Count);
+                    CPUCore core = new CPUCore(parent_, this, _cores.Count);
 
                     core.ScheduleEvent(newEvent);
-
-                    //Console.WriteLine("START {0} (Core {1}) [{2}]", _name, _cores.Count, newEvent._name);
 
                     _cores.Add(core);
                 }
             }
 
-            public void OnCompleteEvent(Int64 timeCompleted, string eventName, string hostName, BuildEventState jobResult, string outputMessages)
+            public void OnCompleteEvent(long timeCompleted, string eventName, string hostName, BuildEventState jobResult, string outputMessages)
             {
 				bool bLocalJob = (hostName == _name);	// determine if we own the job that's about to be completed
 
@@ -86,9 +81,9 @@ namespace VSFastBuildVSIX.ToolWindows
 
 				foreach (CPUCore core in _cores)
 				{
-					if (core._activeEvent != null && core._activeEvent._name == eventName) 
+					if (core.activeEvent_ != null && core.activeEvent_.name_ == eventName) 
 					{
-						core._activeEvent.isRacingJob_ = true;
+						core.activeEvent_.isRacingJob_ = true;
 
 						bFoundRacingEvents = true;
 
@@ -99,9 +94,9 @@ namespace VSFastBuildVSIX.ToolWindows
 				return bFoundRacingEvents;
 			}
 
-            public HitTestResult HitTest(Point mousePosition)
+            public HitTest HitTest(Point mousePosition)
             {
-                HitTestResult result = null;
+                HitTest result = null;
 
                 foreach (CPUCore core in _cores)
                 {
@@ -161,7 +156,7 @@ namespace VSFastBuildVSIX.ToolWindows
 
                 Y += 20;
 
-                UpdateEventsCanvasMaxSize(X, Y);
+                parent_.UpdateEventsCanvasMaxSize((float)X, (float)Y);
             }
         }
 }

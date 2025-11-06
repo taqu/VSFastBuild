@@ -32,6 +32,8 @@ namespace VSFastBuildVSIX.Commands
             }
             if (!package.EnterBuildProcess())
             {
+                package.CancelBuildProcess();
+                await CommandBuildProject.StopMonitor();
                 return;
             }
             commandText_ = Command.Text;

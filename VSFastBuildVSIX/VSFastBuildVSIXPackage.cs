@@ -65,6 +65,14 @@ namespace VSFastBuildVSIX
 
         public EnvDTE80.DTE2 DTE { get { return dte2_; } }
 
+        public bool IsBuildProcessRunning()
+        {
+            lock (lock_)
+            {
+                return inProcess_;
+            }
+        }
+
         public bool EnterBuildProcess()
         {
             lock (lock_)
