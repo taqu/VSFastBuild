@@ -1,0 +1,86 @@
+<?xml version="1.0" encoding="utf-8"?>
+<CommandTable xmlns="http://schemas.microsoft.com/VisualStudio/2005-10-18/CommandTable" xmlns:xs="http://www.w3.org/2001/XMLSchema">
+
+	<Extern href="stdidcmd.h"/>
+	<Extern href="vsshlids.h"/>
+	<Include href="KnownImageIds.vsct"/>
+	<Include href="VSGlobals.vsct"/>
+
+	<Commands package="VSFastBuildVSIX">
+		<Groups>
+			<Group guid="VSFastBuildVSIX" id="VSFastBuildSolutionMenuGroup" priority="0x1000"/>
+			<Group guid="VSFastBuildVSIX" id="VSFastBuildProjectGroup" priority="0x1000"/>
+		</Groups>
+		<Menus>
+			<Menu guid="VSFastBuildVSIX" id="VSFastBuildBuildMenu" type="Menu">
+				<Strings>
+					<ButtonText>FastBuild</ButtonText>
+				</Strings>
+			</Menu>
+		</Menus>
+		<Buttons>
+			<Button guid="VSFastBuildVSIX" id="CommandFBuildSolution" priority="0x100" type="Button">
+				<Icon guid="VSFastBuildImages" id="icon_menu" />
+				<CommandFlag>TextChanges</CommandFlag>
+				<Strings>
+					<ButtonText>FastBuild Solution</ButtonText>
+					<CommandName>FBuildSolution</CommandName>
+				</Strings>
+			</Button>
+			<Button guid="VSFastBuildVSIX" id="CommandFBuildProject" priority="0x100" type="Button">
+				<Icon guid="VSFastBuildImages" id="icon_menu" />
+				<CommandFlag>TextChanges</CommandFlag>
+				<Strings>
+					<ButtonText>FastBuild Project</ButtonText>
+					<CommandName>FBuildProject</CommandName>
+				</Strings>
+			</Button>
+			<Button guid="VSFastBuildVSIX" id="CommandFBuildMonitor" priority="0x100" type="Button">
+				<Icon guid="VSFastBuildImages" id="icon_menu" />
+				<CommandFlag>TextChanges</CommandFlag>
+				<Strings>
+					<ButtonText>FastBuild Monitor</ButtonText>
+					<CommandName>FBuildMonitor</CommandName>
+				</Strings>
+			</Button>
+		</Buttons>
+		<Bitmaps>
+			<Bitmap guid="VSFastBuildImages" href="Resources\icon_menu.png" usedList="icon_menu" />
+		</Bitmaps>
+	</Commands>
+
+	<CommandPlacements>
+		<CommandPlacement guid="VSFastBuildVSIX" id="CommandFBuildSolution" priority="0x1000">
+			<Parent guid="VSMainMenu" id="Build.SolutionGroup" />
+		</CommandPlacement>
+
+		<CommandPlacement guid="VSFastBuildVSIX" id="CommandFBuildProject" priority="0x1000">
+			<Parent guid="VSMainMenu" id="Build.SelectionGroup" />
+		</CommandPlacement>
+
+		<CommandPlacement guid="VSFastBuildVSIX" id="CommandFBuildSolution" priority="0x3000">
+			<Parent guid="VSMainMenu" id="SolutionNode.BuildGroup"/>
+		</CommandPlacement>
+		<CommandPlacement guid="VSFastBuildVSIX" id="CommandFBuildProject" priority="0x3000">
+			<Parent guid="VSMainMenu" id="ProjectNode.BuildGroup"/>
+		</CommandPlacement>
+
+		<CommandPlacement guid="VSFastBuildVSIX" id="CommandFBuildMonitor" priority="0x3000">
+			<Parent guid="VSMainMenu" id="View.DevWindowsGroup.OtherWindows.Group1"/>
+		</CommandPlacement>
+	</CommandPlacements>
+
+	<Symbols>
+		<GuidSymbol name="VSFastBuildVSIX" value="{73d9eb2b-a45e-4cf2-81ec-517c78ad7093}">
+			<IDSymbol name="VSFastBuildBuildMenu" value="0x1000" />
+			<IDSymbol name="VSFastBuildSolutionMenuGroup" value="0x1001" />
+			<IDSymbol name="VSFastBuildProjectGroup" value="0x1002" />
+			<IDSymbol name="CommandFBuildSolution" value="0x2000" />
+			<IDSymbol name="CommandFBuildProject" value="0x2001" />
+			<IDSymbol name="CommandFBuildMonitor" value="0x2002" />
+		</GuidSymbol>
+		<GuidSymbol name="VSFastBuildImages" value="{334E00CC-D085-4475-A258-7B02C3133597}">
+			<IDSymbol name="icon_menu" value="1" />
+		</GuidSymbol>
+	</Symbols>
+</CommandTable>

@@ -1,0 +1,6 @@
+*.user
+# directories
+/packages
+.vs/
+bin/
+obj/
