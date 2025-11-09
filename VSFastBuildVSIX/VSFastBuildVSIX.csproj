@@ -91,6 +91,10 @@
     </Compile>
   </ItemGroup>
   <ItemGroup>
+    <Content Include="LICENSE.txt">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+      <IncludeInVSIX>true</IncludeInVSIX>
+    </Content>
     <Content Include="Resources\icon_menu.png" />
     <Resource Include="Resources\icon_output.png" />
     <Resource Include="Resources\icon_timeline.png" />

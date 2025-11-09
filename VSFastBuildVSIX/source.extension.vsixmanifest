@@ -2,10 +2,12 @@
 <PackageManifest Version="2.0.0" xmlns="http://schemas.microsoft.com/developer/vsx-schema/2011" xmlns:d="http://schemas.microsoft.com/developer/vsx-schema-design/2011">
     <Metadata>
         <Identity Id="VSFastBuildVSIX.a7cd32ba-4468-4093-bf42-d7b7230b77df" Version="1.0" Language="en-US" Publisher="Company" />
-        <DisplayName>VSFastBuildVSIX</DisplayName>
-        <Description>Empty VSIX Project.</Description>
+        <DisplayName>VSFastBuild</DisplayName>
+        <Description xml:space="preserve">Integration of FASTBuild for Visual Studio.</Description>
+        <License>LICENSE.txt</License>
         <Icon>Resources\Icon.png</Icon>
         <PreviewImage>Resources\Icon.png</PreviewImage>
+        <Tags>Build,FASTBuild</Tags>
     </Metadata>
     <Installation>
         <InstallationTarget Id="Microsoft.VisualStudio.Community" Version="[17.0, 18.0)">
