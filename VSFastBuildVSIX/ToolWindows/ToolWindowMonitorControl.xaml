@@ -65,19 +65,13 @@
                         </StackPanel>
                     </TabItem.Header>
                     <Grid Background="#FFE5E0E0">
-                        <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="53*"/>
-                            <ColumnDefinition Width="118*"/>
-                            <ColumnDefinition Width="19*"/>
-                            <ColumnDefinition Width="764*"/>
-                        </Grid.ColumnDefinitions>
                         <Grid.RowDefinitions>
                             <RowDefinition Height="Auto"/>
                             <RowDefinition/>
                         </Grid.RowDefinitions>
-                        <ComboBox x:Name="OutputWindowComboBox" ItemsSource="{Binding FASTBuildMonitorControl._outputComboBoxFilters}" DisplayMemberPath="_name" HorizontalAlignment="Left" Margin="10,10,0,0" VerticalAlignment="Top" Width="330" Grid.Row="0" HorizontalContentAlignment="Left" Grid.ColumnSpan="4" Grid.RowSpan="2"/>
-                        <Label x:Name="label" Content="Press (SPACE) to reset filter" Foreground="Black" HorizontalAlignment="Left" Margin="155,10,0,0" VerticalAlignment="Top" Width="155" Grid.Row="0" Grid.Column="3" Grid.RowSpan="2"/>
-                        <TextBox x:Name="OutputTextBox" AcceptsReturn="True" Foreground="Black" Background="#FFE5E0E0" HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Auto" IsReadOnly="True" Grid.Row="1" Margin="5,5,5,5" Grid.ColumnSpan="4"/>
+                        <ComboBox x:Name="OutputWindowComboBox" DisplayMemberPath="Name" HorizontalAlignment="Left" Margin="10,10,0,0" VerticalAlignment="Top" Width="330" Grid.Row="0" HorizontalContentAlignment="Left"/>
+                        <Label x:Name="label" Content="Press (SPACE) to reset filter" Foreground="Black" HorizontalAlignment="Left" Margin="155,10,0,0" VerticalAlignment="Top" Width="155" Grid.Row="0"/>
+                        <TextBox x:Name="OutputTextBox" AcceptsReturn="True" Foreground="Black" Background="#FFE5E0E0" HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Auto" IsReadOnly="True" Grid.Row="1" Margin="5,5,5,5"/>
                     </Grid>
                 </TabItem>
                 <TabItem x:Name="TabItemSettings">

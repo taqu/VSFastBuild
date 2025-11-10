@@ -33,7 +33,7 @@ namespace VSFastBuildVSIX.Commands
             if (!package.EnterBuildProcess())
             {
                 package.CancelBuildProcess();
-                await CommandBuildProject.StopMonitor();
+                await CommandBuildProject.StopMonitor(package);
                 return;
             }
             commandText_ = Command.Text;
@@ -58,7 +58,6 @@ namespace VSFastBuildVSIX.Commands
                         && context.PlatformName == solutionConfiguration.PlatformName
                         && context.ShouldBuild)
                     {
-                        Log.OutputBuildLine(string.Format("Project {0} will be built.", project.Name));
                         targets.Add(project);
                     }
                 }

@@ -599,9 +599,17 @@ private long lastTargetPIDCheckTimeMS_ = 0;
 
         public void AddOutputWindowFilterItem(BuildEvent buildEvent)
         {
-            outputComboBoxFilters_.Add(new OutputFilterItem(buildEvent));
+            OutputFilterItem outputFilterItem = new OutputFilterItem(buildEvent);
+            outputComboBoxFilters_.Add(outputFilterItem);
+            if (0 <= OutputWindowComboBox.SelectedIndex)
+            {
+                OutputFilterItem selectedFilter = outputComboBoxFilters_[OutputWindowComboBox.SelectedIndex];
 
-            RefreshOutputTextBox();
+                if (outputFilterItem.BuildEvent != null && (selectedFilter.BuildEvent == null || outputFilterItem.BuildEvent == selectedFilter.BuildEvent))
+                {
+                    OutputTextBox.AppendText(outputFilterItem.BuildEvent.outputMessages_ + "\n");
+                }
+            }
         }
 
         private void OutputWindowComboBox_SelectionChanged(object sender, System.Windows.Controls.SelectionChangedEventArgs e)
@@ -857,6 +865,7 @@ private long lastTargetPIDCheckTimeMS_ = 0;
             return CanRead() && HasFileContentChanged();
         }
 
+        private SolidColorBrush StatusInitialBrush = (SolidColorBrush)(new BrushConverter().ConvertFrom("#FF06B025"));
         private void ResetState()
         {
             fileStreamPosition_ = 0;
@@ -898,7 +907,7 @@ private long lastTargetPIDCheckTimeMS_ = 0;
 
             // progress status
             UpdateBuildProgress(0.0f);
-            StatusBarProgressBar.Foreground = (SolidColorBrush)(new BrushConverter().ConvertFrom("#FF06B025"));
+            StatusBarProgressBar.Foreground = StatusInitialBrush;
 
             // reset to autoscrolling ON
             autoScrolling_ = true;
@@ -923,6 +932,46 @@ private long lastTargetPIDCheckTimeMS_ = 0;
 
             // reset the cached SteppedBuildTime value
             previousSteppedBuildTimeMS_ = 0;
+        }
+
+        private void BuildRestart()
+        {
+            fileStreamPosition_ = 0;
+            fileStream_.Seek(0, SeekOrigin.Begin);
+
+            fileBuffer_.Clear();
+
+            buildRunningState_ = BuildRunningState.Ready;
+            buildStatus_ = BuildStatus.AllClear;
+
+            buildHosts_.Clear();
+            localHost_ = null;
+
+            lastProcessedPosition_ = 0;
+            preparingBuildsteps_ = false;
+
+            // Start by adding a local host
+            localHost_ = new BuildHost(LocalHostName, this);
+            buildHosts_.Add(LocalHostName, localHost_);
+
+            // Always add the prepare build steps event first
+            BuildEvent buildEvent = new BuildEvent(this, PrepareBuildStepsText, 0);
+            localHost_.OnStartEvent(buildEvent);
+            preparingBuildsteps_ = true;
+
+            // progress status
+            UpdateBuildProgress(0.0f);
+            StatusBarProgressBar.Foreground = StatusInitialBrush;
+
+            // target pid
+            targetPID_ = 0;
+            lastTargetPIDCheckTimeMS_ = 0;
+
+            // live build session state
+            isLiveSession_ = false;
+
+            // allow a free render update on the first frame after the reset
+            SetConditionalRenderUpdateFlag(true);
         }
 
         private void UpdateStatusBar()
@@ -1200,8 +1249,7 @@ private long lastTargetPIDCheckTimeMS_ = 0;
             // The file has been emptied so we must reset our state and start over
             if (BuildRestarted())
             {
-                ResetState();
-
+                BuildRestart();
                 return;
             }
 
@@ -1365,7 +1413,7 @@ private long lastTargetPIDCheckTimeMS_ = 0;
                 systemPerformanceGraphs_.OpenSession(isLiveSession_, targetPID_);
 
                 // Record the start time
-                buildStartTimeMS_ = eventLocalTimeMS;
+                //buildStartTimeMS_ = eventLocalTimeMS;
 
                 buildRunningState_ = BuildRunningState.Running;
 
@@ -1405,7 +1453,6 @@ private long lastTargetPIDCheckTimeMS_ = 0;
             StatusBarRunningGif.ToolTip = null;
 
             UpdateBuildProgress(100.0f);
-            StopTimer();
 
             if (isLiveSession_)
             {
@@ -1423,7 +1470,7 @@ private long lastTargetPIDCheckTimeMS_ = 0;
 
             if (preparingBuildsteps_)
             {
-                localHost_.OnCompleteEvent(timeStamp, PrepareBuildStepsText, hostName, BuildEventState.SUCCEEDED_COMPLETED, "");
+                localHost_.OnCompleteEvent(timeStamp, PrepareBuildStepsText, hostName, BuildEventState.SUCCEEDED_COMPLETED, string.Empty);
 
 				preparingBuildsteps_ = false;
 			}

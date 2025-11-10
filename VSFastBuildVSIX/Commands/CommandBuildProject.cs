@@ -8,6 +8,7 @@ using Microsoft.VisualStudio.Shell.Interop;
 using Microsoft.VisualStudio.Threading;
 using Microsoft.VisualStudio.VCProjectEngine;
 using System.Collections.Generic;
+using System.IO.Packaging;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
@@ -39,7 +40,7 @@ namespace VSFastBuildVSIX
             if (!package.EnterBuildProcess())
             {
                 package.CancelBuildProcess();
-                await StopMonitor();
+                await StopMonitor(package);
                 return;
             }
             commandText_ = Command.Text;
@@ -126,6 +127,12 @@ namespace VSFastBuildVSIX
                 });
                 projectsToBuild = lastProjects.ConvertAll(el => el.AbsolutePath);
             }
+            #if DEBUG
+            foreach(string project in projectsToBuild)
+            {
+                Log.OutputBuildLine(string.Format("Project to build: {0}", project));
+            }
+            #endif
 
             OptionsPage options = VSFastBuildVSIXPackage.Options;
             if (null == options)
@@ -150,48 +157,48 @@ namespace VSFastBuildVSIX
             vsFastBuild.ProjectFiles.AddRange(projectsToBuild);
             if (!vsFastBuild.GenerateOnly)
             {
-                await StartMonitor();
-            }
-            foreach (System.Diagnostics.Process process in vsFastBuild.Build())
-            {
-                try
+                foreach (System.Diagnostics.Process process in vsFastBuild.Build())
                 {
-                    using (System.Diagnostics.Process proc = process)
+                    try
                     {
-                        proc.EnableRaisingEvents = true;
-                        proc.OutputDataReceived += (sender, ev) =>
+                        await StartMonitor(package);
+                        using (System.Diagnostics.Process proc = process)
                         {
-                            if (null != ev.Data)
+                            proc.EnableRaisingEvents = true;
+                            proc.OutputDataReceived += (sender, ev) =>
                             {
-                                Log.OutputBuildLine(ev.Data);
-                            }
-                        };
-                        proc.ErrorDataReceived += (sender, ev) =>
-                        {
-                            if (null != ev.Data)
+                                if (null != ev.Data)
+                                {
+                                    Log.OutputBuildLine(ev.Data);
+                                }
+                            };
+                            proc.ErrorDataReceived += (sender, ev) =>
                             {
-                                Log.OutputBuildLine(ev.Data);
-                            }
-                        };
-                        proc.Start();
-                        proc.BeginErrorReadLine();
-                        proc.BeginOutputReadLine();
-                        await proc.WaitForExitAsync(package.CancellationToken);
+                                if (null != ev.Data)
+                                {
+                                    Log.OutputBuildLine(ev.Data);
+                                }
+                            };
+                            proc.Start();
+                            proc.BeginErrorReadLine();
+                            proc.BeginOutputReadLine();
+                            await proc.WaitForExitAsync(package.CancellationToken);
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        await Log.OutputBuildLineAsync(ex.Message);
                     }
                 }
-                catch (Exception ex)
-                {
-                    await Log.OutputBuildLineAsync(ex.Message);
-                }
+                await Log.OutputBuildLineAsync("Build completed");
             }
-            await Task.Delay(5000);
-            await Log.OutputBuildLineAsync("Build completed");
+            await StopMonitor(package);
             LeaveProcess(package, command, originalText);
         }
 
-        public static async Task StartMonitor()
+        public static async Task StartMonitor(ToolkitPackage package)
         {
-            ToolWindowMonitor.Pane pane = await ToolWindowMonitor.ShowAsync() as ToolWindowMonitor.Pane;
+            ToolkitToolWindowPane pane = await package.FindToolWindowAsync(typeof(ToolWindowMonitor.Pane), 0, false, new CancellationToken()) as ToolkitToolWindowPane;
             if(null != pane)
             {
                 ToolWindowMonitorControl toolWindowMonitorControl = pane.Content as ToolWindowMonitorControl;
@@ -202,9 +209,9 @@ namespace VSFastBuildVSIX
             }
         }
 
-        public static async Task StopMonitor()
+        public static async Task StopMonitor(ToolkitPackage package)
         {
-            ToolWindowMonitor.Pane pane = await ToolWindowMonitor.ShowAsync() as ToolWindowMonitor.Pane;
+            ToolkitToolWindowPane pane = await package.FindToolWindowAsync(typeof(ToolWindowMonitor.Pane), 0, false, new CancellationToken()) as ToolkitToolWindowPane;
             if(null != pane)
             {
                 ToolWindowMonitorControl toolWindowMonitorControl = pane.Content as ToolWindowMonitorControl;

@@ -1,4 +1,5 @@
 using System.Diagnostics;
+using System.IO.Packaging;
 using System.Windows.Media;
 using static VSFastBuildVSIX.ToolWindowMonitorControl;
 
@@ -57,8 +58,8 @@ namespace VSFastBuildVSIX.ToolWindows
         public System.Windows.Rect progressRect_;
 
         // LOD/Culling
-        public bool _isInLowLOD = false;
-        public bool _isDirty = false;
+        public bool isInLowLOD_ = false;
+        public bool isDirty_ = false;
 
         public BuildEvent(ToolWindowMonitorControl parent, string name, long timeStarted)
         {
@@ -165,7 +166,7 @@ namespace VSFastBuildVSIX.ToolWindows
             toolTipText_ += "\nStart Time: " + GetTimeFormattedString(timeStarted_);
             toolTipText_ += "\nEnd Time: " + GetTimeFormattedString(timeFinished_);
 
-            if (null != outputMessages_ && outputMessages_.Length > 0)
+            if (!string.IsNullOrEmpty(outputMessages_))
             {
                 // show only an extract of the errors so we don't flood the visual
                 int textLength = Math.Min(outputMessages_.Length, 100);
@@ -174,9 +175,12 @@ namespace VSFastBuildVSIX.ToolWindows
                 toolTipText_ += "... [Double-Click on the event to see more details]";
 
                 outputMessages_ = string.Format("[Output {0}]: {1}", name_.Replace("\"", ""), Environment.NewLine) + outputMessages_;
-
-                parent_.AddOutputWindowFilterItem(this);
             }
+            else
+            {
+                outputMessages_ = string.Format("{0} ", name_, state_);
+            }
+            parent_.AddOutputWindowFilterItem(this);
         }
 
         public bool JumpToEventLineInOutputBox()
@@ -286,9 +290,9 @@ namespace VSFastBuildVSIX.ToolWindows
             System.Windows.Rect newBorderRect = new System.Windows.Rect(X, Y, borderRectWidth, PIX_HEIGHT);
             System.Windows.Rect newProgressRect = new System.Windows.Rect(X, Y, AdjustedWidthInPixels, PIX_HEIGHT);
 
-            _isDirty = !bordersRect_.Equals(newBorderRect) || !progressRect_.Equals(newProgressRect) || isInLowLOD != _isInLowLOD;
+            isDirty_ = !bordersRect_.Equals(newBorderRect) || !progressRect_.Equals(newProgressRect) || isInLowLOD != isInLowLOD_;
 
-            _isInLowLOD = isInLowLOD;
+            isInLowLOD_ = isInLowLOD;
             bordersRect_ = newBorderRect;
             progressRect_ = newProgressRect;
 
@@ -309,7 +313,7 @@ namespace VSFastBuildVSIX.ToolWindows
         public void OnRender(DrawingContext dc)
         {
             // if the current event is in lowLOD mode
-            if (_isInLowLOD)
+            if (isInLowLOD_)
             {
                 bool bStartNewLODBlock = false;
 
