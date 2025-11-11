@@ -86,14 +86,14 @@ namespace VSFastBuildVSIX.ToolWindows
 
             brush_ = ToolImages.RunningBrush;
 
-            toolTipText_ = "BUILDING: " + name_.Replace("\"", "");
+            toolTipText_ = "BUILDING: " + name_.Replace("\"", string.Empty);
         }
 
         public void Stop(long timeFinished, BuildEventState jobResult, bool bIsLocalJob)
         {
             timeFinished_ = timeFinished;
 
-            double totalTimeSeconds = (timeFinished_ - timeStarted_) / 1000.0f;
+            double totalTimeSeconds = Math.Max((timeFinished_ - timeStarted_) / 1000.0, 0.0);
 
             Debug.Assert(0.0f<=totalTimeSeconds);
 
@@ -174,7 +174,7 @@ namespace VSFastBuildVSIX.ToolWindows
                 toolTipText_ += "\n" + outputMessages_.Substring(0, textLength);
                 toolTipText_ += "... [Double-Click on the event to see more details]";
 
-                outputMessages_ = string.Format("[Output {0}]: {1}", name_.Replace("\"", ""), Environment.NewLine) + outputMessages_;
+                outputMessages_ = string.Format("[Output {0}]: {1}", name_.Replace("\"", string.Empty), Environment.NewLine) + outputMessages_;
             }
             else
             {
@@ -187,7 +187,7 @@ namespace VSFastBuildVSIX.ToolWindows
         {
             bool bSuccess = false;
 
-            int index = parent_.OutputTextBox.Text.IndexOf(name_.Replace("\"", ""));
+            int index = parent_.OutputTextBox.Text.IndexOf(name_.Replace("\"",@string.Empty));
 
             int lineNumber = parent_.OutputTextBox.Text.Substring(0, index).Split(new string[] { Environment.NewLine }, StringSplitOptions.RemoveEmptyEntries).Length;
 

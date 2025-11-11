@@ -12,6 +12,7 @@ using System.IO.Packaging;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
+using System.Windows.Documents;
 using VSFastBuildCommon;
 using VSFastBuildVSIX.Options;
 
@@ -85,12 +86,14 @@ namespace VSFastBuildVSIX
             foreach (string p in project.Dependencies)
             {
                 ProjectInSolution proj = projects.Find((x) => x.ProjectGuid == p);
-                if(null == proj) {
+                if (null == proj)
+                {
                     proj = projectsInSolution.Find((x) => x.ProjectGuid == p);
                     GatherProjectFiles(projects, proj, projectsInSolution);
                 }
             }
-            if(null == projects.Find((x) => x.ProjectGuid == project.ProjectGuid)){
+            if (null == projects.Find((x) => x.ProjectGuid == project.ProjectGuid))
+            {
                 projects.Add(project);
             }
         }
@@ -119,20 +122,47 @@ namespace VSFastBuildVSIX
                 {
                     GatherProjectFiles(lastProjects, projectInSolution, solutionProjects);
                 }
+                lastProjects.RemoveAll(
+                    x =>
+                    {
+                        return x.AbsolutePath.EndsWith("ZERO_CHECK.vcxproj")
+                        || x.AbsolutePath.EndsWith("INSTALL.vcxproj")
+                        || x.AbsolutePath.EndsWith("ALL_BUILD.vcxproj");
+                    }
+                 );
+#if false 
+                List<ProjectInSolution> lastProjects2 = new List<ProjectInSolution>(lastProjects.Count);
+                for(int i=0; i<lastProjects.Count; ++i)
+                {
+                    lastProjects2.Add(lastProjects[i]);
+                }
                 lastProjects.Sort((x, y) =>
                 {
                     if (x.Dependencies.Contains(y.ProjectGuid)) return 1;
                     if (y.Dependencies.Contains(x.ProjectGuid)) return -1;
                     return 0;
                 });
+                TopologicalSort(lastProjects2);
+#if DEBUG
+                for(int i=0; i<lastProjects.Count; ++i)
+                {
+                    ProjectInSolution projectInSolution = lastProjects[i];
+                    ProjectInSolution projectInSolution2 = lastProjects2[i];
+                    Log.OutputBuildLine(string.Format("Project to build: {0} {1}", projectInSolution.AbsolutePath, projectInSolution2.AbsolutePath));
+                }
+#endif
+#else
+                TopologicalSort(lastProjects);
+#if DEBUG
+                for (int i = 0; i < lastProjects.Count; ++i)
+                {
+                    ProjectInSolution projectInSolution = lastProjects[i];
+                    Log.OutputBuildLine(string.Format("Project to build: {0}", projectInSolution.AbsolutePath));
+                }
+#endif
+#endif
                 projectsToBuild = lastProjects.ConvertAll(el => el.AbsolutePath);
             }
-            #if DEBUG
-            foreach(string project in projectsToBuild)
-            {
-                Log.OutputBuildLine(string.Format("Project to build: {0}", project));
-            }
-            #endif
 
             OptionsPage options = VSFastBuildVSIXPackage.Options;
             if (null == options)
@@ -199,10 +229,10 @@ namespace VSFastBuildVSIX
         public static async Task StartMonitor(ToolkitPackage package)
         {
             ToolkitToolWindowPane pane = await package.FindToolWindowAsync(typeof(ToolWindowMonitor.Pane), 0, false, new CancellationToken()) as ToolkitToolWindowPane;
-            if(null != pane)
+            if (null != pane)
             {
                 ToolWindowMonitorControl toolWindowMonitorControl = pane.Content as ToolWindowMonitorControl;
-                if(null != toolWindowMonitorControl)
+                if (null != toolWindowMonitorControl)
                 {
                     toolWindowMonitorControl.StartTimer();
                 }
@@ -212,10 +242,10 @@ namespace VSFastBuildVSIX
         public static async Task StopMonitor(ToolkitPackage package)
         {
             ToolkitToolWindowPane pane = await package.FindToolWindowAsync(typeof(ToolWindowMonitor.Pane), 0, false, new CancellationToken()) as ToolkitToolWindowPane;
-            if(null != pane)
+            if (null != pane)
             {
                 ToolWindowMonitorControl toolWindowMonitorControl = pane.Content as ToolWindowMonitorControl;
-                if(null != toolWindowMonitorControl)
+                if (null != toolWindowMonitorControl)
                 {
                     toolWindowMonitorControl.StopTimer();
                 }
@@ -231,5 +261,43 @@ namespace VSFastBuildVSIX
             return vsHierarchy;
         }
 #endif
+
+        private class SortProject
+        {
+            public ProjectInSolution project_;
+            public bool visited_;
+        };
+
+        private static void TopologicalSort(List<ProjectInSolution> projects)
+        {
+            List<SortProject> targets = new List<SortProject>();
+            foreach (ProjectInSolution project in projects)
+            {
+                targets.Add(new SortProject() { project_ = project, visited_ = false });
+            }
+            projects.Clear();
+            foreach (SortProject target in targets)
+            {
+                TopologicalVisit(projects, targets, target);
+            }
+            projects.Reverse();
+        }
+
+        private static void TopologicalVisit(List<ProjectInSolution> sorted, List<SortProject> projects, SortProject project)
+        {
+            if (!project.visited_)
+            {
+                project.visited_ = true;
+                foreach (string dependency in project.project_.Dependencies)
+                {
+                    SortProject proj = projects.Find((x) => x.project_.ProjectGuid == dependency);
+                    if (null != proj)
+                    {
+                        TopologicalVisit(sorted, projects, proj);
+                    }
+                }
+                sorted.Insert(0, project.project_);
+            }
+        }
     }
 }

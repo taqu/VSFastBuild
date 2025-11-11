@@ -876,7 +876,7 @@ private long lastTargetPIDCheckTimeMS_ = 0;
             buildRunningState_ = BuildRunningState.Ready;
             buildStatus_ = BuildStatus.AllClear;
 
-            buildStartTimeMS_ = 0;
+            buildStartTimeMS_ = GetCurrentSystemTimeMS();
             latestTimeStampMS_ = 0;
 
             buildHosts_.Clear();
@@ -893,7 +893,7 @@ private long lastTargetPIDCheckTimeMS_ = 0;
             buildHosts_.Add(LocalHostName, localHost_);
 
             // Always add the prepare build steps event first
-            BuildEvent buildEvent = new BuildEvent(this, PrepareBuildStepsText, 0);
+            BuildEvent buildEvent = new BuildEvent(this, PrepareBuildStepsText, buildStartTimeMS_);
             localHost_.OnStartEvent(buildEvent);
             preparingBuildsteps_ = true;
 
@@ -944,6 +944,10 @@ private long lastTargetPIDCheckTimeMS_ = 0;
             buildRunningState_ = BuildRunningState.Ready;
             buildStatus_ = BuildStatus.AllClear;
 
+            if(0 == buildStartTimeMS_)
+            {
+                buildStartTimeMS_ = GetCurrentSystemTimeMS();
+            }
             buildHosts_.Clear();
             localHost_ = null;
 
@@ -955,7 +959,7 @@ private long lastTargetPIDCheckTimeMS_ = 0;
             buildHosts_.Add(LocalHostName, localHost_);
 
             // Always add the prepare build steps event first
-            BuildEvent buildEvent = new BuildEvent(this, PrepareBuildStepsText, 0);
+            BuildEvent buildEvent = new BuildEvent(this, PrepareBuildStepsText, GetCurrentSystemTimeMS());
             localHost_.OnStartEvent(buildEvent);
             preparingBuildsteps_ = true;
 
@@ -1423,17 +1427,21 @@ private long lastTargetPIDCheckTimeMS_ = 0;
                 ToolTip newToolTip = new ToolTip();
                 StatusBarRunningGif.ToolTip = newToolTip;
                 newToolTip.Content = "Build in Progress...";
+                if (preparingBuildsteps_)
+                {
+                    localHost_.OnCompleteEvent(eventLocalTimeMS, PrepareBuildStepsText, string.Empty, BuildEventState.SUCCEEDED_COMPLETED, string.Empty);
+                    preparingBuildsteps_ = false;
+                }
             }
         }
 
         private void ExecuteCommandStopBuild(string[] tokens, long eventLocalTimeMS)
         {
-            long timeStamp = (eventLocalTimeMS - buildStartTimeMS_);
+            long timeStamp = eventLocalTimeMS;//Math.Max(eventLocalTimeMS - buildStartTimeMS_, 0);
 
             if (preparingBuildsteps_)
             {
                 localHost_.OnCompleteEvent(timeStamp, PrepareBuildStepsText, string.Empty, BuildEventState.SUCCEEDED_COMPLETED, string.Empty);
-
 				preparingBuildsteps_ = false;
 			}
 
@@ -1463,7 +1471,7 @@ private long lastTargetPIDCheckTimeMS_ = 0;
 
         private void ExecuteCommandStartJob(string[] tokens, long eventLocalTimeMS)
         {
-            long timeStamp = (eventLocalTimeMS - buildStartTimeMS_);
+            long timeStamp = eventLocalTimeMS;//Math.Max(eventLocalTimeMS - buildStartTimeMS_, 0);
 
             string hostName = tokens[CommandArgumentIndex.START_JOB_HOST_NAME];
             string eventName = tokens[CommandArgumentIndex.START_JOB_EVENT_NAME];
@@ -1515,7 +1523,7 @@ private long lastTargetPIDCheckTimeMS_ = 0;
 
         private void ExecuteCommandFinishJob(string[] tokens, long eventLocalTimeMS)
         {
-            long timeStamp = (eventLocalTimeMS - buildStartTimeMS_);
+            long timeStamp = eventLocalTimeMS;//Math.Max(eventLocalTimeMS - buildStartTimeMS_, 0);
 
             string jobResultString = tokens[CommandArgumentIndex.FINISH_JOB_RESULT];
             string hostName = tokens[CommandArgumentIndex.FINISH_JOB_HOST_NAME];
@@ -1552,7 +1560,7 @@ private long lastTargetPIDCheckTimeMS_ = 0;
 
         private void ExecuteCommandGraph(string[] tokens, long eventLocalTimeMS)
         {
-            long timeStamp = (eventLocalTimeMS - buildStartTimeMS_);
+            long timeStamp = Math.Max(eventLocalTimeMS - buildStartTimeMS_, 0);
 
             string groupName = tokens[CommandArgumentIndex.GRAPH_GROUP_NAME]; 
             string counterName = tokens[CommandArgumentIndex.GRAPH_COUNTER_NAME].Substring(1, tokens[CommandArgumentIndex.GRAPH_COUNTER_NAME].Length - 2); // Remove the quotes at the start and end 
