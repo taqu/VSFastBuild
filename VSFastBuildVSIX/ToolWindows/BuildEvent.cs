@@ -237,7 +237,7 @@ namespace VSFastBuildVSIX.ToolWindows
 
         public void RenderUpdate(ref double X, double Y)
         {
-            long duration = 0;
+            long duration = 1;
 
             bool bIsCompleted = false;
 
@@ -249,7 +249,7 @@ namespace VSFastBuildVSIX.ToolWindows
             if (state_ == BuildEventState.IN_PROGRESS)
             {
                 // Event is in progress
-                duration = (long)Math.Max(0.0f, parent_.GetCurrentBuildTimeMS(true) - timeStarted_);
+                duration = Math.Max(1, parent_.GetCurrentBuildTimeMS(true) - timeStarted_);
 
                 System.Windows.Point textSize = TextUtils.ComputeTextSize(fileName_);
 
@@ -265,7 +265,7 @@ namespace VSFastBuildVSIX.ToolWindows
             {
                 // Event is completed
                 bIsCompleted = true;
-                duration = timeFinished_ - timeStarted_;
+                duration = Math.Max(1, timeFinished_ - timeStarted_);
 
                 // Handle the zoom factor
                 OriginalWidthInPixels = parent_.ZoomFactor * PIX_PER_SECOND * (double)duration / (double)1000;
@@ -277,7 +277,8 @@ namespace VSFastBuildVSIX.ToolWindows
             }
 
             // Adjust the start time position if possible
-            double desiredX = parent_.ZoomFactor * PIX_PER_SECOND * (double)timeStarted_ / (double)1000;
+            long timeStarted = Math.Max(0, timeStarted_ - parent_.BuildStartTimeMS);
+            double desiredX = parent_.ZoomFactor * PIX_PER_SECOND * (double)timeStarted / 1000.0;
             if (desiredX > X)
             {
                 X = desiredX;

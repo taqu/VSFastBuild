@@ -1,3 +1,4 @@
+using System.CodeDom;
 using System.ComponentModel;
 using System.Runtime.InteropServices;
 
@@ -18,6 +19,7 @@ namespace VSFastBuildVSIX.Options
         public const string DefaultArguments = "-dist -cache -ide -monitor";
         public const bool DefaultGenOnly = false;
         public const bool DefaultUnity = false;
+        public const bool DefaultShowSystemPerformance = false;
 
         [Category("Options")]
         [DisplayName("FBuild Path")]
@@ -48,5 +50,11 @@ namespace VSFastBuildVSIX.Options
         [Description("Whether to do unity build.")]
         [DefaultValue(true)]
         public bool Unity { get; set; } = DefaultUnity;
+
+        [Category("Options")]
+        [DisplayName("ShowSystemPerformance")]
+        [Description("Whether to show system performance graph as default.")]
+        [DefaultValue(true)]
+        public bool ShowSystemPerformance { get; set; } = DefaultShowSystemPerformance;
     }
 }

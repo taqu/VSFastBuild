@@ -153,6 +153,8 @@ namespace VSFastBuildVSIX
             return currentTimeMS;
         }
 
+        public long BuildStartTimeMS { get { return buildStartTimeMS_; } }
+
         public long GetCurrentBuildTimeMS(bool bUseTimeStep = false)
         {
             long elapsedBuildTime = -buildStartTimeMS_;
@@ -642,8 +644,7 @@ private long lastTargetPIDCheckTimeMS_ = 0;
             OutputTextBox.UpdateLayout();
         }
 
-         /* Output Window double click */
-
+        /* OutputTextBox double click */
         private void OutputTextBox_PreviewMouseDoubleClick(object sender, MouseButtonEventArgs e)
         {
             if (e.ChangedButton == MouseButton.Left)
@@ -783,6 +784,18 @@ private long lastTargetPIDCheckTimeMS_ = 0;
         {
             outputTextBoxPendingLayoutUpdate_ = false;
         }
+
+        private void OnClick_OutputTextBox_SelectAll(object sender, RoutedEventArgs args)
+        {
+            args.Handled = true;
+            OutputTextBox.SelectAll();
+        }
+
+        private void OnClick_OutputTextBox_Clear(object sender, RoutedEventArgs args)
+        {
+            args.Handled = true;
+            OutputTextBox.Clear();
+        }
         #endregion
 
         #region Timer Tick Handling
@@ -825,6 +838,8 @@ private long lastTargetPIDCheckTimeMS_ = 0;
             return fileStream_ != null && fileStream_.CanRead;
         }
 
+        private byte[] buffer_;
+
         private bool HasFileContentChanged()
         {
             bool bFileChanged = false;
@@ -840,19 +855,24 @@ private long lastTargetPIDCheckTimeMS_ = 0;
 
                 int numBytesToCompare = Math.Min(fileBuffer_.Count, 256);
 
-                byte[] buffer = new byte[numBytesToCompare];
+                if(null == buffer_ || buffer_.Length < numBytesToCompare) {
+                    buffer_ = new byte[numBytesToCompare];
+                }
 
                 fileStream_.Seek(0, SeekOrigin.Begin);
 
-                int numBytesRead = fileStream_.Read(buffer, 0, numBytesToCompare);
-                Debug.Assert(numBytesRead == numBytesToCompare, "Could not read the expected amount of data from the log file...!");
-
-                for (int i = 0; i < numBytesToCompare; ++i)
+                int numBytesRead = fileStream_.Read(buffer_, 0, numBytesToCompare);
+                if (0 < numBytesRead)
                 {
-                    if (buffer[i] != fileBuffer_[i])
+                    Debug.Assert(numBytesRead == numBytesToCompare, "Could not read the expected amount of data from the log file...!");
+
+                    for (int i = 0; i < numBytesToCompare; ++i)
                     {
-                        bFileChanged = true;
-                        break;
+                        if (buffer_[i] != fileBuffer_[i])
+                        {
+                            bFileChanged = true;
+                            break;
+                        }
                     }
                 }
             }
@@ -1626,15 +1646,21 @@ private long lastTargetPIDCheckTimeMS_ = 0;
             }
         }
 
-        private void CheckBox_Checked(object sender, RoutedEventArgs e)
+        private void CheckBox_SystemGraph_Checked(object sender, RoutedEventArgs e)
         {
             systemPerformanceGraphs_.SetVisibility((bool)(sender as CheckBox).IsChecked);
         }
 
-        private void CheckBox_Unchecked(object sender, RoutedEventArgs e)
+        private void CheckBox_SystemGraph_Unchecked(object sender, RoutedEventArgs e)
         {
             systemPerformanceGraphs_.SetVisibility((bool)(sender as CheckBox).IsChecked);
 
+        }
+
+        private void OnClick_SettingsAutoScroll(object sender, RoutedEventArgs e)
+        {
+            e.Handled = true;
+            autoScrolling_ = true;
         }
     }
 }
