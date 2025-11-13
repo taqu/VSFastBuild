@@ -127,7 +127,8 @@ namespace VSFastBuildVSIX
                     {
                         return x.AbsolutePath.EndsWith("ZERO_CHECK.vcxproj")
                         || x.AbsolutePath.EndsWith("INSTALL.vcxproj")
-                        || x.AbsolutePath.EndsWith("ALL_BUILD.vcxproj");
+                        || x.AbsolutePath.EndsWith("ALL_BUILD.vcxproj")
+                        || x.AbsolutePath.EndsWith("RUN_TESTS.vcxproj");
                     }
                  );
 #if false 
@@ -187,6 +188,7 @@ namespace VSFastBuildVSIX
             vsFastBuild.ProjectFiles.AddRange(projectsToBuild);
             if (!vsFastBuild.GenerateOnly)
             {
+                await ResetMonitor(package);
                 foreach (System.Diagnostics.Process process in vsFastBuild.Build())
                 {
                     try
@@ -251,6 +253,20 @@ namespace VSFastBuildVSIX
                 }
             }
         }
+
+        public static async Task ResetMonitor(ToolkitPackage package)
+        {
+            ToolkitToolWindowPane pane = await package.FindToolWindowAsync(typeof(ToolWindowMonitor.Pane), 0, false, new CancellationToken()) as ToolkitToolWindowPane;
+            if (null != pane)
+            {
+                ToolWindowMonitorControl toolWindowMonitorControl = pane.Content as ToolWindowMonitorControl;
+                if (null != toolWindowMonitorControl)
+                {
+                    toolWindowMonitorControl.Reset();
+                }
+            }
+        }
+
 #if false
         private static IVsHierarchy GetVsHierarchyForProject(EnvDTE.Project project)
         {

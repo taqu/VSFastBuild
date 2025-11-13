@@ -337,6 +337,58 @@ private long lastTargetPIDCheckTimeMS_ = 0;
             timer_ = null;
         }
 
+        public void Reset()
+        {
+            StopTimer();
+            if(null != fileStream_)
+            {
+                fileStream_.Close();
+                fileStream_ = null;
+            }
+            fileStreamPosition_ = 0;
+            fileBuffer_.Clear();
+
+            buildRunningState_ = BuildRunningState.Ready;
+            buildStatus_ = BuildStatus.AllClear;
+
+            buildStartTimeMS_ = GetCurrentSystemTimeMS();
+            latestTimeStampMS_ = 0;
+
+            buildHosts_.Clear();
+            localHost_ = null;
+
+            lastProcessedPosition_ = 0;
+            preparingBuildsteps_ = false;
+
+            EventsCanvas.Children.Clear();
+            CoresCanvas.Children.Clear();
+
+            preparingBuildsteps_ = true;
+
+            // Reset the Output window text
+            OutputTextBox.Text = string.Empty;
+
+            // progress status
+            UpdateBuildProgress(0.0f);
+            StatusBarProgressBar.Foreground = StatusInitialBrush;
+
+            // target pid
+            targetPID_ = 0;
+            lastTargetPIDCheckTimeMS_ = 0;
+
+            // live build session state
+            isLiveSession_ = false;
+
+            // graphs
+            SystemGraphsCanvas.Children.Clear();
+
+            // allow a free render update on the first frame after the reset
+            SetConditionalRenderUpdateFlag(true);
+
+            // reset the cached SteppedBuildTime value
+            previousSteppedBuildTimeMS_ = 0;
+        }
+
         public void UpdateEventsCanvasMaxSize(float x, float y)
         {
             maxX_ = maxX_ < x ? x : maxX_;
