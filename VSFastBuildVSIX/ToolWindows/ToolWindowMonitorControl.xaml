@@ -55,7 +55,7 @@
                         <ScrollViewer x:Name="CoresScrollViewer" ScrollViewer.HorizontalScrollBarVisibility="Hidden" ScrollViewer.VerticalScrollBarVisibility="Hidden" Margin="10,10,5,25" Grid.Row="2" Grid.Column="0" Grid.ColumnSpan="2" >
                             <Canvas x:Name="CoresCanvas" HorizontalAlignment="Left" Height="366" VerticalAlignment="Top" Width="148" Margin="0,0,0,0"/>
                         </ScrollViewer>
-                        <GroupBox x:Name="SettingsGroupBox" Header="Settings" Foreground="Black" Background="#FFE5E0E0" BorderBrush="Gray" HorizontalAlignment="Left" Margin="0,0,0,0" VerticalAlignment="Top" Height="40" Width="240" Grid.Row="3" Grid.Column="3" FontSize="11">
+                        <GroupBox x:Name="SettingsGroupBox" Header="Settings" Foreground="Black" Background="#FFE5E0E0" BorderBrush="Gray" HorizontalAlignment="Left" Margin="0,0,0,0" VerticalAlignment="Top" Height="48" Width="240" Grid.Row="3" Grid.Column="3" FontSize="11">
                             <StackPanel Orientation="Horizontal">
                                 <CheckBox x:Name="SettingsGraphsCheckBox" Content ="System Graphs" Foreground="Black" Background="White" HorizontalAlignment="Left" Margin="5,0,0,0" VerticalAlignment="Center" Checked="CheckBox_SystemGraph_Checked" Unchecked="CheckBox_SystemGraph_Unchecked" FontSize="11" />
                                 <Button Content="Auto Scroll" Margin="10,0,0,0" Foreground="Black" Background="LightGray" Click="OnClick_SettingsAutoScroll" FontSize="11"/>

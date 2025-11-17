@@ -56,5 +56,11 @@ namespace VSFastBuildVSIX.Options
         [Description("Whether to show system performance graph as default.")]
         [DefaultValue(true)]
         public bool ShowSystemPerformance { get; set; } = DefaultShowSystemPerformance;
+
+        [Category("Options")]
+        [DisplayName("Threads")]
+        [Description("Number of threads to use.")]
+        [DefaultValue(-1)]
+        public int Threads { get; set; } = -1;
     }
 }

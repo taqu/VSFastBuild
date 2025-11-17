@@ -10,6 +10,7 @@ using Microsoft.VisualStudio.VCProjectEngine;
 using System.Collections.Generic;
 using System.IO.Packaging;
 using System.Linq;
+using System.Runtime.InteropServices;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Windows.Documents;
@@ -22,6 +23,12 @@ namespace VSFastBuildVSIX
     internal sealed class CommandBuildProject : BaseCommand<CommandBuildProject>
     {
         private string commandText_ = string.Empty;
+
+        public static int GetNumberOfCores()
+        {
+            int logicalCores = System.Environment.ProcessorCount;
+            return Math.Max(1, logicalCores/2);
+        }
 
         public static void LeaveProcess(VSFastBuildVSIXPackage package, OleMenuCommand command, string originalText)
         {
@@ -188,44 +195,52 @@ namespace VSFastBuildVSIX
             vsFastBuild.ProjectFiles.AddRange(projectsToBuild);
             if (!vsFastBuild.GenerateOnly)
             {
-                await ResetMonitor(package);
-                foreach (System.Diagnostics.Process process in vsFastBuild.Build())
-                {
-                    try
-                    {
-                        await StartMonitor(package);
-                        using (System.Diagnostics.Process proc = process)
-                        {
-                            proc.EnableRaisingEvents = true;
-                            proc.OutputDataReceived += (sender, ev) =>
-                            {
-                                if (null != ev.Data)
-                                {
-                                    Log.OutputBuildLine(ev.Data);
-                                }
-                            };
-                            proc.ErrorDataReceived += (sender, ev) =>
-                            {
-                                if (null != ev.Data)
-                                {
-                                    Log.OutputBuildLine(ev.Data);
-                                }
-                            };
-                            proc.Start();
-                            proc.BeginErrorReadLine();
-                            proc.BeginOutputReadLine();
-                            await proc.WaitForExitAsync(package.CancellationToken);
-                        }
-                    }
-                    catch (Exception ex)
-                    {
-                        await Log.OutputBuildLineAsync(ex.Message);
-                    }
-                }
-                await Log.OutputBuildLineAsync("Build completed");
+                await Build(package, vsFastBuild);
             }
             await StopMonitor(package);
             LeaveProcess(package, command, originalText);
+        }
+
+        public static async Task Build(VSFastBuildVSIXPackage package, VSFastBuild vsFastBuild)
+        {
+            int numCores = GetNumberOfCores();
+            await ResetMonitor(package);
+            foreach (System.Diagnostics.Process process in vsFastBuild.Build())
+            {
+                try
+                {
+                    await StartMonitor(package);
+                    using (System.Diagnostics.Process proc = process)
+                    {
+                        #if DEBUG
+                        proc.EnableRaisingEvents = true;
+                        proc.OutputDataReceived += (sender, ev) =>
+                        {
+                            if (null != ev.Data)
+                            {
+                                Log.OutputBuildLine(ev.Data);
+                            }
+                        };
+                        proc.ErrorDataReceived += (sender, ev) =>
+                        {
+                            if (null != ev.Data)
+                            {
+                                Log.OutputBuildLine(ev.Data);
+                            }
+                        };
+                        #endif
+                        proc.Start();
+                        proc.BeginErrorReadLine();
+                        proc.BeginOutputReadLine();
+                        await proc.WaitForExitAsync(package.CancellationToken);
+                    }
+                }
+                catch (Exception ex)
+                {
+                    await Log.OutputBuildLineAsync(ex.Message);
+                }
+            }
+            await Log.OutputBuildLineAsync("Build completed");
         }
 
         public static async Task StartMonitor(ToolkitPackage package)
