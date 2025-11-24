@@ -69,7 +69,8 @@ namespace VSFastBuildVSIX.Commands
                 return;
             }
 
-            await CommandBuildProject.BuildAsync(package, targets, Command, commandText_);
+            //await CommandBuildProject.BuildAsync(package, targets, Command, commandText_);
+            await CommandBuildProject.BuildForSolutionAsync(package, targets, Command, commandText_);
         }
     }
 }

@@ -1,12 +1,15 @@
 using Microsoft.Build.Evaluation;
 using Microsoft.Build.Utilities;
-using System;
+using System.Collections;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Reflection;
 using System.Text;
+#if DEBUG
+using System;
+#endif
 
 namespace VSFastBuildCommon
 {
@@ -365,7 +368,6 @@ namespace VSFastBuildCommon
             bool fileChanged = HasFileChanged(activeProject.FullPath, platform, config, bffOutputFilePath, out filehash);
             VCBasePath = string.Empty;
             WindowsSDKTarget = string.Empty;
-
             string configType = activeProject.GetProperty("ConfigurationType").EvaluatedValue;
             BuildType buildType;
             switch (configType)
