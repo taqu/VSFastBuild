@@ -69,8 +69,10 @@ namespace VSFastBuildVSIX.Commands
                 return;
             }
 
-            //await CommandBuildProject.BuildAsync(package, targets, Command, commandText_);
-            await CommandBuildProject.BuildForSolutionAsync(package, targets, Command, commandText_);
+            string rootDirectory = System.IO.Path.GetDirectoryName(dte.Solution.FullName);
+            string bffname = string.Format("fbuild_{0}_{1}.bff", solutionConfiguration.Name, solutionConfiguration.PlatformName);
+            await CommandBuildProject.BuildForSolutionAsync(package, targets, rootDirectory, bffname, Command, commandText_);
+            CommandBuildProject.LeaveProcess(package, Command, commandText_);
         }
     }
 }

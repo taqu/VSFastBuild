@@ -78,6 +78,9 @@ namespace VSFastBuildVSIX
             }
             if (targets.Count <= 0)
             {
+                LeaveProcess(package, Command, commandText_);
+                return;
+                #if false
                 Array ActiveProjects = dte.ActiveSolutionProjects as Array;
                 foreach (EnvDTE.Project p in ActiveProjects)
                 {
@@ -91,9 +94,16 @@ namespace VSFastBuildVSIX
                     LeaveProcess(package, Command, commandText_);
                     return;
                 }
+                #endif
             }
-            //await BuildAsync(package, targets, Command, commandText_);
-            await BuildForSolutionAsync(package, targets, Command, commandText_);
+            SolutionBuild2 solutionBuild = package.DTE.Solution.SolutionBuild as SolutionBuild2;
+            SolutionConfiguration2 solutionConfiguration = solutionBuild.ActiveConfiguration as SolutionConfiguration2;
+            string rootDirectory = System.IO.Path.GetDirectoryName(package.DTE.Solution.FullName);
+            foreach(EnvDTE.Project p in targets) {
+                string bffname = string.Format("{0}_{1}_{2}.bff", p.Name, solutionConfiguration.Name, solutionConfiguration.PlatformName);
+                await BuildForSolutionAsync(package, targets, rootDirectory, bffname, Command, commandText_);
+            }
+            LeaveProcess(package, Command, commandText_);
         }
 
         public static void GatherProjectFiles(List<ProjectInSolution> projects, ProjectInSolution project, List<ProjectInSolution> projectsInSolution)
@@ -438,14 +448,14 @@ namespace VSFastBuildVSIX
         private class BuildContext
         {
             public Assembly CppTaskAssembly_;
-            public ToolTask CLTask_;
-            public ToolTask LIBTask_;
-            public ToolTask RCTask_;
-            public ToolTask LINKTask_;
-            public MethodInfo CLGenerateCommandLine_;
-            public MethodInfo LIBGenerateCommandLine_;
-            public MethodInfo RCGenerateCommandLine_;
-            public MethodInfo LINKGenerateCommandLine_;
+            //public ToolTask CLTask_;
+            //public ToolTask LIBTask_;
+            //public ToolTask RCTask_;
+            //public ToolTask LINKTask_;
+            //public MethodInfo CLGenerateCommandLine_;
+            //public MethodInfo LIBGenerateCommandLine_;
+            //public MethodInfo RCGenerateCommandLine_;
+            //public MethodInfo LINKGenerateCommandLine_;
             public string VCTargetsPath_ = string.Empty;
             public string VCTargetsPathEffective_ = string.Empty;
             public string VC_IncludePath_ = string.Empty;
@@ -469,28 +479,25 @@ namespace VSFastBuildVSIX
             public string Compiler => compiler_;
             public string CompilerOptions => compilerOptions_;
             public string CompilerOutputExtension => compilerOutputExtension_;
-            public string PrecompiledHeaderFile => precompiledHeaderFile_;
             public List<string> ComiplerInputFiles => compilerInputFiles_;
 
             private string compiler_;
             private string compilerOptions_;
             private string compilerOutputExtension_;
-            private string precompiledHeaderFile_;
             private List<string> compilerInputFiles_;
 
-            public FBCompileItem(string inputFile, string compiler, string compilerOptions, string precompiledHeaderFile = Emtpry, string compilerOutputExtension = Emtpry)
+            public FBCompileItem(string inputFile, string compiler, string compilerOptions, string compilerOutputExtension = Emtpry)
             {
                 compilerInputFiles_ = new List<string>(16) { inputFile };
                 compiler_ = compiler;
                 compilerOptions_ = compilerOptions;
                 compilerOutputExtension_ = compilerOutputExtension;
-                precompiledHeaderFile_ = precompiledHeaderFile;
 
             }
 
-            public bool AddIfMatches(string inputFile, string compiler, string compilerOptions, string precompiledHeaderFile = Emtpry)
+            public bool AddIfMatches(string inputFile, string compiler, string compilerOptions)
             {
-                if (compiler_ == compiler && compilerOptions_ == compilerOptions && precompiledHeaderFile_ == precompiledHeaderFile)
+                if (compiler_ == compiler && compilerOptions_ == compilerOptions)
                 {
                     compilerInputFiles_.Add(inputFile);
                     return true;
@@ -499,7 +506,7 @@ namespace VSFastBuildVSIX
             }
         }
 
-        public static async Task BuildForSolutionAsync(VSFastBuildVSIXPackage package, List<EnvDTE.Project> projects, OleMenuCommand command, string originalText)
+        public static async Task BuildForSolutionAsync(VSFastBuildVSIXPackage package, List<EnvDTE.Project> projects, string rootDirectory, string bffname, OleMenuCommand command, string originalText)
         {
             await ThreadHelper.JoinableTaskFactory.SwitchToMainThreadAsync();
             System.Diagnostics.Debug.Assert(null != package);
@@ -547,10 +554,10 @@ namespace VSFastBuildVSIX
                 LeaveProcess(package, command, originalText);
                 return;
             }
-            buildContext.CLTask_ = Activator.CreateInstance(buildContext.CppTaskAssembly_.GetType("Microsoft.Build.CPPTasks.CL")) as ToolTask;
-            buildContext.LIBTask_ = Activator.CreateInstance(buildContext.CppTaskAssembly_.GetType("Microsoft.Build.CPPTasks.LIB")) as ToolTask;
-            buildContext.RCTask_ = Activator.CreateInstance(buildContext.CppTaskAssembly_.GetType("Microsoft.Build.CPPTasks.RC")) as ToolTask;
-            buildContext.LINKTask_ = Activator.CreateInstance(buildContext.CppTaskAssembly_.GetType("Microsoft.Build.CPPTasks.Link")) as ToolTask;
+            //buildContext.CLTask_ = Activator.CreateInstance(buildContext.CppTaskAssembly_.GetType("Microsoft.Build.CPPTasks.CL")) as ToolTask;
+            //buildContext.LIBTask_ = Activator.CreateInstance(buildContext.CppTaskAssembly_.GetType("Microsoft.Build.CPPTasks.LIB")) as ToolTask;
+            //buildContext.RCTask_ = Activator.CreateInstance(buildContext.CppTaskAssembly_.GetType("Microsoft.Build.CPPTasks.RC")) as ToolTask;
+            //buildContext.LINKTask_ = Activator.CreateInstance(buildContext.CppTaskAssembly_.GetType("Microsoft.Build.CPPTasks.Link")) as ToolTask;
 
 #if false
             buildContext.CLGenerateCommandLine_ = Delegate.CreateDelegate(typeof(Func<string>), buildContext.CLTask_, buildContext.CLTask_.GetType().GetRuntimeMethods().Where(method => method.Name == "GenerateCommandLine").First()) as Func<string, object, object>;
@@ -558,10 +565,10 @@ namespace VSFastBuildVSIX
             buildContext.RCGenerateCommandLine_ = Delegate.CreateDelegate(typeof(Func<string, object, object>), buildContext.RCTask_, buildContext.RCTask_.GetType().GetRuntimeMethods().Where(method => method.Name == "GenerateCommandLine").First()) as Func<string, object, object>;
             buildContext.LINKGenerateCommandLine_ = Delegate.CreateDelegate(typeof(Func<string, object, object>), buildContext.LINKTask_, buildContext.LINKTask_.GetType().GetRuntimeMethods().Where(method => method.Name == "GenerateCommandLine").First()) as Func<string, object, object>;
 #else
-            buildContext.CLGenerateCommandLine_ = buildContext.CLTask_.GetType().GetRuntimeMethods().Where(method => method.Name == "GenerateCommandLine").First();
-            buildContext.LIBGenerateCommandLine_ = buildContext.LIBTask_.GetType().GetRuntimeMethods().Where(method => method.Name == "GenerateCommandLine").First();
-            buildContext.RCGenerateCommandLine_ = buildContext.RCTask_.GetType().GetRuntimeMethods().Where(method => method.Name == "GenerateCommandLine").First();
-            buildContext.LINKGenerateCommandLine_ = buildContext.LINKTask_.GetType().GetRuntimeMethods().Where(method => method.Name == "GenerateCommandLine").First();
+            //buildContext.CLGenerateCommandLine_ = buildContext.CLTask_.GetType().GetRuntimeMethods().Where(method => method.Name == "GenerateCommandLine").First();
+            //buildContext.LIBGenerateCommandLine_ = buildContext.LIBTask_.GetType().GetRuntimeMethods().Where(method => method.Name == "GenerateCommandLine").First();
+            //buildContext.RCGenerateCommandLine_ = buildContext.RCTask_.GetType().GetRuntimeMethods().Where(method => method.Name == "GenerateCommandLine").First();
+            //buildContext.LINKGenerateCommandLine_ = buildContext.LINKTask_.GetType().GetRuntimeMethods().Where(method => method.Name == "GenerateCommandLine").First();
 #endif
 
             SolutionBuild2 solutionBuild = package.DTE.Solution.SolutionBuild as SolutionBuild2;
@@ -620,7 +627,6 @@ namespace VSFastBuildVSIX
                 }
                 TopologicalSort(vSFastProjects);
             }
-            string rootDirectory = System.IO.Path.GetDirectoryName(package.DTE.FullName);
             StringBuilder stringBuilder = buildContext.stringBuilder_;
 
             stringBuilder.AppendLine("// Helper variables");
@@ -752,7 +758,7 @@ namespace VSFastBuildVSIX
             {
                 AddProject(buildContext, project);
             }
-            string fbuildPath = System.IO.Path.Combine(rootDirectory, string.Format("fbuild_{0}_{1}.bff", solutionConfiguration.Name, solutionConfiguration.PlatformName));
+            string fbuildPath = System.IO.Path.Combine(rootDirectory, bffname);
             System.IO.File.WriteAllText(fbuildPath, stringBuilder.ToString());
         }
 
@@ -768,25 +774,46 @@ namespace VSFastBuildVSIX
             return true;
         }
 
-        private static bool TryGetPrecompiledHeader(Microsoft.Build.Evaluation.ProjectItem item, out string precompiledHeaderFile)
+        private struct PrecompiledHeaderInfo
         {
-            precompiledHeaderFile = string.Empty;
+            public PrecompiledHeaderInfo()
+            {
+            }
+            public bool IsValid()
+            {
+                return !string.IsNullOrEmpty(PCHInputFile_) && !string.IsNullOrEmpty(PCHOutputFile_);
+            }
+            public string PCHOutputFile_ = string.Empty;
+            public string PCHInputFile_ = string.Empty;
+            public string PCHOptions_ = string.Empty;
+        }
+
+        private static bool IsCreatePrecompiledHeader(Microsoft.Build.Evaluation.ProjectItem item)
+        {
+            if (item.Metadata.Where(x => x.Name == "PrecompiledHeader" && x.EvaluatedValue == "Create").Any())
+            {
+                return true;
+            }
+            return false;
+        }
+
+        private static void GetPrecompiledHeader(Microsoft.Build.Evaluation.ProjectItem item, ref PrecompiledHeaderInfo precompiledHeaderInfo)
+        {
             if (item.Metadata.Where(x => x.Name == "PrecompiledHeader" && x.EvaluatedValue == "Use").Any())
             {
-                precompiledHeaderFile = item.GetMetadataValue("PrecompiledHeaderOutputFile");
+                precompiledHeaderInfo.PCHOutputFile_ = item.GetMetadataValue("PrecompiledHeaderFile");
             }
             if (item.Metadata.Where(x => x.Name == "PrecompiledHeader" && x.EvaluatedValue == "Create").Any())
             {
-                return false;
+                precompiledHeaderInfo.PCHInputFile_ = item.GetMetadataValue("PrecompiledHeaderOutputFile");
             }
-            if (item.Metadata.Where(x => x.Name == "PrecompiledHeader" && x.EvaluatedValue == "NotUsing").Any())
-            {
-                precompiledHeaderFile = string.Empty;
-            }
-            return true;
+            //if (item.Metadata.Where(x => x.Name == "PrecompiledHeader" && x.EvaluatedValue == "NotUsing").Any())
+            //{
+            //    return true;
+            //}
         }
 
-        private static string GenerateTaskCommandLine(ToolTask task, MethodInfo methodInfo, string[] propertiesToSkip, IEnumerable<ProjectMetadata> metaDataList)
+        private static string GenerateTaskCommandLine(ToolTask task, string[] propertiesToSkip, IEnumerable<ProjectMetadata> metaDataList)
         {
             foreach (ProjectMetadata metaData in metaDataList)
             {
@@ -815,6 +842,7 @@ namespace VSFastBuildVSIX
                     }
                 }
             }
+            MethodInfo methodInfo = task.GetType().GetRuntimeMethods().Where(method => method.Name == "GenerateCommandLine").First();
             return methodInfo.Invoke(task, new object[] { Type.Missing, Type.Missing }) as string;
         }
 
@@ -850,78 +878,7 @@ namespace VSFastBuildVSIX
             stringBuilder.AppendLine($"// {targetName}");
             stringBuilder.AppendLine("{");
 
-#if false
-            {
-                foreach (Microsoft.Build.Evaluation.ProjectItem buildEvent in buildProject.GetItems("PreBuildEvent")){
-                    if (!buildEvent.Metadata.Any())
-                    {
-                        continue;
-                    }
-                    var mdPi = buildEvent.Metadata.First();
-                    if (!string.IsNullOrEmpty(mdPi.EvaluatedValue))
-                    {
-                        string BatchText = "call \"" + VCBasePath + "Auxiliary\\Build\\vcvarsall.bat\" " + (platform == "Win32" ? "x86" : "x64") + " " + WindowsSDKTarget + "\n";
-                        preBuildBatchFile = Path.Combine(activeProject.DirectoryPath, Path.GetFileNameWithoutExtension(activeProject.FullPath) + "_prebuild.bat");
-                        File.WriteAllText(preBuildBatchFile, BatchText + mdPi.EvaluatedValue);
-                        outputString.Append("Exec('prebuild')\n{\n");
-                        outputString.AppendFormat("\t.ExecExecutable = '{0}'\n", preBuildBatchFile);
-                        outputString.AppendFormat("\t.ExecInput = '{0}'\n", preBuildBatchFile);
-                        outputString.AppendFormat("\t.ExecOutput = '{0}'\n", preBuildBatchFile + ".txt");
-                        outputString.Append("\t.ExecUseStdOutAsOutput = true\n");
-                        outputString.Append("}\n\n");
-                    }
-                }
-            }
-#endif
-
             ICollection<Microsoft.Build.Evaluation.ProjectItem> compileItems = buildProject.GetItems("ClCompile");
-
-            // Precompile Header
-#if false
-            {
-                ICollection<Microsoft.Build.Evaluation.ProjectItem> compileItems = buildProject.GetItems("ClCompile");
-                List<Tuple<string, string, string, string>> precompiledHeaderBuilds = new List<Tuple<string, string, string, string>>();
-
-                foreach (Microsoft.Build.Evaluation.ProjectItem item in compileItems)
-                {
-                    string evalInclude = item.EvaluatedInclude;
-                    if (item.DirectMetadata.Any())
-                    {
-                        if (item.DirectMetadata.Where(x => x.Name == "ExcludedFromBuild" && x.EvaluatedValue == "true").Any())
-                        {
-                            continue;
-                        }
-                    }
-                    if (item.Metadata.Where(x => x.Name == "PrecompiledHeader" && x.EvaluatedValue == "Create").Any())
-                    {
-                        buildContext.CLTask_.GetType().GetProperty("Sources").SetValue(buildContext.CLTask_, new Microsoft.Build.Utilities.TaskItem[] { new Microsoft.Build.Utilities.TaskItem() });
-                        string pchCompilerOptions = GenerateTaskCommandLine(CLtask, new string[] { "PrecompiledHeaderOutputFile", "ObjectFileName", "AssemblerListingLocation" }, item.Metadata) + "/FS";
-                        pchCompilerOptions = pchCompilerOptions.Replace("/TP ", string.Empty);
-                        //PrecompiledHeaderString = "\t.PCHOptions = '" + string.Format("\"%1\" /Fp\"%2\" /Fo\"%3\" {0} '\n", pchCompilerOptions);
-                        //PrecompiledHeaderString += "\t.PCHInputFile = '" + Item.EvaluatedInclude + "'\n";
-                        //PrecompiledHeaderString += "\t.PCHOutputFile = '" + Item.GetMetadataValue("PrecompiledHeaderOutputFile") + "'\n";
-                        Tuple<string, string, string, string> newPrecompiledHeaderBuild = new Tuple<string, string, string, string>(item.EvaluatedInclude, item.GetMetadataValue("PrecompiledHeaderFile"), item.GetMetadataValue("PrecompiledHeaderOutputFile"), pchCompilerOptions);
-                        if (null == precompiledHeaderBuilds.Find((x) => newPrecompiledHeaderBuild.Equals(x)))
-                        {
-                            precompiledHeaderBuilds.Add(newPrecompiledHeaderBuild);
-                        }
-                    }
-                }
-
-                int precompiledHeaderBuildIndex = 0;
-                foreach (Tuple<string, string, string, string> precompiledHeaderBuild in precompiledHeaderBuilds)
-                {
-                    outputString.AppendFormat("ObjectList('createPCH_{0}'){{\n", precompiledHeaderBuildIndex);
-                    outputString.AppendFormat("\t.Compiler = 'msvc'\n");
-                    outputString.AppendFormat("\t.CompilerOptions = '\"%1\" /Fo\"%2\"'\n");
-                    outputString.AppendFormat("\t.PCHInputFile = '{0}'\n", precompiledHeaderBuild.Item1);
-                    outputString.AppendFormat("\t.PCHOutputFile = '{0}'\n", precompiledHeaderBuild.Item3);
-                    outputString.AppendFormat("\t.PCHOptions = '\"%1\" /Fo\"%3\" /Fp\"%2\" {0}'\n", precompiledHeaderBuild.Item4);
-                    outputString.Append("}\n");
-                    ++precompiledHeaderBuildIndex;
-                }
-            }
-#endif
 
             // Dependencies
             if (0 < project.dependencies_.Count)
@@ -946,47 +903,91 @@ namespace VSFastBuildVSIX
                 stringBuilder.AppendLine("  .Hidden = true");
                 stringBuilder.AppendLine("}");
             }
+            #if false
+            List<Tuple<string, string>> properties = new List<Tuple<string, string>>();
             foreach (ProjectMetadata property in buildProject.AllEvaluatedItemDefinitionMetadata)
             {
-                Log.OutputDebugLine($"Property: {property.Name} = {property.EvaluatedValue}");
+                properties.Add(new Tuple<string, string>(property.Name, property.EvaluatedValue));
             }
+            properties.Sort((x, y) => x.Item1.CompareTo(y.Item1));
+            foreach (Tuple<string, string> property in properties)
+            {
+                Log.OutputBuildLine($"    {property.Item1} = '{property.Item2}'");
+            }
+            #endif
 
-            // ObjectList
-            List<FBCompileItem> fbCompileItem = new List<FBCompileItem>(16);
+            // Precompile Header
+            PrecompiledHeaderInfo precompiledHeaderInfo = new PrecompiledHeaderInfo();
             foreach (Microsoft.Build.Evaluation.ProjectItem item in compileItems)
             {
                 if (!IsBuildTarget(item))
                 {
                     continue;
                 }
-                string pchFile = string.Empty;
-                if (!TryGetPrecompiledHeader(item, out pchFile))
-                {
-                    continue;
-                }
+                GetPrecompiledHeader(item, ref precompiledHeaderInfo);
+            }
 
-                buildContext.CLTask_.GetType().GetProperty("Sources").SetValue(buildContext.CLTask_, new Microsoft.Build.Utilities.TaskItem[] { new Microsoft.Build.Utilities.TaskItem() });
-                string tempCompilerOptions = GenerateTaskCommandLine(buildContext.CLTask_, buildContext.CLGenerateCommandLine_, new string[] { "ObjectFileName", "AssemblerListingLocation" }, item.Metadata) + " /FS";
-                StringBuilder optionBuilder = buildContext.optionBuilder_;
-                optionBuilder.Clear();
-                optionBuilder.Append("\"%1\" /Fo\"%2\" ");
-                optionBuilder.Append(tempCompilerOptions);
-                optionBuilder = optionBuilder.Replace("/TP", string.Empty).Replace("/TC", string.Empty);
-                if (item.EvaluatedInclude.EndsWith(".c"))
+            if (precompiledHeaderInfo.IsValid())
+            {
+                foreach (Microsoft.Build.Evaluation.ProjectItem item in compileItems)
                 {
-                    optionBuilder.Append(" /TC");
+                    if (!IsBuildTarget(item))
+                    {
+                        continue;
+                    }
+                    string evalInclude = item.EvaluatedInclude;
+                    if (IsCreatePrecompiledHeader(item))
+                    {
+                        ToolTask task = (ToolTask)Activator.CreateInstance(buildContext.CppTaskAssembly_.GetType("Microsoft.Build.CPPTasks.CL"));
+                        string pchCompilerOptions = GenerateTaskCommandLine(task, new string[] { "PrecompiledHeaderOutputFile", "ObjectFileName", "AssemblerListingLocation" }, item.Metadata) + " /FS";
+                        pchCompilerOptions = pchCompilerOptions.Replace("/TP ", string.Empty);
+                        pchCompilerOptions = pchCompilerOptions.Replace("  ", " ");
+                        precompiledHeaderInfo.PCHOptions_ = string.Format("\"%1\" /Fp\"%2\" /Fo\"%3\" {0}", pchCompilerOptions);
+                    }
                 }
-                else
+            }
+
+            // ObjectList
+            List<FBCompileItem> fbCompileItem = new List<FBCompileItem>(16);
+            {
+                string[] propertiesToSkip = new string[] { "ObjectFileName", "AssemblerListingLocation" };
+                foreach (Microsoft.Build.Evaluation.ProjectItem item in compileItems)
                 {
-                    optionBuilder.Append(" /TP");
-                }
-                optionBuilder = optionBuilder.Replace("   ", " ");
-                optionBuilder = optionBuilder.Replace("  ", " ");
-                string formattedCompilerOptions = optionBuilder.ToString();
-                IEnumerable<FBCompileItem> matchingNodes = fbCompileItem.Where(el => el.AddIfMatches(item.EvaluatedInclude, ".Compiler_CXX", formattedCompilerOptions, pchFile));
-                if (!matchingNodes.Any())
-                {
-                    fbCompileItem.Add(new FBCompileItem(item.EvaluatedInclude, ".Compiler_CXX", formattedCompilerOptions, pchFile));
+                    if (!IsBuildTarget(item))
+                    {
+                        continue;
+                    }
+                    string pchFile = string.Empty;
+                    if (IsCreatePrecompiledHeader(item))
+                    {
+                        continue;
+                    }
+
+                    ToolTask task = (ToolTask)Activator.CreateInstance(buildContext.CppTaskAssembly_.GetType("Microsoft.Build.CPPTasks.CL"));
+                    //task.GetType().GetProperty("Sources").SetValue(Task, new Microsoft.Build.Utilities.TaskItem[] { new Microsoft.Build.Utilities.TaskItem() }); //CPPTasks throws an exception otherwise...
+                    //buildContext.CLTask_.GetType().GetProperty("Sources").SetValue(buildContext.CLTask_, new Microsoft.Build.Utilities.TaskItem[] { new Microsoft.Build.Utilities.TaskItem() });
+                    string tempCompilerOptions = GenerateTaskCommandLine(task, propertiesToSkip, item.Metadata) + " /FS";
+                    StringBuilder optionBuilder = buildContext.optionBuilder_;
+                    optionBuilder.Clear();
+                    optionBuilder.Append("\"%1\" /Fo\"%2\" ");
+                    optionBuilder.Append(tempCompilerOptions);
+                    optionBuilder = optionBuilder.Replace("/TP", string.Empty).Replace("/TC", string.Empty);
+                    if (item.EvaluatedInclude.EndsWith(".c"))
+                    {
+                        optionBuilder.Append(" /TC");
+                    }
+                    else
+                    {
+                        optionBuilder.Append(" /TP");
+                    }
+                    optionBuilder = optionBuilder.Replace("   ", " ");
+                    optionBuilder = optionBuilder.Replace("  ", " ");
+                    string formattedCompilerOptions = optionBuilder.ToString();
+                    IEnumerable<FBCompileItem> matchingNodes = fbCompileItem.Where(el => el.AddIfMatches(item.EvaluatedInclude, ".Compiler_CXX", formattedCompilerOptions));
+                    if (!matchingNodes.Any())
+                    {
+                        fbCompileItem.Add(new FBCompileItem(item.EvaluatedInclude, ".Compiler_CXX", formattedCompilerOptions));
+                    }
                 }
             }
 
@@ -1015,6 +1016,16 @@ namespace VSFastBuildVSIX
                     stringBuilder.AppendLine("    }");
                 }
                 stringBuilder.AppendLine($"  .Compiler = {fbCompileItem[i].Compiler}");
+
+                if (precompiledHeaderInfo.IsValid())
+                {
+                    stringBuilder.AppendLine($"  .PCHInputFile = '{precompiledHeaderInfo.PCHInputFile_}'");
+                    stringBuilder.AppendLine($"  .PCHOutputFile = '{precompiledHeaderInfo.PCHOutputFile_}'");
+                    if (!string.IsNullOrEmpty(precompiledHeaderInfo.PCHOptions_))
+                    {
+                        stringBuilder.AppendLine($"  .PCHOptions = '{precompiledHeaderInfo.PCHOptions_}'");
+                    }
+                }
                 stringBuilder.AppendLine($"  .CompilerOptions = ' {fbCompileItem[i].CompilerOptions}'");
                 stringBuilder.AppendLine($"  .CompilerOutputPath = '{intDir}'");
                 if (usedUnity)
@@ -1023,16 +1034,12 @@ namespace VSFastBuildVSIX
                 }
                 else
                 {
-                    string str = string.Join(",", fbCompileItem[i].ComiplerInputFiles.ConvertAll(x=>string.Format("'{0}'", x)).ToArray());
+                    string str = string.Join(",", fbCompileItem[i].ComiplerInputFiles.ConvertAll(x => string.Format("'{0}'", x)).ToArray());
                     stringBuilder.AppendLine($"  .CompilerInputFiles = {{ {str} }}");
                 }
                 if (!string.IsNullOrEmpty(fbCompileItem[i].CompilerOutputExtension))
                 {
                     stringBuilder.AppendLine($"  .CompilerOutputExtension = '{fbCompileItem[i].CompilerOutputExtension}'");
-                }
-                if (!string.IsNullOrEmpty(fbCompileItem[i].PrecompiledHeaderFile))
-                {
-                    stringBuilder.AppendLine($"  .PCHOutputFile = '{fbCompileItem[i].PrecompiledHeaderFile}'");
                 }
                 stringBuilder.AppendLine("  .Hidden = true");
                 stringBuilder.AppendLine("  }");
