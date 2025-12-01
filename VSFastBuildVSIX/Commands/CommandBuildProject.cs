@@ -506,6 +506,40 @@ namespace VSFastBuildVSIX
             }
         }
 
+        private class FBResourceItem
+        {
+            public const string Emtpry = "";
+
+            public string CompilerOptions => compilerOptions_;
+            public List<string> ComiplerInputFiles => compilerInputFiles_;
+
+            private string compilerOptions_;
+            private List<string> compilerInputFiles_;
+
+            public FBResourceItem(string inputFile, string compilerOptions)
+            {
+                compilerInputFiles_ = new List<string>(16) { inputFile };
+                compilerOptions_ = compilerOptions;
+
+            }
+
+            public bool AddIfMatches(string inputFile, string compilerOptions)
+            {
+                if (compilerOptions_ == compilerOptions)
+                {
+                    compilerInputFiles_.Add(inputFile);
+                    return true;
+                }
+                return false;
+            }
+        }
+
+        public static string GetFirstPath(string path)
+        {
+            string? first_path = path.Split(new char[] { ';' }, StringSplitOptions.RemoveEmptyEntries).First();
+            return string.IsNullOrEmpty(first_path)? path : first_path.Trim();
+        }
+
         public static async Task BuildForSolutionAsync(VSFastBuildVSIXPackage package, List<EnvDTE.Project> projects, string rootDirectory, string bffname, OleMenuCommand command, string originalText)
         {
             await ThreadHelper.JoinableTaskFactory.SwitchToMainThreadAsync();
@@ -544,10 +578,10 @@ namespace VSFastBuildVSIX
             buildContext.VC_IncludePath_ = activeConfig.Evaluate("$(VC_IncludePath)");
             buildContext.VC_LibraryPath_ = activeConfig.Evaluate("$(VC_LibraryPath_x64)");
             buildContext.VC_ExecutablePath_ = activeConfig.Evaluate("$(VC_ExecutablePath_x64)");
-            buildContext.WindowsSDK_IncludePath_ = activeConfig.Evaluate("$(WindowsSDK_IncludePath)");
-            buildContext.WindowsSDK_LibraryPath_ = activeConfig.Evaluate("$(WindowsSDK_LibraryPath_x64)");
-            buildContext.WindowsSDK_ExecutablePath_ = activeConfig.Evaluate("$(WindowsSDK_ExecutablePath_x64)");
-            buildContext.WindowsSDKDir_ = activeConfig.Evaluate("$(WindowsSDKDir)");
+            buildContext.WindowsSDK_IncludePath_ = GetFirstPath(activeConfig.Evaluate("$(WindowsSDK_IncludePath)"));
+            buildContext.WindowsSDK_LibraryPath_ = GetFirstPath(activeConfig.Evaluate("$(WindowsSDK_LibraryPath_x64)"));
+            buildContext.WindowsSDK_ExecutablePath_ = GetFirstPath(activeConfig.Evaluate("$(WindowsSDK_ExecutablePath_x64)"));
+            buildContext.WindowsSDKDir_ = GetFirstPath(activeConfig.Evaluate("$(WindowsSDKDir)"));
             buildContext.CppTaskAssembly_ = GetCPPTaskAssembly(buildContext.VCTargetsPath_);
             if (null == buildContext.CppTaskAssembly_)
             {
@@ -695,10 +729,14 @@ namespace VSFastBuildVSIX
             }
             // Compilers
             stringBuilder.AppendLine("// Compilers");
-            stringBuilder.AppendLine("Compiler('msvc')");
+
+            // Compiler_CXX
+            stringBuilder.AppendLine("Compiler('Compiler_CXX')");
             stringBuilder.AppendLine("{");
             stringBuilder.AppendLine("  .Root = '$VCExePath$'");
             stringBuilder.AppendLine("  .Executable = '$Root$\\cl.exe'");
+            stringBuilder.AppendLine("  .CompilerFamily = 'msvc'");
+            stringBuilder.AppendLine("  .Environment = '.LocalEnv'");
             stringBuilder.AppendLine("  .ExtraFiles =");
             stringBuilder.AppendLine("  {");
             stringBuilder.AppendLine("    '$Root$/c1.dll,'");
@@ -738,21 +776,19 @@ namespace VSFastBuildVSIX
 
             stringBuilder.AppendLine("  }");
             stringBuilder.AppendLine("}");
-            stringBuilder.AppendLine(".Compiler_CXX = 'msvc'");
-#if false
-            string rcPath = "\\bin\\" + WindowsSDKTarget + "\\x64\\rc.exe";
-            if (!File.Exists(winSdkDir + rcPath))
+            stringBuilder.AppendLine(".Compiler_CXX = 'Compiler_CXX'");
+
+            // Compiler_RC
             {
-                rcPath = "\\bin\\x64\\rc.exe";
+                stringBuilder.AppendLine("Compiler('Compiler_RC')");
+                stringBuilder.AppendLine("{");
+                stringBuilder.AppendLine($"  .Root = '{buildContext.WindowsSDK_ExecutablePath_}'");
+                stringBuilder.AppendLine($"  .Executable = '{buildContext.WindowsSDK_ExecutablePath_}\\rc.exe'");
+                stringBuilder.AppendLine("  .CompilerFamily = 'custom'");
+                stringBuilder.AppendLine("  .Environment = '.LocalEnv'");
+                stringBuilder.AppendLine("}");
+                stringBuilder.AppendLine(".Compiler_RC = 'Compiler_RC'");
             }
-
-            compilerString.Append("Compiler('rc')\n{\n");
-            compilerString.Append("\t.Executable = '$WindowsSDKBasePath$" + rcPath + "'\n");
-            compilerString.Append("\t.CompilerFamily = 'custom'\n");
-            compilerString.Append("}\n\n"); //End rc compiler
-
-            outputString.Append(compilerString);
-#endif
 
             foreach (VSFastProject project in vSFastProjects)
             {
@@ -946,6 +982,64 @@ namespace VSFastBuildVSIX
                     }
                 }
             }
+            List<string> resourceTargets = new List<string>(2);
+            {
+                List<FBResourceItem> resourceItems = new List<FBResourceItem>(4);
+                ICollection<Microsoft.Build.Evaluation.ProjectItem> resourceCompileItems = buildProject.GetItems("ResourceCompile");
+                foreach (Microsoft.Build.Evaluation.ProjectItem item in resourceCompileItems)
+                {
+                    if (!IsBuildTarget(item))
+                    {
+                        continue;
+                    }
+                    ToolTask task = (ToolTask)Activator.CreateInstance(buildContext.CppTaskAssembly_.GetType("Microsoft.Build.CPPTasks.RC"));
+                    string resourceCompilerOptions = GenerateTaskCommandLine(task, new string[] { "ResourceOutputFileName", "DesigntimePreprocessorDefinitions" }, item.Metadata);
+                    string formattedCompilerOptions = string.Format("{0} /fo\"%2\" \"%1\"", resourceCompilerOptions).Replace("/TP", string.Empty).Replace("/TC", string.Empty);
+                    IEnumerable<FBResourceItem> matchingNodes = resourceItems.Where(el => el.AddIfMatches(item.EvaluatedInclude, formattedCompilerOptions));
+                    if (!matchingNodes.Any())
+                    {
+                        resourceItems.Add(new FBResourceItem(item.EvaluatedInclude, formattedCompilerOptions));
+                    }
+                }
+
+                if (0 < resourceItems.Count)
+                {
+                    int count = 0;
+                    foreach (FBResourceItem item in resourceItems) {
+                        string resourceTarget = $"{targetName}_rc_objs_{count}";
+                        resourceTargets.Add(resourceTarget);
+                        stringBuilder.AppendLine($"ObjectList('{resourceTarget}')");
+                        if (0 < project.dependencies_.Count)
+                        {
+                            stringBuilder.AppendLine("    .PreBuildDependencies =");
+                            stringBuilder.AppendLine("    {");
+                            stringBuilder.AppendLine($"      '{targetName}-deps'");
+                            stringBuilder.AppendLine("    }");
+                        }
+                        stringBuilder.AppendLine("    .Compiler = .Compiler_RC");
+                        if (!string.IsNullOrEmpty(item.CompilerOptions)) {
+                            stringBuilder.AppendLine($"    .CompilerOptions = ' {item.CompilerOptions}'");
+                        }
+                        stringBuilder.AppendLine($"    .CompilerOutputPath = '{intDir}'");
+                        stringBuilder.AppendLine("    .CompilerOutputExtension = '.res'");
+                        stringBuilder.AppendLine("    .CompilerOutputKeepBaseExtension = true");
+                        stringBuilder.AppendLine("    .CompilerInputFiles =");
+                        stringBuilder.AppendLine("    {");
+                        for(int j=0; j<item.ComiplerInputFiles.Count; ++j){
+                            if(j == (item.ComiplerInputFiles.Count - 1)){
+                                stringBuilder.AppendLine($"      '{item.ComiplerInputFiles[j]}'");
+                            } else {
+                                stringBuilder.AppendLine($"      '{item.ComiplerInputFiles[j]}',");
+                            }
+                        }
+                        stringBuilder.AppendLine("    }");
+
+                        stringBuilder.AppendLine("    .Hidden = true");
+                        stringBuilder.AppendLine("  }");
+                        ++count;
+                    }
+                }
+            }
 
             // ObjectList
             List<FBCompileItem> fbCompileItem = new List<FBCompileItem>(16);
@@ -962,7 +1056,7 @@ namespace VSFastBuildVSIX
                     {
                         continue;
                     }
-
+                   
                     ToolTask task = (ToolTask)Activator.CreateInstance(buildContext.CppTaskAssembly_.GetType("Microsoft.Build.CPPTasks.CL"));
                     //task.GetType().GetProperty("Sources").SetValue(Task, new Microsoft.Build.Utilities.TaskItem[] { new Microsoft.Build.Utilities.TaskItem() }); //CPPTasks throws an exception otherwise...
                     //buildContext.CLTask_.GetType().GetProperty("Sources").SetValue(buildContext.CLTask_, new Microsoft.Build.Utilities.TaskItem[] { new Microsoft.Build.Utilities.TaskItem() });
@@ -1008,13 +1102,18 @@ namespace VSFastBuildVSIX
 
                 stringBuilder.AppendLine($"  ObjectList('{targetName}-objs{i}')");
                 stringBuilder.AppendLine("  {");
-                if (0 < project.dependencies_.Count)
+                if (0 < project.dependencies_.Count && 0<resourceTargets.Count)
                 {
                     stringBuilder.AppendLine("    .PreBuildDependencies =");
                     stringBuilder.AppendLine("    {");
                     stringBuilder.AppendLine($"      '{targetName}-deps'");
                     stringBuilder.AppendLine("    }");
+                }else if(0 < project.dependencies_.Count)
+                {
+                }else if (0 < resourceTargets.Count)
+                {
                 }
+
                 stringBuilder.AppendLine($"  .Compiler = {fbCompileItem[i].Compiler}");
 
                 if (precompiledHeaderInfo.IsValid())

@@ -12,11 +12,13 @@ set(SOURCE_ROOT "${CMAKE_CURRENT_SOURCE_DIR}")
 set(HEADERS
     "${HEADER_ROOT}/framework.h"
     "${HEADER_ROOT}/Resource.h"
+    "${HEADER_ROOT}/resource1.h"
     "${HEADER_ROOT}/test2.h")
 set(SOURCES
     "${SOURCE_ROOT}/test2.cpp")
 
 set(RESOURCES
+    "${SOURCE_ROOT}/resource.rc"
     "${SOURCE_ROOT}/test2.rc")
 
 source_group("include" FILES ${HEADERS})
