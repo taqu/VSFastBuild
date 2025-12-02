@@ -466,6 +466,7 @@ namespace VSFastBuildVSIX
             public string WindowsSDK_LibraryPath_ = string.Empty;
             public string WindowsSDK_ExecutablePath_ = string.Empty;
             public string WindowsSDKDir_ = string.Empty;
+            public string LibrarianPath_ = string.Empty;
             public VSFastBuildCommon.VSEnvironment vsEnvironment_;
             public StringBuilder stringBuilder_;
             public StringBuilder optionBuilder_;
@@ -777,6 +778,7 @@ namespace VSFastBuildVSIX
             stringBuilder.AppendLine("  }");
             stringBuilder.AppendLine("}");
             stringBuilder.AppendLine(".Compiler_CXX = 'Compiler_CXX'");
+            stringBuilder.AppendLine(".Compiler_Dummy = 'Compiler_CXX'");
 
             // Compiler_RC
             {
@@ -788,6 +790,11 @@ namespace VSFastBuildVSIX
                 stringBuilder.AppendLine("  .Environment = '.LocalEnv'");
                 stringBuilder.AppendLine("}");
                 stringBuilder.AppendLine(".Compiler_RC = 'Compiler_RC'");
+            }
+
+            // Librarian
+            {
+                buildContext.LibrarianPath_ = System.IO.Path.Combine(buildContext.VC_ExecutablePath_,"lib.exe");
             }
 
             foreach (VSFastProject project in vSFastProjects)
@@ -880,6 +887,20 @@ namespace VSFastBuildVSIX
             }
             MethodInfo methodInfo = task.GetType().GetRuntimeMethods().Where(method => method.Name == "GenerateCommandLine").First();
             return methodInfo.Invoke(task, new object[] { Type.Missing, Type.Missing }) as string;
+        }
+
+        public static void addStringList(StringBuilder stringBuilder, List<string> list, string prefix)
+        {
+            for(int i=0; i<list.Count; ++i){
+                stringBuilder.Append($"{prefix}{list[i]}");
+                if(i != list.Count-1){
+                    stringBuilder.AppendLine(",");
+                }
+                else
+                {
+                    stringBuilder.AppendLine();
+                }
+            }
         }
 
         private enum BuildType
@@ -982,8 +1003,9 @@ namespace VSFastBuildVSIX
                     }
                 }
             }
-            List<string> resourceTargets = new List<string>(2);
-            {
+
+            List<string> objTargets = new List<string>(2);
+            { // Resource objects
                 List<FBResourceItem> resourceItems = new List<FBResourceItem>(4);
                 ICollection<Microsoft.Build.Evaluation.ProjectItem> resourceCompileItems = buildProject.GetItems("ResourceCompile");
                 foreach (Microsoft.Build.Evaluation.ProjectItem item in resourceCompileItems)
@@ -1007,7 +1029,7 @@ namespace VSFastBuildVSIX
                     int count = 0;
                     foreach (FBResourceItem item in resourceItems) {
                         string resourceTarget = $"{targetName}_rc_objs_{count}";
-                        resourceTargets.Add(resourceTarget);
+                        objTargets.Add(resourceTarget);
                         stringBuilder.AppendLine($"ObjectList('{resourceTarget}')");
                         if (0 < project.dependencies_.Count)
                         {
@@ -1039,11 +1061,11 @@ namespace VSFastBuildVSIX
                         ++count;
                     }
                 }
-            }
+            } // Resource objects
 
             // ObjectList
             List<FBCompileItem> fbCompileItem = new List<FBCompileItem>(16);
-            {
+            { // Gather compile items
                 string[] propertiesToSkip = new string[] { "ObjectFileName", "AssemblerListingLocation" };
                 foreach (Microsoft.Build.Evaluation.ProjectItem item in compileItems)
                 {
@@ -1083,7 +1105,7 @@ namespace VSFastBuildVSIX
                         fbCompileItem.Add(new FBCompileItem(item.EvaluatedInclude, ".Compiler_CXX", formattedCompilerOptions));
                     }
                 }
-            }
+            } // Gather compile items
 
             bool unityBuild = false;
             for (int i = 0; i < fbCompileItem.Count; ++i)
@@ -1100,18 +1122,16 @@ namespace VSFastBuildVSIX
                     usedUnity = true;
                 }
 
-                stringBuilder.AppendLine($"  ObjectList('{targetName}-objs{i}')");
-                stringBuilder.AppendLine("  {");
-                if (0 < project.dependencies_.Count && 0<resourceTargets.Count)
+                string objTargetName = $"{targetName}-objs{i}";
+                objTargets.Add(objTargetName);
+                stringBuilder.AppendLine($"ObjectList('{objTargetName}')");
+                stringBuilder.AppendLine("{");
+                if (0 < project.dependencies_.Count)
                 {
-                    stringBuilder.AppendLine("    .PreBuildDependencies =");
-                    stringBuilder.AppendLine("    {");
-                    stringBuilder.AppendLine($"      '{targetName}-deps'");
-                    stringBuilder.AppendLine("    }");
-                }else if(0 < project.dependencies_.Count)
-                {
-                }else if (0 < resourceTargets.Count)
-                {
+                    stringBuilder.AppendLine("  .PreBuildDependencies =");
+                    stringBuilder.AppendLine("  {");
+                    stringBuilder.AppendLine($"    '{targetName}-deps'");
+                    stringBuilder.AppendLine("  }");
                 }
 
                 stringBuilder.AppendLine($"  .Compiler = {fbCompileItem[i].Compiler}");
@@ -1141,9 +1161,104 @@ namespace VSFastBuildVSIX
                     stringBuilder.AppendLine($"  .CompilerOutputExtension = '{fbCompileItem[i].CompilerOutputExtension}'");
                 }
                 stringBuilder.AppendLine("  .Hidden = true");
-                stringBuilder.AppendLine("  }");
+                stringBuilder.AppendLine("}");
+            } //for (int i = 0
+
+            // Final target
+            if (buildType == BuildType.Application || buildType == BuildType.DynamicLib)
+            {
+                outputString.AppendFormat("{0}('output')\n{{", buildType == BuildType.Application ? "Executable" : "DLL");
+                outputString.Append("\t.Linker = '$VCExePath$\\link.exe'\n");
+
+                ProjectItemDefinition LinkDefinitions = activeProject.ItemDefinitions["Link"];
+                string OutputFile = LinkDefinitions.GetMetadataValue("OutputFile").Replace('\\', '/');
+                string OutputDirectory = Path.GetDirectoryName(OutputFile);
+                if (!System.IO.Directory.Exists(OutputDirectory))
+                {
+                    System.IO.Directory.CreateDirectory(OutputDirectory);
+                }
+
+                if (hasCompileActions)
+                {
+                    string DependencyOutputPath = LinkDefinitions.GetMetadataValue("ImportLibrary");
+                    if (Path.IsPathRooted(DependencyOutputPath))
+                    {
+                        DependencyOutputPath = DependencyOutputPath.Replace('\\', '/');
+                    }
+                    else
+                    {
+                        DependencyOutputPath = Path.Combine(activeProject.DirectoryPath, DependencyOutputPath).Replace('\\', '/');
+                    }
+
+                    foreach (var deps in project.dependents_)
+                    {
+                        deps.additionalLinks_ += " \"" + DependencyOutputPath + "\" ";
+                    }
+                }
+
+                ToolTask Task = (ToolTask)Activator.CreateInstance(CPPTasksAssembly.GetType("Microsoft.Build.CPPTasks.Link"));
+                string LinkerOptions = GenerateTaskCommandLine(Task, new string[] { "OutputFile", "ProfileGuidedDatabase" }, LinkDefinitions.Metadata);
+
+                if (!string.IsNullOrEmpty(project.additionalLinks_))
+                {
+                    LinkerOptions += project.additionalLinks_;
+                }
+                outputString.AppendFormat("\t.LinkerOptions = '\"%1\" /OUT:\"%2\" {0}'\n", LinkerOptions.Replace("'", "^'"));
+                outputString.AppendFormat("\t.LinkerOutput = '{0}'\n", OutputFile);
+
+                outputString.Append("\t.Libraries = { ");
+                outputString.Append(CompileActions);
+                outputString.Append(" }\n");
+
+                outputString.Append("}\n\n");
             }
-            stringBuilder.AppendLine("}");
+            else if (buildType == BuildType.StaticLib)
+            {
+                outputString.Append("Library('output')\n{");
+                outputString.Append("\t.Compiler = 'msvc'\n");
+                outputString.Append(string.Format("\t.CompilerOptions = '\"%1\" /Fo\"%2\" /c {0}'\n", CompilerOptions));
+                outputString.Append(string.Format("\t.CompilerOutputPath = \"{0}\"\n", intDir));
+                outputString.Append("\t.Librarian = '$VCExePath$\\lib.exe'\n");
+
+                var LibDefinitions = activeProject.ItemDefinitions["Lib"];
+                string OutputFile = LibDefinitions.GetMetadataValue("OutputFile").Replace('\\', '/');
+                string OutputDirectory = Path.GetDirectoryName(OutputFile);
+                if (!System.IO.Directory.Exists(OutputDirectory))
+                {
+                    System.IO.Directory.CreateDirectory(OutputDirectory);
+                }
+
+                if (hasCompileActions)
+                {
+                    string DependencyOutputPath = "";
+                    if (Path.IsPathRooted(OutputFile)) {
+                        DependencyOutputPath = Path.GetFullPath(OutputFile).Replace('\\', '/');
+                    }
+                    else {
+                        DependencyOutputPath = Path.Combine(activeProject.DirectoryPath, OutputFile).Replace('\\', '/');
+                        }
+
+                    foreach (var deps in project.dependents_)
+                    {
+                        deps.additionalLinks_ += " \"" + DependencyOutputPath + "\" ";
+                    }
+                }
+
+                ToolTask task = (ToolTask)Activator.CreateInstance(CPPTasksAssembly.GetType("Microsoft.Build.CPPTasks.LIB"));
+                string linkerOptions = GenerateTaskCommandLine(task, new string[] { "OutputFile" }, LibDefinitions.Metadata);
+                if (!string.IsNullOrEmpty(project.additionalLinks_))
+                {
+                    linkerOptions += project.additionalLinks_;
+                }
+                outputString.AppendFormat("\t.LibrarianOptions = '\"%1\" /OUT:\"%2\" {0}'\n", linkerOptions);
+                outputString.AppendFormat("\t.LibrarianOutput = '{0}'\n", OutputFile);
+
+                outputString.Append("\t.LibrarianAdditionalInputs = { ");
+                outputString.Append(CompileActions);
+                outputString.Append(" }\n");
+
+                outputString.Append("}\n\n");
+            }
         }
     }
 }

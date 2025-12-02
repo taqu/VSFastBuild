@@ -10,7 +10,7 @@ set(SOURCE_ROOT "${CMAKE_CURRENT_SOURCE_DIR}/src")
 set(THIRDPARTY_ROOT "${CMAKE_CURRENT_SOURCE_DIR}/thirdparty")
 
 set(PROJECT_ROOT "${CMAKE_CURRENT_SOURCE_DIR}")
-
+set(OUTPUT_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/bin")
 add_subdirectory(test0)
 add_subdirectory(test1)
 add_subdirectory(test2)
