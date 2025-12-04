@@ -861,7 +861,7 @@ namespace VSFastBuildVSIX
             if (item.Metadata.Where(x => x.Name == "PrecompiledHeader" && x.EvaluatedValue == "Create").Any())
             {
                 precompiledHeaderInfo.PCHInputFile_ = item.EvaluatedInclude;
-                precompiledHeaderInfo.PCHOutputFile_ = item.GetMetadataValue("PrecompiledHeaderOutputFile").Replace("//", "/");
+                precompiledHeaderInfo.PCHOutputFile_ = item.GetMetadataValue("PrecompiledHeaderOutputFile").Replace("/", "\\");
             }
             //if (item.Metadata.Where(x => x.Name == "PrecompiledHeader" && x.EvaluatedValue == "NotUsing").Any())
             //{
@@ -877,6 +877,7 @@ namespace VSFastBuildVSIX
                 {
                     continue;
                 }
+                Log.OutputBuildLine($"{metaData.Name} = {metaData.EvaluatedValue}");
 
                 IEnumerable<PropertyInfo> matchingProps = task.GetType().GetProperties().Where(prop => prop.Name == metaData.Name);
                 if (matchingProps.Any() && !string.IsNullOrEmpty(metaData.EvaluatedValue))
@@ -1017,7 +1018,7 @@ namespace VSFastBuildVSIX
                     {
                         ToolTask task = (ToolTask)Activator.CreateInstance(buildContext.CppTaskAssembly_.GetType("Microsoft.Build.CPPTasks.CL"));
                         //string pchCompilerOptions = GenerateTaskCommandLine(task, new string[] { "PrecompiledHeaderOutputFile", "ObjectFileName", "AssemblerListingLocation" }, item.Metadata) + " /FS";
-                        string pchCompilerOptions = GenerateTaskCommandLine(task, new string[] { "ObjectFileName", "AssemblerListingLocation" }, item.Metadata) + " /FS";
+                        string pchCompilerOptions = GenerateTaskCommandLine(task, new string[] { "ObjectFileName", "AssemblerListingLocation", "ProgramDataBaseFileName" }, item.Metadata) + " /FS";
                         pchCompilerOptions = pchCompilerOptions.Replace("  ", " ");
                         precompiledHeaderInfo.PCHOptions_ = $"\"%1\" /Fo\"%3\" {pchCompilerOptions}";
                     }
