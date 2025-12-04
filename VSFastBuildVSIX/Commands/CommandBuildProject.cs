@@ -101,7 +101,7 @@ namespace VSFastBuildVSIX
             string rootDirectory = System.IO.Path.GetDirectoryName(package.DTE.Solution.FullName);
             foreach (EnvDTE.Project p in targets)
             {
-                string bffname = string.Format("{0}_{1}_{2}.bff", p.Name, solutionConfiguration.Name, solutionConfiguration.PlatformName);
+                string bffname = string.Format("fbuild_{0}_{1}_{2}.bff", p.Name, solutionConfiguration.Name, solutionConfiguration.PlatformName);
                 await BuildForSolutionAsync(package, targets, rootDirectory, bffname, Command, commandText_);
             }
             LeaveProcess(package, Command, commandText_);
@@ -861,7 +861,7 @@ namespace VSFastBuildVSIX
             if (item.Metadata.Where(x => x.Name == "PrecompiledHeader" && x.EvaluatedValue == "Create").Any())
             {
                 precompiledHeaderInfo.PCHInputFile_ = item.EvaluatedInclude;
-                precompiledHeaderInfo.PCHOutputFile_ = item.GetMetadataValue("PrecompiledHeaderOutputFile").Replace("/", "\\");
+                precompiledHeaderInfo.PCHOutputFile_ = item.GetMetadataValue("PrecompiledHeaderOutputFile").Replace("/", "\\").Replace("\\\\", "\\");
             }
             //if (item.Metadata.Where(x => x.Name == "PrecompiledHeader" && x.EvaluatedValue == "NotUsing").Any())
             //{
@@ -878,7 +878,6 @@ namespace VSFastBuildVSIX
                     continue;
                 }
                 Log.OutputBuildLine($"{metaData.Name} = {metaData.EvaluatedValue}");
-
                 IEnumerable<PropertyInfo> matchingProps = task.GetType().GetProperties().Where(prop => prop.Name == metaData.Name);
                 if (matchingProps.Any() && !string.IsNullOrEmpty(metaData.EvaluatedValue))
                 {
@@ -944,8 +943,8 @@ namespace VSFastBuildVSIX
                     buildType = BuildType.Application;
                     break;
             }
-            string intDir = buildProject.GetProperty("IntDir").EvaluatedValue;
-            string outDir = buildProject.GetProperty("OutDir").EvaluatedValue;
+            string intDir = buildProject.GetProperty("IntDir").EvaluatedValue.Replace("\\", "/");
+            string outDir = buildProject.GetProperty("OutDir").EvaluatedValue.Replace("\\", "/");
             string targetName = project.project_.Name;
             projectTargets.Add(targetName);
             StringBuilder stringBuilder = buildContext.stringBuilder_;
@@ -1017,9 +1016,9 @@ namespace VSFastBuildVSIX
                     if (IsCreatePrecompiledHeader(item))
                     {
                         ToolTask task = (ToolTask)Activator.CreateInstance(buildContext.CppTaskAssembly_.GetType("Microsoft.Build.CPPTasks.CL"));
-                        //string pchCompilerOptions = GenerateTaskCommandLine(task, new string[] { "PrecompiledHeaderOutputFile", "ObjectFileName", "AssemblerListingLocation" }, item.Metadata) + " /FS";
-                        string pchCompilerOptions = GenerateTaskCommandLine(task, new string[] { "ObjectFileName", "AssemblerListingLocation", "ProgramDataBaseFileName" }, item.Metadata) + " /FS";
-                        pchCompilerOptions = pchCompilerOptions.Replace("  ", " ");
+                        //string pchCompilerOptions = GenerateTaskCommandLine(task, new string[] { "ObjectFileName", "AssemblerListingLocation", "ProgramDataBaseFileName" }, item.Metadata) + " /FS";
+                        string pchCompilerOptions = GenerateTaskCommandLine(task, new string[] { "ObjectFileName", "AssemblerListingLocation"}, item.Metadata) + " /FS";
+                        pchCompilerOptions = pchCompilerOptions.Replace("  ", " ").Replace("\\", "/").Replace("//", "/");
                         precompiledHeaderInfo.PCHOptions_ = $"\"%1\" /Fo\"%3\" {pchCompilerOptions}";
                     }
                 }
@@ -1037,11 +1036,13 @@ namespace VSFastBuildVSIX
                     }
                     ToolTask task = (ToolTask)Activator.CreateInstance(buildContext.CppTaskAssembly_.GetType("Microsoft.Build.CPPTasks.RC"));
                     string resourceCompilerOptions = GenerateTaskCommandLine(task, new string[] { "ResourceOutputFileName", "DesigntimePreprocessorDefinitions" }, item.Metadata);
+                    resourceCompilerOptions = resourceCompilerOptions.Replace("\\", "/").Replace("//", "/");
                     string formattedCompilerOptions = string.Format("{0} /fo\"%2\" \"%1\"", resourceCompilerOptions).Replace("/TP", string.Empty).Replace("/TC", string.Empty);
-                    IEnumerable<FBResourceItem> matchingNodes = resourceItems.Where(el => el.AddIfMatches(item.EvaluatedInclude, formattedCompilerOptions));
+                    string evaluatedInclude = item.EvaluatedInclude.Replace("\\", "/").Replace("//", "/");
+                    IEnumerable<FBResourceItem> matchingNodes = resourceItems.Where(el => el.AddIfMatches(evaluatedInclude, formattedCompilerOptions));
                     if (!matchingNodes.Any())
                     {
-                        resourceItems.Add(new FBResourceItem(item.EvaluatedInclude, formattedCompilerOptions));
+                        resourceItems.Add(new FBResourceItem(evaluatedInclude, formattedCompilerOptions));
                     }
                 }
 
@@ -1115,7 +1116,7 @@ namespace VSFastBuildVSIX
                     optionBuilder.Clear();
                     optionBuilder.Append("\"%1\" /Fo\"%2\" ");
                     optionBuilder.Append(tempCompilerOptions);
-                    optionBuilder = optionBuilder.Replace("/TP", string.Empty).Replace("/TC", string.Empty);
+                    optionBuilder = optionBuilder.Replace("\\", "/").Replace("//", "/").Replace("/TP", string.Empty).Replace("/TC", string.Empty);
                     if (item.EvaluatedInclude.EndsWith(".c"))
                     {
                         optionBuilder.Append(" /TC");
@@ -1124,13 +1125,13 @@ namespace VSFastBuildVSIX
                     {
                         optionBuilder.Append(" /TP");
                     }
-                    optionBuilder = optionBuilder.Replace("   ", " ");
-                    optionBuilder = optionBuilder.Replace("  ", " ");
+                    optionBuilder = optionBuilder.Replace("   ", " ").Replace("  ", " ");
                     string formattedCompilerOptions = optionBuilder.ToString();
-                    IEnumerable<FBCompileItem> matchingNodes = fbCompileItem.Where(el => el.AddIfMatches(item.EvaluatedInclude, ".Compiler_CXX", formattedCompilerOptions));
+                    string evaluatedInclude = item.EvaluatedInclude.Replace("\\", "/").Replace("//", "/");
+                    IEnumerable<FBCompileItem> matchingNodes = fbCompileItem.Where(el => el.AddIfMatches(evaluatedInclude, ".Compiler_CXX", formattedCompilerOptions));
                     if (!matchingNodes.Any())
                     {
-                        fbCompileItem.Add(new FBCompileItem(item.EvaluatedInclude, ".Compiler_CXX", formattedCompilerOptions));
+                        fbCompileItem.Add(new FBCompileItem(evaluatedInclude, ".Compiler_CXX", formattedCompilerOptions));
                     }
                 }
             } // Gather compile items
