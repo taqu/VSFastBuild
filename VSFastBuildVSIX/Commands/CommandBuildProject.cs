@@ -1016,8 +1016,8 @@ namespace VSFastBuildVSIX
                     if (IsCreatePrecompiledHeader(item))
                     {
                         ToolTask task = (ToolTask)Activator.CreateInstance(buildContext.CppTaskAssembly_.GetType("Microsoft.Build.CPPTasks.CL"));
-                        //string pchCompilerOptions = GenerateTaskCommandLine(task, new string[] { "ObjectFileName", "AssemblerListingLocation", "ProgramDataBaseFileName" }, item.Metadata) + " /FS";
-                        string pchCompilerOptions = GenerateTaskCommandLine(task, new string[] { "ObjectFileName", "AssemblerListingLocation"}, item.Metadata) + " /FS";
+                        //string pchCompilerOptions = GenerateTaskCommandLine(task, new string[] { "ObjectFileName", "AssemblerListingLocation", "ProgramDataBaseFileName", "XMLDocumentationFileName", "DiagnosticsFormat"}, item.Metadata) + " /FS";
+                        string pchCompilerOptions = GenerateTaskCommandLine(task, new string[] { "ObjectFileName", "AssemblerListingLocation", "XMLDocumentationFileName", "DiagnosticsFormat"}, item.Metadata) + " /FS";
                         pchCompilerOptions = pchCompilerOptions.Replace("  ", " ").Replace("\\", "/").Replace("//", "/");
                         precompiledHeaderInfo.PCHOptions_ = $"\"%1\" /Fo\"%3\" {pchCompilerOptions}";
                     }
@@ -1035,7 +1035,7 @@ namespace VSFastBuildVSIX
                         continue;
                     }
                     ToolTask task = (ToolTask)Activator.CreateInstance(buildContext.CppTaskAssembly_.GetType("Microsoft.Build.CPPTasks.RC"));
-                    string resourceCompilerOptions = GenerateTaskCommandLine(task, new string[] { "ResourceOutputFileName", "DesigntimePreprocessorDefinitions" }, item.Metadata);
+                    string resourceCompilerOptions = GenerateTaskCommandLine(task, new string[] { "ResourceOutputFileName", "DesigntimePreprocessorDefinitions", "XMLDocumentationFileName", "DiagnosticsFormat" }, item.Metadata);
                     resourceCompilerOptions = resourceCompilerOptions.Replace("\\", "/").Replace("//", "/");
                     string formattedCompilerOptions = string.Format("{0} /fo\"%2\" \"%1\"", resourceCompilerOptions).Replace("/TP", string.Empty).Replace("/TC", string.Empty);
                     string evaluatedInclude = item.EvaluatedInclude.Replace("\\", "/").Replace("//", "/");
@@ -1095,7 +1095,7 @@ namespace VSFastBuildVSIX
             // ObjectList
             List<FBCompileItem> fbCompileItem = new List<FBCompileItem>(16);
             { // Gather compile items
-                string[] propertiesToSkip = new string[] { "ObjectFileName", "AssemblerListingLocation" };
+                string[] propertiesToSkip = new string[] { "ObjectFileName", "AssemblerListingLocation", "XMLDocumentationFileName", "DiagnosticsFormat" };
                 foreach (Microsoft.Build.Evaluation.ProjectItem item in compileItems)
                 {
                     if (!IsBuildTarget(item))
@@ -1218,7 +1218,7 @@ namespace VSFastBuildVSIX
                             System.IO.Directory.CreateDirectory(outputDirectory);
                         }
                         ToolTask task = (ToolTask)Activator.CreateInstance(buildContext.CppTaskAssembly_.GetType("Microsoft.Build.CPPTasks.Link"));
-                        string linkerOptions = GenerateTaskCommandLine(task, new string[] { "OutputFile", "ProfileGuidedDatabase" }, linkDefinitions.Metadata);
+                        string linkerOptions = GenerateTaskCommandLine(task, new string[] { "OutputFile", "ProfileGuidedDatabase", "XMLDocumentationFileName", "DiagnosticsFormat" }, linkDefinitions.Metadata);
                         linkerOptions = linkerOptions.Replace("'", "^'");
                         stringBuilder.AppendLine($"  .LinkerOptions = '\"%1\" /OUT:\"%2\" {linkerOptions}'");
                         stringBuilder.AppendLine($"  .LinkerOutput = '{outputFile}'");
@@ -1247,7 +1247,7 @@ namespace VSFastBuildVSIX
 
                         ProjectItemDefinition libDefinitions = buildProject.ItemDefinitions["Lib"];
                         ToolTask task = (ToolTask)Activator.CreateInstance(buildContext.CppTaskAssembly_.GetType("Microsoft.Build.CPPTasks.LIB"));
-                        string linkerOptions = GenerateTaskCommandLine(task, new string[] { "OutputFile" }, libDefinitions.Metadata);
+                        string linkerOptions = GenerateTaskCommandLine(task, new string[] { "OutputFile", "XMLDocumentationFileName", "DiagnosticsFormat" }, libDefinitions.Metadata);
                         string outputFile = libDefinitions.GetMetadataValue("OutputFile");
                         stringBuilder.AppendLine($"  .LibrarianOptions = '\"%1\" /OUT:\"%2\" {linkerOptions}'");
                         stringBuilder.AppendLine($"  .LibrarianOutput = '{outputFile}'");
@@ -1274,7 +1274,7 @@ namespace VSFastBuildVSIX
                             System.IO.Directory.CreateDirectory(outputDirectory);
                         }
                         ToolTask task = (ToolTask)Activator.CreateInstance(buildContext.CppTaskAssembly_.GetType("Microsoft.Build.CPPTasks.Link"));
-                        string linkerOptions = GenerateTaskCommandLine(task, new string[] { "OutputFile", "ProfileGuidedDatabase" }, linkDefinitions.Metadata);
+                        string linkerOptions = GenerateTaskCommandLine(task, new string[] { "OutputFile", "ProfileGuidedDatabase", "XMLDocumentationFileName", "DiagnosticsFormat" }, linkDefinitions.Metadata);
                         linkerOptions = linkerOptions.Replace("'", "^'");
                         stringBuilder.AppendLine($"  .LinkerOptions = '\"%1\" /OUT:\"%2\" {linkerOptions}'");
                         stringBuilder.AppendLine($"  .LinkerOutput = '{outputFile}'");
