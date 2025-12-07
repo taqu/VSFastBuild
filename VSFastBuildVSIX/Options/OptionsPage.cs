@@ -19,6 +19,7 @@ namespace VSFastBuildVSIX.Options
         public const string DefaultArguments = "-dist -cache -ide -monitor";
         public const bool DefaultGenOnly = false;
         public const bool DefaultUnity = false;
+        public const bool DefaultOpenMonitor = true;
         public const bool DefaultShowSystemPerformance = false;
 
         [Category("Options")]
@@ -35,7 +36,7 @@ namespace VSFastBuildVSIX.Options
 
         [Category("Options")]
         [DisplayName("Arguments")]
-        [Description("Arguments which will be passed to FASTBuild (default \"-dist -ide -monitor\").")]
+        [Description("Arguments which will be passed to FASTBuild (default \"-dist -cache -ide -monitor\").")]
         [DefaultValue(true)]
         public string Arguments { get; set; } = DefaultArguments;
 
@@ -50,6 +51,12 @@ namespace VSFastBuildVSIX.Options
         [Description("Whether to do unity build.")]
         [DefaultValue(true)]
         public bool Unity { get; set; } = DefaultUnity;
+
+        [Category("Options")]
+        [DisplayName("Open Monitor")]
+        [Description("Whether to open monitor window automatically.")]
+        [DefaultValue(true)]
+        public bool OpenMonitor { get; set; } = DefaultOpenMonitor;
 
         [Category("Options")]
         [DisplayName("ShowSystemPerformance")]

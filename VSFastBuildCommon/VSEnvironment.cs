@@ -53,7 +53,8 @@ namespace VSFastBuildCommon
                     if (fetched > 0)
                     {
                         var instance2 = (ISetupInstance2)instances[0];
-                        if (instance2.GetInstallationVersion().StartsWith(vsVersion))
+                        string installationVersion = instance2.GetInstallationVersion();
+                        if (installationVersion.StartsWith(vsVersion))
                         {
                             installPath = instance2.GetInstallationPath();
                             break;

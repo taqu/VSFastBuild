@@ -16,13 +16,6 @@ namespace VSFastBuildVSIX.Commands
     {
         private string commandText_ = string.Empty;
 
-        private void LeaveProcess(VSFastBuildVSIXPackage package)
-        {
-            System.Diagnostics.Debug.Assert(null != package);
-            Command.Text = commandText_;
-            package.LeaveBuildProcess();
-        }
-
         protected override async Task ExecuteAsync(OleMenuCmdEventArgs e)
         {
             VSFastBuildVSIXPackage package = await VSFastBuildVSIXPackage.GetPackageAsync();
@@ -42,7 +35,7 @@ namespace VSFastBuildVSIX.Commands
             EnvDTE80.DTE2 dte = package.DTE;
             if (null == dte.Solution)
             {
-                LeaveProcess(package);
+                CommandBuildProject.LeaveProcess(package, Command, commandText_);
                 return;
             }
             EnvDTE.Solution solution = dte.Solution;
@@ -53,7 +46,7 @@ namespace VSFastBuildVSIX.Commands
             {
                 foreach (SolutionContext context in solutionConfiguration.SolutionContexts)
                 {
-                    if(System.IO.Path.GetFileName(context.ProjectName) == System.IO.Path.GetFileName(project.FileName)
+                    if (System.IO.Path.GetFileName(context.ProjectName) == System.IO.Path.GetFileName(project.FileName)
                         && context.ConfigurationName == solutionConfiguration.Name
                         && context.PlatformName == solutionConfiguration.PlatformName
                         && context.ShouldBuild)
@@ -63,15 +56,60 @@ namespace VSFastBuildVSIX.Commands
                 }
             }
 
+            targets.RemoveAll(
+                x =>
+                {
+                    foreach (string exclude in CommandBuildProject.ExcludeProjects)
+                    {
+                        string uniqueName = x.UniqueName;
+                        if (uniqueName.EndsWith(exclude))
+                        {
+                            return true;
+                        }
+                    }
+                    return false;
+                }
+            );
+
             if (targets.Count <= 0)
             {
                 CommandBuildProject.LeaveProcess(package, Command, commandText_);
                 return;
             }
-
+            targets.Sort((x0, x1) =>
+            {
+                return string.Compare(x0.Name, x1.Name);
+            });
             string rootDirectory = System.IO.Path.GetDirectoryName(dte.Solution.FullName);
             string bffname = string.Format("fbuild_{0}_{1}.bff", solutionConfiguration.Name, solutionConfiguration.PlatformName);
-            await CommandBuildProject.BuildForSolutionAsync(package, targets, rootDirectory, bffname, Command, commandText_);
+            string bffpath = System.IO.Path.Combine(rootDirectory, bffname);
+            bool result = await CommandBuildProject.BuildForSolutionAsync(package, targets, bffpath);
+            if (result)
+            {
+                OptionsPage optionPage = VSFastBuildVSIXPackage.Options;
+                string fbuildPath = optionPage.Path;
+                string fbuldArgs = optionPage.Arguments;
+                bool openMonitor = optionPage.OpenMonitor;
+                System.Diagnostics.Process process = CommandBuildProject.ExecuteBffFile(bffpath, rootDirectory, fbuildPath, fbuldArgs);
+                try
+                {
+                    if (process.Start())
+                    {
+                        if (openMonitor) {
+                            await CommandBuildProject.StartMonitor(package);
+                        }
+                        await process.WaitForExitAsync(package.CancellationToken);
+                    }
+                }
+                catch(Exception ex)
+                {
+                    Log.OutputDebugLine(ex.Message);
+                }
+                finally
+                {
+                    await CommandBuildProject.StopMonitor(package);
+                }
+            }
             CommandBuildProject.LeaveProcess(package, Command, commandText_);
         }
     }

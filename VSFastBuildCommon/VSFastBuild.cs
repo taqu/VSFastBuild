@@ -1,12 +1,12 @@
 using Microsoft.Build.Evaluation;
 using Microsoft.Build.Utilities;
-using System.Collections;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Reflection;
 using System.Text;
+
 #if DEBUG
 using System;
 #endif
@@ -154,11 +154,9 @@ namespace VSFastBuildCommon
 
         private static bool HasFileChanged(string inputFile, string platform, string config, string bbfOutputFilePath, out string hash)
         {
-            System.Data.HashFunction.CityHash.CityHashConfig cityHashConfig = new System.Data.HashFunction.CityHash.CityHashConfig{HashSizeInBits=128};
-            System.Data.HashFunction.CityHash.ICityHash cityHash = System.Data.HashFunction.CityHash.CityHashFactory.Instance.Create(cityHashConfig);
             using (FileStream stream = File.OpenRead(inputFile))
             {
-                byte[] computedhash = cityHash.ComputeHash(stream).Hash;
+                byte[] computedhash = MurmurHash.MurmurHash3.ComputeHash(stream);
                 StringBuilder stringBuilder = new StringBuilder();
                 stringBuilder.AppendFormat("// {0}_{1}_{2}_", inputFile, platform, config);
                 foreach (byte b in computedhash)
