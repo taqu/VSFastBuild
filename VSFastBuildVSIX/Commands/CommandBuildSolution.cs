@@ -96,7 +96,7 @@ namespace VSFastBuildVSIX.Commands
                     if (process.Start())
                     {
                         if (openMonitor) {
-                            await CommandBuildProject.StartMonitor(package);
+                            await CommandBuildProject.StartMonitor(package, true);
                         }
                         await process.WaitForExitAsync(package.CancellationToken);
                     }

@@ -1,5 +1,6 @@
 using EnvDTE;
 using EnvDTE80;
+using Microsoft.VisualStudio.OLE.Interop;
 using System.Collections;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
@@ -317,6 +318,7 @@ private long lastTargetPIDCheckTimeMS_ = 0;
             {
                 return;
             }
+            Reset();
             Dispatcher.BeginInvoke(DispatcherPriority.Loaded, new Action(() =>
             {
                 //update timer

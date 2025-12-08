@@ -130,10 +130,9 @@ namespace VSFastBuildVSIX
             public EnvDTE.Project project_;
             public ProjectInSolution projectInSolution_;
         }
-
-        public static async Task StartMonitor(ToolkitPackage package)
+        public static async Task StartMonitor(ToolkitPackage package, bool createIfNotExists=false)
         {
-            ToolkitToolWindowPane pane = await package.FindToolWindowAsync(typeof(ToolWindowMonitor.Pane), 0, false, new CancellationToken()) as ToolkitToolWindowPane;
+            ToolkitToolWindowPane pane = await package.FindToolWindowAsync(typeof(ToolWindowMonitor.Pane), 0, createIfNotExists, new CancellationToken()) as ToolkitToolWindowPane;
             if (null != pane)
             {
                 ToolWindowMonitorControl toolWindowMonitorControl = pane.Content as ToolWindowMonitorControl;
@@ -328,6 +327,7 @@ namespace VSFastBuildVSIX
             public string WindowsSDK_ExecutablePath_ = string.Empty;
             public string WindowsSDKDir_ = string.Empty;
             public string LibrarianPath_ = string.Empty;
+            public string LinkerPath_ = string.Empty;
             public VSFastBuildCommon.VSEnvironment vsEnvironment_;
             public StringBuilder stringBuilder_;
             public StringBuilder optionBuilder_;
@@ -694,6 +694,11 @@ namespace VSFastBuildVSIX
             // Librarian
             {
                 buildContext.LibrarianPath_ = $"{buildContext.VC_ExecutablePath_}/lib.exe";
+            }
+
+            // Linker
+            {
+                buildContext.LinkerPath_ = $"{buildContext.VC_ExecutablePath_}/link.exe";
             }
 
             List<string> projectTargets = new List<string>(vSFastProjects.Count);
@@ -1091,7 +1096,7 @@ namespace VSFastBuildVSIX
                             stringBuilder.AppendLine("  }");
                         }
                         stringBuilder.AppendLine("  .Environment = .LocalEnv");
-                        stringBuilder.AppendLine($"  .Linker = '{buildContext.LibrarianPath_}'");
+                        stringBuilder.AppendLine($"  .Linker = '{buildContext.LinkerPath_}'");
                         ProjectItemDefinition linkDefinitions = buildProject.ItemDefinitions["Link"];
                         string outputFile = linkDefinitions.GetMetadataValue("OutputFile");
                         string outputDirectory = System.IO.Path.GetDirectoryName(outputFile);
@@ -1147,7 +1152,7 @@ namespace VSFastBuildVSIX
                         stringBuilder.AppendLine($"DLL('{targetName}')");
                         stringBuilder.AppendLine("{");
                         stringBuilder.AppendLine("  .Environment = .LocalEnv");
-                        stringBuilder.AppendLine($"  .Linker = '{buildContext.LibrarianPath_}'");
+                        stringBuilder.AppendLine($"  .Linker = '{buildContext.LinkerPath_}'");
                         ProjectItemDefinition linkDefinitions = buildProject.ItemDefinitions["Link"];
                         string outputFile = linkDefinitions.GetMetadataValue("OutputFile");
                         string outputDirectory = System.IO.Path.GetDirectoryName(outputFile);
