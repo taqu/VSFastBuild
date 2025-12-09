@@ -466,11 +466,11 @@ namespace VSFastBuildVSIX.ToolWindows
 #if ENABLE_RENDERING_STATS
                         parent_._numTextElementsDrawn++;
 #endif
-                        double allowedTextWidth = Math.Max(0.0f, bordersRect_.Width - 2 * TextLabeloffset_X - (isRacingJob_ ? RacingIconWidth : 0.0f));
+                        double allowedTextWidth = Math.Max(0.0f, bordersRect_.Width - 2 * TextLabelOffset_X - (isRacingJob_ ? RacingIconWidth : 0.0f));
 
-                        double textXOffset = bordersRect_.X + TextLabeloffset_X + (isRacingJob_ ? RacingIconWidth : 0.0f);
+                        double textXOffset = bordersRect_.X + TextLabelOffset_X + (isRacingJob_ ? RacingIconWidth : 0.0f);
 
-                        TextUtils.DrawText(dc, textToDisplay, textXOffset, bordersRect_.Y + TextLabeloffset_Y, allowedTextWidth, true, colorBrush);
+                        TextUtils.DrawText(dc, textToDisplay, textXOffset, bordersRect_.Y + TextLabelOffset_Y, allowedTextWidth, true, colorBrush);
                     }
                 }
             }

@@ -23,7 +23,7 @@ namespace VSFastBuildVSIX.Commands
             {
                 return;
             }
-            if (!package.EnterBuildProcess())
+            if (package.IsBuildProcessRunning())
             {
                 package.CancelBuildProcess();
                 await CommandBuildProject.StopMonitor(package);

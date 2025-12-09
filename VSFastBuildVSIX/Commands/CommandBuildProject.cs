@@ -45,7 +45,7 @@ namespace VSFastBuildVSIX
             {
                 return;
             }
-            if (!package.EnterBuildProcess())
+            if (package.IsBuildProcessRunning())
             {
                 package.CancelBuildProcess();
                 await StopMonitor(package);
@@ -139,7 +139,7 @@ namespace VSFastBuildVSIX
                 ToolWindowMonitorControl toolWindowMonitorControl = pane.Content as ToolWindowMonitorControl;
                 if (null != toolWindowMonitorControl)
                 {
-                    toolWindowMonitorControl.StartTimer();
+                    toolWindowMonitorControl.Start();
                 }
             }
         }
@@ -152,7 +152,7 @@ namespace VSFastBuildVSIX
                 ToolWindowMonitorControl toolWindowMonitorControl = pane.Content as ToolWindowMonitorControl;
                 if (null != toolWindowMonitorControl)
                 {
-                    toolWindowMonitorControl.StopTimer();
+                    toolWindowMonitorControl.Stop();
                 }
             }
         }
@@ -165,6 +165,7 @@ namespace VSFastBuildVSIX
                 ToolWindowMonitorControl toolWindowMonitorControl = pane.Content as ToolWindowMonitorControl;
                 if (null != toolWindowMonitorControl)
                 {
+                    toolWindowMonitorControl.Stop();
                     toolWindowMonitorControl.Reset();
                 }
             }

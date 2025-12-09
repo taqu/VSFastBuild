@@ -16,7 +16,7 @@ namespace VSFastBuildVSIX.Options
     {
         public const string DefaultPath = "FBuild.exe";
         public const bool DefaultDistributed = true;
-        public const string DefaultArguments = "-dist -cache -ide -monitor";
+        public const string DefaultArguments = "-dist -ide -monitor";
         public const bool DefaultGenOnly = false;
         public const bool DefaultUnity = false;
         public const bool DefaultOpenMonitor = true;
