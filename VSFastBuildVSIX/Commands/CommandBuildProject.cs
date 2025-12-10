@@ -5,6 +5,7 @@ using Microsoft.Build.Construction;
 using Microsoft.Build.Evaluation;
 using Microsoft.Build.Utilities;
 using Microsoft.VisualStudio.PlatformUI.OleComponentSupport;
+using Microsoft.VisualStudio.Shell.Interop;
 using Microsoft.VisualStudio.Threading;
 using Microsoft.VisualStudio.VCProjectEngine;
 using System.Collections;
@@ -231,6 +232,7 @@ namespace VSFastBuildVSIX
         private struct VSFastProject
         {
             public EnvDTE.Project project_;
+            public Microsoft.Build.Evaluation.Project buildProject_;
             public List<EnvDTE.Project> dependencies_;
         }
 
@@ -239,6 +241,12 @@ namespace VSFastBuildVSIX
             public VSFastProject project_;
             public bool visited_;
         };
+
+        private class VSEnvironment
+        {
+            public string key_;
+            public string value_;
+        }
 
         private static void TopologicalSort(List<VSFastProject> projects)
         {
@@ -480,6 +488,34 @@ namespace VSFastBuildVSIX
             return period<0? version : version.Substring(0, period);
         }
 
+        private static void AddPathList(List<string> paths, string arg)
+        {
+            string[] pathList = arg.Split(new char[] { ';' }, StringSplitOptions.RemoveEmptyEntries);
+            foreach (string path in pathList)
+            {
+                if (paths.Contains(path))
+                {
+                    continue;
+                }
+                paths.Add(path);
+            }
+        }
+
+        private static void AddPathList(List<string> paths, string rootDir, string arg)
+        {
+            string[] pathList = arg.Split(new char[] { ';' }, StringSplitOptions.RemoveEmptyEntries);
+            foreach (string path in pathList)
+            {
+                string fullpath = System.IO.Path.GetFullPath(System.IO.Path.Combine(rootDir, path));
+                if (paths.Contains(fullpath))
+                {
+                    continue;
+                }
+                paths.Add(fullpath);
+            }
+        }
+
+
         public static async Task<bool> BuildForSolutionAsync(VSFastBuildVSIXPackage package, List<EnvDTE.Project> projects, string bffpath)
         {
             await ThreadHelper.JoinableTaskFactory.SwitchToMainThreadAsync();
@@ -506,17 +542,8 @@ namespace VSFastBuildVSIX
 
             buildContext.vsEnvironment_ = VSFastBuildCommon.VSEnvironment.Create(GetVSMainVersion(VisualStudioVersion), WindowsSDKVersion);
 
-            List<Tuple<string, string>> vcEnvironments = GetVCEnvironments(buildContext.vsEnvironment_.ToolsInstall);
+            List<VSEnvironment> vcEnvironments = GetVCEnvironments(buildContext.vsEnvironment_.ToolsInstall);
 
-            {
-                outputString.AppendFormat("\t\t\"INCLUDE={0}\",\n", vcProject.GetProperty("IncludePath").EvaluatedValue);
-                outputString.AppendFormat("\t\t\"LIB={0}\",\n", activeProject.GetProperty("LibraryPath").EvaluatedValue);
-                outputString.AppendFormat("\t\t\"LIBPATH={0}\",\n", activeProject.GetProperty("ReferencePath").EvaluatedValue);
-                outputString.AppendFormat("\t\t\"PATH={0}\"\n", activeProject.GetProperty("Path").EvaluatedValue);
-                outputString.AppendFormat("\t\t\"TMP={0}\"\n", activeProject.GetProperty("Temp").EvaluatedValue);
-                outputString.AppendFormat("\t\t\"TEMP={0}\"\n", activeProject.GetProperty("Temp").EvaluatedValue);
-                outputString.AppendFormat("\t\t\"SystemRoot={0}\"\n", activeProject.GetProperty("SystemRoot").EvaluatedValue);
-            }
             buildContext.VCTargetsPath_ = activeConfig.Evaluate("$(VCTargetsPath)");
             buildContext.VCTargetsPathEffective_ = activeConfig.Evaluate("$(VCTargetsPathEffective)");
             buildContext.VC_IncludePath_ = activeConfig.Evaluate("$(VC_IncludePath)");
@@ -600,6 +627,7 @@ namespace VSFastBuildVSIX
                             vSFastProject.dependencies_.Add(dependentProject);
                         }
                     }
+                    vSFastProject.buildProject_ = new Microsoft.Build.Evaluation.Project(vSFastProject.project_.FullName, buildContext.globalProperties_, null);
                     vSFastProjects.Add(vSFastProject);
                 }
                 TopologicalSort(vSFastProjects);
@@ -609,6 +637,56 @@ namespace VSFastBuildVSIX
             {
                 return true;
             }
+
+            {
+                Dictionary<string, List<string>> paths= new Dictionary<string, List<string>>() {
+                    { "PATH", new List<string>() },
+                    { "LIB", new List<string>() },
+                    { "LIBPATH", new List<string>() },
+                    { "INCLUDE", new List<string>() },
+                };
+                foreach(VSEnvironment vcEnvironment in vcEnvironments)
+                {
+                    if(string.Compare(vcEnvironment.key_, "PATH", true) == 0){
+                        AddPathList(paths["PATH"], vcEnvironment.value_);
+
+                    }else if(string.Compare(vcEnvironment.key_, "LIB", true) == 0){
+                        AddPathList(paths["LIB"], vcEnvironment.value_);
+
+                    }else if(string.Compare(vcEnvironment.key_, "LIBPATH", true) == 0){
+                        AddPathList(paths["LIBPATH"], vcEnvironment.value_);
+
+                    }else if(string.Compare(vcEnvironment.key_, "INCLUDE", true) == 0){
+                        AddPathList(paths["INCLUDE"], vcEnvironment.value_);
+
+                    }
+                }
+                foreach(VSFastProject project in vSFastProjects)
+                {
+                    string rootDir =System.IO.Path.GetDirectoryName(project.buildProject_.FullPath);
+                    AddPathList(paths["PATH"], rootDir, project.buildProject_.GetProperty("Path").EvaluatedValue);
+                    AddPathList(paths["LIB"], rootDir, project.buildProject_.GetProperty("LibraryPath").EvaluatedValue);
+                    AddPathList(paths["LIBPATH"], rootDir, project.buildProject_.GetProperty("ReferencePath").EvaluatedValue);
+                    AddPathList(paths["INCLUDE"], rootDir, project.buildProject_.GetProperty("IncludePath").EvaluatedValue);
+                }
+                foreach(VSEnvironment vcEnvironment in vcEnvironments)
+                {
+                    if(string.Compare(vcEnvironment.key_, "PATH", true) == 0){
+                        vcEnvironment.value_ = string.Join(";", paths["PATH"]);
+
+                    }else if(string.Compare(vcEnvironment.key_, "LIB", true) == 0){
+                        vcEnvironment.value_ = string.Join(";", paths["LIB"]);
+
+                    }else if(string.Compare(vcEnvironment.key_, "LIBPATH", true) == 0){
+                        vcEnvironment.value_ = string.Join(";", paths["LIBPATH"]);
+
+                    }else if(string.Compare(vcEnvironment.key_, "INCLUDE", true) == 0){
+                        vcEnvironment.value_ = string.Join(";", paths["INCLUDE"]);
+
+                    }
+                }
+            }
+
             StringBuilder stringBuilder = buildContext.stringBuilder_;
 
             stringBuilder.AppendLine(hash);
@@ -632,7 +710,7 @@ namespace VSFastBuildVSIX
                 stringBuilder.AppendLine("{");
                 for (int i = 0; i < vcEnvironments.Count; ++i)
                 {
-                    stringBuilder.AppendFormat("  '{0}={1}'", vcEnvironments[i].Item1, vcEnvironments[i].Item2);
+                    stringBuilder.AppendFormat("  '{0}={1}'", vcEnvironments[i].key_, vcEnvironments[i].value_);
                     if (i != (vcEnvironments.Count - 1))
                     {
                         stringBuilder.AppendLine(",");
@@ -889,7 +967,7 @@ namespace VSFastBuildVSIX
 
         private static void AddProject(BuildContext buildContext, VSFastProject project, List<string> projectTargets)
         {
-            Microsoft.Build.Evaluation.Project buildProject = new Microsoft.Build.Evaluation.Project(project.project_.FullName, buildContext.globalProperties_, null);
+            Microsoft.Build.Evaluation.Project buildProject = project.buildProject_;
             string configType = buildProject.GetProperty("ConfigurationType").EvaluatedValue;
             BuildType buildType;
             switch (configType)
@@ -1000,7 +1078,7 @@ namespace VSFastBuildVSIX
                     string resourceCompilerOptions = GenerateTaskCommandLine(task, new string[] { "ResourceOutputFileName", "DesigntimePreprocessorDefinitions", "ProgramDataBaseFileName", "XMLDocumentationFileName", "DiagnosticsFormat" }, item.Metadata);
                     resourceCompilerOptions = resourceCompilerOptions.Replace("\\", "/").Replace("//", "/").Replace("/TP", string.Empty).Replace("/TC", string.Empty).Replace("/D ", "/D");
                     string formattedCompilerOptions = $"{resourceCompilerOptions} /fo\"%2\" \"%1\"";
-                    string evaluatedInclude = System.IO.Path.Combine(rootDir, item.EvaluatedInclude).Replace("\\", "/").Replace("//", "/");
+                    string evaluatedInclude = System.IO.Path.GetFullPath(System.IO.Path.Combine(rootDir, item.EvaluatedInclude)).Replace("\\", "/").Replace("//", "/");
                     IEnumerable<FBResourceItem> matchingNodes = resourceItems.Where(el => el.AddIfMatches(evaluatedInclude, formattedCompilerOptions));
                     if (!matchingNodes.Any())
                     {
@@ -1089,7 +1167,7 @@ namespace VSFastBuildVSIX
                     }
                     optionBuilder = optionBuilder.Replace("   ", " ").Replace("  ", " ");
                     string formattedCompilerOptions = optionBuilder.ToString();
-                    string evaluatedInclude = System.IO.Path.Combine(rootDir, item.EvaluatedInclude).Replace("\\", "/").Replace("//", "/");
+                    string evaluatedInclude = System.IO.Path.GetFullPath(System.IO.Path.Combine(rootDir, item.EvaluatedInclude)).Replace("\\", "/").Replace("//", "/");
                     IEnumerable<FBCompileItem> matchingNodes = fbCompileItem.Where(el => el.AddIfMatches(evaluatedInclude, ".Compiler_CXX", formattedCompilerOptions));
                     if (!matchingNodes.Any())
                     {
@@ -1387,7 +1465,7 @@ namespace VSFastBuildVSIX
             }
         }
 
-        public static List<Tuple<string, string>> GetVCEnvironments(string toolsInstall)
+        private static List<VSEnvironment> GetVCEnvironments(string toolsInstall)
         {
             string vcvarsall = System.IO.Path.Combine(toolsInstall, "VC", "Auxiliary", "Build", "vcvarsall.bat");
             string cmd = "call \"" + vcvarsall + "\" x64 && set";
@@ -1409,7 +1487,7 @@ namespace VSFastBuildVSIX
 
                 int exitCode = process.ExitCode;
 
-                List<Tuple<string, string>> environments = new List<Tuple<string, string>>(16);
+                List<VSEnvironment> environments = new List<VSEnvironment>(16);
                 if (exitCode != 0)
                 {
                     return environments;
@@ -1460,7 +1538,7 @@ namespace VSFastBuildVSIX
                             continue;
                         }
                         splits[1] = splits[1].Replace("$", "^$");
-                        environments.Add(new Tuple<string, string>(splits[0], splits[1]));
+                        environments.Add(new VSEnvironment{key_ = splits[0], value_=splits[1]});
                     }
                 }
                 return environments;
