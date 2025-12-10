@@ -508,6 +508,15 @@ namespace VSFastBuildVSIX
 
             List<Tuple<string, string>> vcEnvironments = GetVCEnvironments(buildContext.vsEnvironment_.ToolsInstall);
 
+            {
+                outputString.AppendFormat("\t\t\"INCLUDE={0}\",\n", vcProject.GetProperty("IncludePath").EvaluatedValue);
+                outputString.AppendFormat("\t\t\"LIB={0}\",\n", activeProject.GetProperty("LibraryPath").EvaluatedValue);
+                outputString.AppendFormat("\t\t\"LIBPATH={0}\",\n", activeProject.GetProperty("ReferencePath").EvaluatedValue);
+                outputString.AppendFormat("\t\t\"PATH={0}\"\n", activeProject.GetProperty("Path").EvaluatedValue);
+                outputString.AppendFormat("\t\t\"TMP={0}\"\n", activeProject.GetProperty("Temp").EvaluatedValue);
+                outputString.AppendFormat("\t\t\"TEMP={0}\"\n", activeProject.GetProperty("Temp").EvaluatedValue);
+                outputString.AppendFormat("\t\t\"SystemRoot={0}\"\n", activeProject.GetProperty("SystemRoot").EvaluatedValue);
+            }
             buildContext.VCTargetsPath_ = activeConfig.Evaluate("$(VCTargetsPath)");
             buildContext.VCTargetsPathEffective_ = activeConfig.Evaluate("$(VCTargetsPathEffective)");
             buildContext.VC_IncludePath_ = activeConfig.Evaluate("$(VC_IncludePath)");
@@ -991,7 +1000,7 @@ namespace VSFastBuildVSIX
                     string resourceCompilerOptions = GenerateTaskCommandLine(task, new string[] { "ResourceOutputFileName", "DesigntimePreprocessorDefinitions", "ProgramDataBaseFileName", "XMLDocumentationFileName", "DiagnosticsFormat" }, item.Metadata);
                     resourceCompilerOptions = resourceCompilerOptions.Replace("\\", "/").Replace("//", "/").Replace("/TP", string.Empty).Replace("/TC", string.Empty).Replace("/D ", "/D");
                     string formattedCompilerOptions = $"{resourceCompilerOptions} /fo\"%2\" \"%1\"";
-                    string evaluatedInclude = item.EvaluatedInclude.Replace("\\", "/").Replace("//", "/");
+                    string evaluatedInclude = System.IO.Path.Combine(rootDir, item.EvaluatedInclude).Replace("\\", "/").Replace("//", "/");
                     IEnumerable<FBResourceItem> matchingNodes = resourceItems.Where(el => el.AddIfMatches(evaluatedInclude, formattedCompilerOptions));
                     if (!matchingNodes.Any())
                     {
@@ -1080,7 +1089,7 @@ namespace VSFastBuildVSIX
                     }
                     optionBuilder = optionBuilder.Replace("   ", " ").Replace("  ", " ");
                     string formattedCompilerOptions = optionBuilder.ToString();
-                    string evaluatedInclude = item.EvaluatedInclude.Replace("\\", "/").Replace("//", "/");
+                    string evaluatedInclude = System.IO.Path.Combine(rootDir, item.EvaluatedInclude).Replace("\\", "/").Replace("//", "/");
                     IEnumerable<FBCompileItem> matchingNodes = fbCompileItem.Where(el => el.AddIfMatches(evaluatedInclude, ".Compiler_CXX", formattedCompilerOptions));
                     if (!matchingNodes.Any())
                     {
