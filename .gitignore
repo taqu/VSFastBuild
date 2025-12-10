@@ -1,4 +1,7 @@
+# files
 *.user
+*.pdb
+
 # directories
 /packages
 .vs/
