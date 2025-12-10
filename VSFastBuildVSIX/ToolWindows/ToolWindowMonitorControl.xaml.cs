@@ -1,7 +1,5 @@
 using EnvDTE;
 using EnvDTE80;
-using Microsoft.VisualStudio.OLE.Interop;
-using System.Collections;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Diagnostics;
@@ -16,7 +14,6 @@ using System.Windows.Media;
 using System.Windows.Media.Imaging;
 using System.Windows.Threading;
 using VSFastBuildVSIX.ToolWindows;
-using static VSFastBuildVSIX.ToolWindowMonitorControl;
 using static VSFastBuildVSIX.ToolWindows.BuildEvent;
 
 namespace VSFastBuildVSIX
@@ -51,6 +48,7 @@ namespace VSFastBuildVSIX
         public const string LocalHostName = "local";
         public const string PrepareBuildStepsText = "Preparing Build Steps";
         public const long TargetPIDCheckPeriodMS = 1 * 1000;
+        private const string FastBuildLogPath = @"\FastBuild\FastBuildLog.log";
 
         public static class CommandArgumentIndex
         {
@@ -246,7 +244,6 @@ namespace VSFastBuildVSIX
         private ObservableCollection<OutputFilterItem> outputComboBoxFilters_ = new ObservableCollection<OutputFilterItem>();
         private bool outputTextBoxPendingLayoutUpdate_ = false;
         private DispatcherTimer timer_;
-        private System.Diagnostics.Process process_;
 
         //Input file I/O
         private FileStream fileStream_;
@@ -267,6 +264,7 @@ namespace VSFastBuildVSIX
 
             // Initialize text rendering
             TextUtils.StaticInitialize();
+            ToolImages.Initialize();
 
             // Time bar display
             timebar_ = new Timebar(TimeBarCanvas, this);
@@ -304,11 +302,11 @@ namespace VSFastBuildVSIX
             OutputWindowComboBox.SelectionChanged += OutputWindowComboBox_SelectionChanged;
         }
 
-        public void Start()
+        public bool Start()
         {
             if (null != timer_)
             {
-                return;
+                return false;
             }
             Reset();
             Dispatcher.BeginInvoke(DispatcherPriority.Loaded, new Action(() =>
@@ -316,31 +314,14 @@ namespace VSFastBuildVSIX
                 //update timer
                 timer_ = new DispatcherTimer();
                 timer_.Tick += HandleTick;
-                timer_.Interval = new TimeSpan(TimeSpan.TicksPerMillisecond * 33);
+                timer_.Interval = new TimeSpan(TimeSpan.TicksPerMillisecond * 1334);
                 timer_.Start();
             }));
+            return true;
         }
 
         public void Stop()
         {
-            if (null == timer_)
-            {
-                return;
-            }
-            timer_.Stop();
-            timer_ = null;
-            if(null != process_)
-            {
-            }
-            VSFastBuildVSIXPackage package;
-            if (VSFastBuildVSIXPackage.TryGetPackage(out package))
-            {
-                {
-                    package.CancelBuildProcess();
-                    Start();
-                }
-            }
-
         }
 
         public void Reset()
@@ -375,7 +356,7 @@ namespace VSFastBuildVSIX
 
             // progress status
             UpdateBuildProgress(0.0f);
-            StatusBarProgressBar.Foreground = StatusInitialBrush;
+            StatusBarProgressBar.Foreground = ToolImages.StatusInitialBrush;
 
             // target pid
             targetPID_ = 0;
@@ -943,7 +924,6 @@ namespace VSFastBuildVSIX
             return CanRead() && HasFileContentChanged();
         }
 
-        private SolidColorBrush StatusInitialBrush = (SolidColorBrush)(new BrushConverter().ConvertFrom("#FF06B025"));
         private void ResetState()
         {
             fileStreamPosition_ = 0;
@@ -985,7 +965,7 @@ namespace VSFastBuildVSIX
 
             // progress status
             UpdateBuildProgress(0.0f);
-            StatusBarProgressBar.Foreground = StatusInitialBrush;
+            StatusBarProgressBar.Foreground = ToolImages.StatusInitialBrush;
 
             // reset to autoscrolling ON
             autoScrolling_ = true;
@@ -1043,7 +1023,7 @@ namespace VSFastBuildVSIX
 
             // progress status
             UpdateBuildProgress(0.0f);
-            StatusBarProgressBar.Foreground = StatusInitialBrush;
+            StatusBarProgressBar.Foreground = ToolImages.StatusInitialBrush;
 
             // target pid
             targetPID_ = 0;
@@ -1086,16 +1066,34 @@ namespace VSFastBuildVSIX
             StatusBarDetails.Text = string.Format("{0} Agents - {1} Cores", buildHosts_.Count, numCores);
         }
 
-        private void UpdateBuildProgress(float progressPCT)
+        private void UpdateBuildProgress(float progressPCT, bool buildStop=false)
         {
             currentProgressPCT_ = progressPCT;
 
             StatusBarBuildTime.Text = string.Format("Duration: {0}", GetTimeFormattedString2(GetCurrentBuildTimeMS()));
 
             StatusBarProgressBar.Value = currentProgressPCT_;
-
-
             StatusBarProgressBar.ToolTip = statusBarProgressToolTip_;
+            if (buildStop)
+            {
+                switch (buildStatus_)
+                {
+                    case BuildStatus.HasErrors:
+                        StatusBarProgressBar.Foreground = Brushes.Red;
+                        break;
+                    case BuildStatus.HasWarnings:
+                        StatusBarProgressBar.Foreground = Brushes.Yellow;
+                        break;
+                    default:
+                        StatusBarProgressBar.Foreground = ToolImages.StatusInitialBrush;
+                        break;
+                }
+
+            }
+            else
+            {
+                StatusBarProgressBar.Foreground = ToolImages.StatusProgressBrush;
+            }
 
             statusBarProgressToolTip_.Content = string.Format("{0:0.00}%", currentProgressPCT_);
         }
@@ -1298,9 +1296,27 @@ namespace VSFastBuildVSIX
                     case BuildStatus.HasWarnings:
                         StatusBarProgressBar.Foreground = Brushes.Yellow;
                         break;
+                    default:
+                        StatusBarProgressBar.Foreground = ToolImages.StatusInitialBrush;
+                        break;
                 }
-
                 buildStatus_ = newBuildStatus;
+            }
+        }
+
+        public static void TruncateLogFile()
+        {
+            string path = System.Environment.GetEnvironmentVariable("TEMP") + FastBuildLogPath;
+            try
+            {
+                using (FileStream fileStream = new FileStream(path, FileMode.Open, FileAccess.Write, FileShare.Write))
+                {
+                    fileStream.SetLength(0);
+                    fileStream.Flush();
+                }
+            }
+            catch
+            {
             }
         }
 
@@ -1501,6 +1517,7 @@ namespace VSFastBuildVSIX
 
                 // start the gif "building" animation
                 StatusBarRunningGif.StartAnimation();
+                ToolImages.StatusProgress.StartAnimation();
 
                 ToolTip newToolTip = new ToolTip();
                 StatusBarRunningGif.ToolTip = newToolTip;
@@ -1538,7 +1555,9 @@ namespace VSFastBuildVSIX
             StatusBarRunningGif.StopAnimation();
             StatusBarRunningGif.ToolTip = null;
 
-            UpdateBuildProgress(100.0f);
+            ToolImages.StatusProgress.StopAnimation();
+
+            UpdateBuildProgress(100.0f, true);
 
             if (isLiveSession_)
             {

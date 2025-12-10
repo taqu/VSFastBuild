@@ -44,6 +44,11 @@ namespace VSFastBuildVSIX.Commands
             List<EnvDTE.Project> targets = new List<EnvDTE.Project>();
             foreach (EnvDTE.Project project in dte.Solution.Projects)
             {
+                if(ProjectTypes.WindowsCPlusPlus != project.Kind)
+                {
+                    continue;
+                }
+
                 foreach (SolutionContext context in solutionConfiguration.SolutionContexts)
                 {
                     if (System.IO.Path.GetFileName(context.ProjectName) == System.IO.Path.GetFileName(project.FileName)
@@ -90,9 +95,10 @@ namespace VSFastBuildVSIX.Commands
                 string fbuildPath = optionPage.Path;
                 string fbuldArgs = optionPage.Arguments;
                 bool openMonitor = optionPage.OpenMonitor;
-                System.Diagnostics.Process process = CommandBuildProject.ExecuteBffFile(bffpath, rootDirectory, fbuildPath, fbuldArgs);
+                System.Diagnostics.Process process = CommandBuildProject.CreateProcessFromBffFile(bffpath, rootDirectory, fbuildPath, fbuldArgs);
                 try
                 {
+                    ToolWindowMonitorControl.TruncateLogFile();
                     if (process.Start())
                     {
                         if (openMonitor) {

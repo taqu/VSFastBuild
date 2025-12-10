@@ -1,3 +1,4 @@
+using Community.VisualStudio.Toolkit;
 using EnvDTE;
 using EnvDTE80;
 using Microsoft.Build.Construction;
@@ -64,8 +65,13 @@ namespace VSFastBuildVSIX
             List<EnvDTE.Project> targets = new List<EnvDTE.Project>();
             foreach (SelectedItem item in selectedItems)
             {
-                if (item.Project is EnvDTE.Project)
+                if (item is EnvDTE.Project)
                 {
+                    if (ProjectTypes.WindowsCPlusPlus != item.Project.Kind)
+                    {
+                        continue;
+                    }
+
                     targets.Add(item.Project);
                 }
             }
@@ -1350,7 +1356,7 @@ namespace VSFastBuildVSIX
             stringBuilder.AppendLine("}");
         }
 
-        public static System.Diagnostics.Process ExecuteBffFile(string bffpath, string projectPath, string fbuildPath, string fbuldArgs)
+        public static System.Diagnostics.Process CreateProcessFromBffFile(string bffpath, string projectPath, string fbuildPath, string fbuldArgs)
         {
             string projectDir = System.IO.Path.GetDirectoryName(projectPath);
             try

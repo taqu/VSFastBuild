@@ -63,8 +63,6 @@ namespace VSFastBuildVSIX.ToolWindows
 
         public BuildEvent(ToolWindowMonitorControl parent, string name, long timeStarted)
         {
-            ToolImages.Initialize();
-
             parent_ = parent;
             name_ = name;
             toolTipText_ = name_.Replace("\"", string.Empty);

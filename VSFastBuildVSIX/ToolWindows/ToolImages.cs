@@ -1,3 +1,4 @@
+using Microsoft.VisualStudio.Imaging;
 using System.IO;
 using System.Windows.Media;
 using System.Windows.Media.Imaging;
@@ -18,6 +19,11 @@ namespace VSFastBuildVSIX.ToolWindows
         public static ImageBrush RacingWinIconBrush = new ImageBrush();
         public static ImageBrush RacingLostIconBrush = new ImageBrush();
 
+        public static GIFImage StatusProgress;
+        public static ImageBrush StatusProgressBrush = new ImageBrush();
+
+        public static SolidColorBrush StatusInitialBrush = Brushes.Lime;
+
         private static BitmapImage GetBitmapImage(System.Drawing.Bitmap bitmap, MemoryStream memory)
         {
             memory.Position = 0;
@@ -30,6 +36,16 @@ namespace VSFastBuildVSIX.ToolWindows
             bitmapImage.EndInit();
             return bitmapImage;
         }
+
+        private static GIFImage GetGIFImage(string resourceName)
+        {
+            GIFImage gifimage = new GIFImage()
+            {
+                GifSource = resourceName
+            };
+            return gifimage;
+        }
+
 
         public static void Initialize()
         {
@@ -49,6 +65,8 @@ namespace VSFastBuildVSIX.ToolWindows
                 RacingIconBrush.ImageSource = GetBitmapImage(VSFastBuildVSIX.Resources.Images.race_flag, memory);
                 RacingWinIconBrush.ImageSource = GetBitmapImage(VSFastBuildVSIX.Resources.Images.race_flag_win, memory);
                 RacingLostIconBrush.ImageSource = GetBitmapImage(VSFastBuildVSIX.Resources.Images.race_flag_lost, memory);
+                StatusProgress = GetGIFImage("progressbar");
+                StatusProgressBrush.ImageSource = StatusProgress.Source;
             }
             initialized_ = true;
         }
