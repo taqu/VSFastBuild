@@ -340,12 +340,6 @@ namespace VSFastBuildVSIX
             public bool visited_;
         };
 
-        private class VSEnvironment
-        {
-            public string key_;
-            public string value_;
-        }
-
         private static void TopologicalSort(List<VSFastProject> projects)
         {
             List<SortProject> sortProjects = new List<SortProject>(projects.Count);
@@ -412,6 +406,27 @@ namespace VSFastBuildVSIX
             return CPPTasksAssembly;
         }
 
+        private static Assembly GetCUDATaskAssembly(string CUDAPath)
+        {
+            try {
+                string path = System.IO.Path.Combine(CUDAPath, "extras","visual_studio_integration","MSBuildExtensions");
+            IEnumerable<string> files = System.IO.Directory.EnumerateFiles(path, "*.dll");
+            foreach (string file in files)
+            {
+                if (file.Contains("Nvda.Build.CudaTasks"))
+                {
+                        Assembly assembly = Assembly.LoadFrom(file);
+                        return assembly;
+                }
+            }
+            return null;
+            }
+            catch
+            {
+                return null;
+            }
+        }
+
         private static void AddExtraDlls(StringBuilder stringBuilder, string rootDir, string pattern)
         {
             string[] dllFiles = System.IO.Directory.GetFiles(rootDir, pattern);
@@ -424,14 +439,7 @@ namespace VSFastBuildVSIX
         private class BuildContext
         {
             public Assembly CppTaskAssembly_;
-            //public ToolTask CLTask_;
-            //public ToolTask LIBTask_;
-            //public ToolTask RCTask_;
-            //public ToolTask LINKTask_;
-            //public MethodInfo CLGenerateCommandLine_;
-            //public MethodInfo LIBGenerateCommandLine_;
-            //public MethodInfo RCGenerateCommandLine_;
-            //public MethodInfo LINKGenerateCommandLine_;
+            public Assembly CUDATaskAssembly_;
             public string VCTargetsPath_ = string.Empty;
             public string VCTargetsPathEffective_ = string.Empty;
             public string VC_IncludePath_ = string.Empty;
@@ -446,6 +454,7 @@ namespace VSFastBuildVSIX
             public string LinkerPath_ = string.Empty;
             public string CUDAPath_ = string.Empty;
             public VSFastBuildCommon.VSEnvironment vsEnvironment_;
+            public Dictionary<string, string> environments_;
             public StringBuilder stringBuilder_;
             public StringBuilder optionBuilder_;
             public string configuration_;
@@ -584,7 +593,7 @@ namespace VSFastBuildVSIX
 
             buildContext.vsEnvironment_ = VSFastBuildCommon.VSEnvironment.Create(GetVSMainVersion(VisualStudioVersion), WindowsSDKVersion);
 
-            List<VSEnvironment> vcEnvironments = GetVCEnvironments(buildContext.vsEnvironment_.ToolsInstall);
+            buildContext.environments_ = GetVCEnvironments(buildContext.vsEnvironment_.ToolsInstall);
 
             buildContext.VCTargetsPath_ = activeConfig.Evaluate("$(VCTargetsPath)");
             buildContext.VCTargetsPathEffective_ = activeConfig.Evaluate("$(VCTargetsPathEffective)");
@@ -689,22 +698,22 @@ namespace VSFastBuildVSIX
                     { "LIBPATH", new List<string>() },
                     { "INCLUDE", new List<string>() },
                 };
-                foreach(VSEnvironment vcEnvironment in vcEnvironments)
+                foreach(KeyValuePair<string, string> environment in buildContext.environments_)
                 {
-                    if(string.Compare(vcEnvironment.key_, "PATH", true) == 0){
-                        AddPathList(paths["PATH"], vcEnvironment.value_);
+                    if(string.Compare(environment.Key, "PATH", true) == 0){
+                        AddPathList(paths["PATH"], environment.Value);
 
-                    }else if(string.Compare(vcEnvironment.key_, "LIB", true) == 0){
-                        AddPathList(paths["LIB"], vcEnvironment.value_);
+                    }else if(string.Compare(environment.Key, "LIB", true) == 0){
+                        AddPathList(paths["LIB"], environment.Value);
 
-                    }else if(string.Compare(vcEnvironment.key_, "LIBPATH", true) == 0){
-                        AddPathList(paths["LIBPATH"], vcEnvironment.value_);
+                    }else if(string.Compare(environment.Key, "LIBPATH", true) == 0){
+                        AddPathList(paths["LIBPATH"], environment.Value);
 
-                    }else if(string.Compare(vcEnvironment.key_, "INCLUDE", true) == 0){
-                        AddPathList(paths["INCLUDE"], vcEnvironment.value_);
+                    }else if(string.Compare(environment.Key, "INCLUDE", true) == 0){
+                        AddPathList(paths["INCLUDE"], environment.Value);
 
-                    }else if(string.Compare(vcEnvironment.key_, "CUDA_PATH", true) == 0){
-                        buildContext.CUDAPath_ = vcEnvironment.value_.Replace("\\", "/");
+                    }else if(string.Compare(environment.Key, "CUDA_PATH", true) == 0){
+                        buildContext.CUDAPath_ = environment.Value.Replace("\\", "/");
                     }
                 }
                 foreach(VSFastProject project in vSFastProjects)
@@ -715,21 +724,39 @@ namespace VSFastBuildVSIX
                     AddPathList(paths["LIBPATH"], rootDir, project.buildProject_.GetProperty("ReferencePath").EvaluatedValue);
                     AddPathList(paths["INCLUDE"], rootDir, project.buildProject_.GetProperty("IncludePath").EvaluatedValue);
                 }
-                foreach(VSEnvironment vcEnvironment in vcEnvironments)
+                Dictionary<string, string> directory = new Dictionary<string, string>(buildContext.environments_.Count);
+                foreach (KeyValuePair<string, string> environment in buildContext.environments_)
                 {
-                    if(string.Compare(vcEnvironment.key_, "PATH", true) == 0){
-                        vcEnvironment.value_ = string.Join(";", paths["PATH"]);
+                    if (string.Compare(environment.Key, "PATH", true) == 0)
+                    {
+                        directory.Add(environment.Key, string.Join(";", paths["PATH"]));
 
-                    }else if(string.Compare(vcEnvironment.key_, "LIB", true) == 0){
-                        vcEnvironment.value_ = string.Join(";", paths["LIB"]);
+                    }
+                    else if (string.Compare(environment.Key, "LIB", true) == 0)
+                    {
+                        directory.Add(environment.Key, string.Join(";", paths["LIB"]));
 
-                    }else if(string.Compare(vcEnvironment.key_, "LIBPATH", true) == 0){
-                        vcEnvironment.value_ = string.Join(";", paths["LIBPATH"]);
+                    }
+                    else if (string.Compare(environment.Key, "LIBPATH", true) == 0)
+                    {
+                        directory.Add(environment.Key, string.Join(";", paths["LIBPATH"]));
 
-                    }else if(string.Compare(vcEnvironment.key_, "INCLUDE", true) == 0){
-                        vcEnvironment.value_ = string.Join(";", paths["INCLUDE"]);
+                    }
+                    else if (string.Compare(environment.Key, "INCLUDE", true) == 0)
+                    {
+                        directory.Add(environment.Key, string.Join(";", paths["INCLUDE"]));
+                    }
+                    else
+                    {
+                        directory.Add(environment.Key, environment.Value);
                     }
                 }
+                buildContext.environments_ = directory;
+            }
+            if (buildContext.environments_.ContainsKey("CUDA_PATH"))
+            {
+                buildContext.CUDAPath_ = buildContext.environments_["CUDA_PATH"];
+                buildContext.CUDATaskAssembly_ = GetCUDATaskAssembly(buildContext.CUDAPath_);
             }
 
             // Gather items
@@ -759,20 +786,15 @@ namespace VSFastBuildVSIX
             stringBuilder.AppendLine("}");
 
             {
+                List<string> keyvalue = new List<string>(buildContext.environments_.Count);
+                foreach(KeyValuePair<string, string> environment in buildContext.environments_)
+                {
+                    keyvalue.Add($"  '{environment.Key}={environment.Value}'");
+                }
+                string envs = string.Join(",\n", keyvalue);
                 stringBuilder.AppendLine(".LocalEnv =");
                 stringBuilder.AppendLine("{");
-                for (int i = 0; i < vcEnvironments.Count; ++i)
-                {
-                    stringBuilder.AppendFormat("  '{0}={1}'", vcEnvironments[i].key_, vcEnvironments[i].value_);
-                    if (i != (vcEnvironments.Count - 1))
-                    {
-                        stringBuilder.AppendLine(",");
-                    }
-                    else
-                    {
-                        stringBuilder.AppendLine();
-                    }
-                }
+                stringBuilder.AppendLine(envs);
                 stringBuilder.AppendLine("}");
             }
 
@@ -1638,7 +1660,7 @@ FXCompile
             }
         }
 
-        private static List<VSEnvironment> GetVCEnvironments(string toolsInstall)
+        private static Dictionary<string,string> GetVCEnvironments(string toolsInstall)
         {
             string vcvarsall = System.IO.Path.Combine(toolsInstall, "VC", "Auxiliary", "Build", "vcvarsall.bat");
             string cmd = "call \"" + vcvarsall + "\" x64 && set";
@@ -1660,7 +1682,7 @@ FXCompile
 
                 int exitCode = process.ExitCode;
 
-                List<VSEnvironment> environments = new List<VSEnvironment>(16);
+                Dictionary<string,string> environments = new Dictionary<string,string>(16);
                 if (exitCode != 0)
                 {
                     return environments;
@@ -1711,7 +1733,7 @@ FXCompile
                             continue;
                         }
                         splits[1] = splits[1].Replace("$", "^$");
-                        environments.Add(new VSEnvironment{key_ = splits[0], value_=splits[1]});
+                        environments.Add(splits[0], splits[1]);
                     }
                 }
                 return environments;

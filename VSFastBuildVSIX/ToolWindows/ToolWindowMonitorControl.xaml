@@ -34,7 +34,7 @@
                             <RowDefinition Height="auto" MaxHeight="150"/>
                             <RowDefinition Height="30"/>
                             <RowDefinition/>
-                            <RowDefinition Height="50"/>
+                            <RowDefinition Height="72"/>
                         </Grid.RowDefinitions>
                         <Grid.ColumnDefinitions>
                             <ColumnDefinition Width="120" MaxWidth="250"/>
@@ -55,14 +55,10 @@
                         <ScrollViewer x:Name="CoresScrollViewer" ScrollViewer.HorizontalScrollBarVisibility="Hidden" ScrollViewer.VerticalScrollBarVisibility="Hidden" Margin="10,10,5,25" Grid.Row="2" Grid.Column="0" Grid.ColumnSpan="2" >
                             <Canvas x:Name="CoresCanvas" HorizontalAlignment="Left" Height="366" VerticalAlignment="Top" Width="148" Margin="0,0,0,0"/>
                         </ScrollViewer>
-                        <GroupBox x:Name="SettingsGroupBox" Header="Settings" HorizontalAlignment="Left" Margin="0,0,0,0" VerticalAlignment="Top" Height="48" Width="240" Grid.Row="3" Grid.Column="3" FontSize="11">
+                        <GroupBox x:Name="SettingsGroupBox" Header="Settings" HorizontalAlignment="Left" Margin="0,5,0,0" VerticalAlignment="Top" Height="Auto" Width="220" Grid.Row="3" Grid.Column="3" Background="LightGray">
                             <StackPanel Orientation="Horizontal">
-                                <CheckBox x:Name="SettingsGraphsCheckBox" Content ="System Graphs" HorizontalAlignment="Left" Margin="5,0,0,0" VerticalAlignment="Center" Checked="CheckBox_SystemGraph_Checked" Unchecked="CheckBox_SystemGraph_Unchecked" FontSize="11" />
-                                <Button Content="Auto Scroll" Margin="10,0,0,0" Click="OnClick_SettingsAutoScroll" FontSize="11">
-                                    <Button.BorderBrush>
-                                        <SolidColorBrush Color="{DynamicResource {x:Static SystemColors.ControlDarkColorKey}}"/>
-                                    </Button.BorderBrush>
-                                </Button>
+                                <CheckBox x:Name="SettingsGraphsCheckBox" Content="System Graphs" Margin="5,0,5,0" VerticalAlignment="Center" Checked="CheckBox_SystemGraph_Checked" Unchecked="CheckBox_SystemGraph_Unchecked" Foreground="Black" />
+                                <Button Content="Auto Scroll" Click="OnClick_SettingsAutoScroll" VerticalAlignment="Center" Margin="5,5,5,5"/>
                             </StackPanel>
                         </GroupBox>
                     </Grid>
