@@ -3,7 +3,7 @@ cmake_minimum_required(VERSION 3.50)
 set(CMAKE_CONFIGURATION_TYPES "Debug" "Release")
 
 set(PROJECT_NAME test0)
-project(${PROJECT_NAME})
+project(${PROJECT_NAME} LANGUAGES CXX ASM_MASM)
 
 set(HEADER_ROOT "${CMAKE_CURRENT_SOURCE_DIR}")
 set(SOURCE_ROOT "${CMAKE_CURRENT_SOURCE_DIR}")
@@ -15,6 +15,7 @@ set(HEADERS
     "${HEADER_ROOT}/pch.h"
     "${HEADER_ROOT}/test0.h")
 set(SOURCES
+    "${SOURCE_ROOT}/as_callfunc_x64_msvc_asm.asm"
     "${SOURCE_ROOT}/test0.cpp")
 
 source_group("include" FILES ${HEADERS})

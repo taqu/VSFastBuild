@@ -15,6 +15,7 @@ set(HEADERS
     "${HEADER_ROOT}/resource1.h"
     "${HEADER_ROOT}/test2.h")
 set(SOURCES
+    "${SOURCE_ROOT}/as_callfunc_x64_msvc_asm.asm"
     "${SOURCE_ROOT}/test2.cpp")
 
 set(RESOURCES

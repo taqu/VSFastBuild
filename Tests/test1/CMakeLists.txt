@@ -14,6 +14,7 @@ set(HEADERS
     "${HEADER_ROOT}/pch.h"
     "${HEADER_ROOT}/test1.h")
 set(SOURCES
+    "${SOURCE_ROOT}/as_callfunc_x64_msvc_asm.asm"
     "${SOURCE_ROOT}/test1.cpp")
 
 source_group("include" FILES ${HEADERS})
