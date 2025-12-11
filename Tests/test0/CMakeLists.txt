@@ -16,6 +16,7 @@ set(HEADERS
     "${HEADER_ROOT}/test0.h")
 set(SOURCES
     "${SOURCE_ROOT}/as_callfunc_x64_msvc_asm.asm"
+    "${SOURCE_ROOT}/ComputeShader.hlsl"
     "${SOURCE_ROOT}/test0.cpp")
 
 source_group("include" FILES ${HEADERS})

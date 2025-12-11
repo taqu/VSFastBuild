@@ -3,11 +3,9 @@ cmake_minimum_required(VERSION 3.50)
 set(CMAKE_CONFIGURATION_TYPES "Debug" "Release")
 
 set(PROJECT_NAME test1)
-project(${PROJECT_NAME})
-
+project(${PROJECT_NAME} LANGUAGES C CXX ASM_MASM)
 set(HEADER_ROOT "${CMAKE_CURRENT_SOURCE_DIR}")
 set(SOURCE_ROOT "${CMAKE_CURRENT_SOURCE_DIR}")
-
 # Sources
 set(HEADERS
     "${HEADER_ROOT}/framework.h"
@@ -19,14 +17,14 @@ set(SOURCES
 
 source_group("include" FILES ${HEADERS})
 source_group("src" FILES ${SOURCES})
-
+source_group("src" FILES "${SOURCE_ROOT}/sample.ispc;${SOURCE_ROOT}/sample2.ispc")
 set(FILES ${HEADERS} ${SOURCES})
 
 set(OUTPUT_LIB_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/lib")
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY_DEBUG "${OUTPUT_LIB_DIRECTORY}")
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY_RELEASE "${OUTPUT_LIB_DIRECTORY}")
 
-add_library(${PROJECT_NAME} SHARED ${FILES})
+add_library(${PROJECT_NAME} SHARED ${FILES} sample.o sample2.o)
 
 target_precompile_headers(${PROJECT_NAME} PUBLIC "${HEADER_ROOT}/pch.h")
 
@@ -54,6 +52,13 @@ set_target_properties(${PROJECT_NAME}
     PROPERTIES
         OUTPUT_NAME_DEBUG "${PROJECT_NAME}" OUTPUT_NAME_RELEASE "${PROJECT_NAME}"
         VS_DEBUGGER_WORKING_DIRECTORY "${OUTPUT_DIRECTORY}")
+
+add_custom_command(OUTPUT sample.o
+                   COMMAND D:/Programs/ispc/bin/ispc.exe --target=sse2 ${SOURCE_ROOT}/sample.ispc -o sample.o
+                   DEPENDS sample.ispc)
+add_custom_command(OUTPUT sample2.o
+                   COMMAND D:/Programs/ispc/bin/ispc.exe --target=sse2 ${SOURCE_ROOT}/sample2.ispc -o sample2.o
+                   DEPENDS sample2.ispc)
 
 add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD
     COMMAND ${CMAKE_COMMAND} -E copy_if_different

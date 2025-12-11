@@ -3,7 +3,7 @@ cmake_minimum_required(VERSION 3.50)
 set(CMAKE_CONFIGURATION_TYPES "Debug" "Release")
 
 set(PROJECT_NAME test2)
-project(${PROJECT_NAME})
+project(${PROJECT_NAME} LANGUAGES C CXX CUDA ASM_MASM)
 
 set(HEADER_ROOT "${CMAKE_CURRENT_SOURCE_DIR}")
 set(SOURCE_ROOT "${CMAKE_CURRENT_SOURCE_DIR}")
@@ -16,6 +16,7 @@ set(HEADERS
     "${HEADER_ROOT}/test2.h")
 set(SOURCES
     "${SOURCE_ROOT}/as_callfunc_x64_msvc_asm.asm"
+    "${SOURCE_ROOT}/vectorAdd.cu"
     "${SOURCE_ROOT}/test2.cpp")
 
 set(RESOURCES
