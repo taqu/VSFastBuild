@@ -17,6 +17,7 @@ using System.Reflection;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
+using System.Windows.Media.Media3D;
 using static System.Net.Mime.MediaTypeNames;
 
 namespace VSFastBuildVSIX
@@ -252,10 +253,11 @@ namespace VSFastBuildVSIX
         {
             public const string Empty = "";
 
-            public ItemType Type => type_;
+            public ItemType Type {get => type_; set => type_ = value;} 
             public string Options => options_;
-            public string Output => output_;
-            public string OutputExtension => outputExtension_;
+            public string Output {get => output_; set => output_ = value;} 
+            public string Command {get => command_; set => command_ = value;} 
+            public string OutputExtension {get => outputExtension_; set => outputExtension_ = value;} 
             public List<string> InputFiles => inputFiles_;
 
             private ItemType type_;
@@ -408,18 +410,19 @@ namespace VSFastBuildVSIX
 
         private static Assembly GetCUDATaskAssembly(string CUDAPath)
         {
-            try {
-                string path = System.IO.Path.Combine(CUDAPath, "extras","visual_studio_integration","MSBuildExtensions");
-            IEnumerable<string> files = System.IO.Directory.EnumerateFiles(path, "*.dll");
-            foreach (string file in files)
+            try
             {
-                if (file.Contains("Nvda.Build.CudaTasks"))
+                string path = System.IO.Path.Combine(CUDAPath, "extras", "visual_studio_integration", "MSBuildExtensions");
+                IEnumerable<string> files = System.IO.Directory.EnumerateFiles(path, "*.dll");
+                foreach (string file in files)
                 {
+                    if (file.Contains("Nvda.Build.CudaTasks"))
+                    {
                         Assembly assembly = Assembly.LoadFrom(file);
                         return assembly;
+                    }
                 }
-            }
-            return null;
+                return null;
             }
             catch
             {
@@ -1225,16 +1228,23 @@ FXCompile
                 ICollection<Microsoft.Build.Evaluation.ProjectItem> customBuildItems = buildProject.GetItems("CustomBuild");
                 foreach(Microsoft.Build.Evaluation.ProjectItem item in customBuildItems)
                 {
-                    Log.OutputDebugLine(item.EvaluatedInclude);
+                    //Log.OutputDebugLine(item.EvaluatedInclude);
                     string linkObjects = item.GetMetadataValue("LinkObjects");
-                    if("true" != linkObjects)
+                    if ("true" != linkObjects)
                     {
                         continue;
                     }
-                    foreach(var metadata in item.Metadata)
-                    {
-                        Log.OutputDebugLine($"{metadata.Name} = {metadata.EvaluatedValue}");
-                    }
+                    //foreach(var metadata in item.Metadata)
+                    //{
+                    //    Log.OutputDebugLine($"{metadata.Name} = {metadata.EvaluatedValue}");
+                    //}
+                    //Command = ml64.exe /c /nologo /Fo"D:\Projects\OpenSiv3D\WindowsDesktop\Intermediate\Siv3D\Debug\Intermediate\as_callfunc_x64_msvc_asm.obj" /W3 /Ta "D:\Projects\OpenSiv3D\Siv3D\src\ThirdParty\angelscript\\as_callfunc_x64_msvc_asm.asm"
+                    //Outputs = D:\Projects\OpenSiv3D\WindowsDesktop\Intermediate\Siv3D\Debug\Intermediate\as_callfunc_x64_msvc_asm.obj;
+                    string commans = item.GetMetadataValue("Command").Replace("\\\\", "\\").Replace("\\", "/");
+                    string output = item.GetMetadataValue("Outputs").Replace("\\", "/");
+                    string extension = System.IO.Path.GetExtension(output).Replace(".", string.Empty).Replace(";", string.Empty);
+                    project.CompileItems.Add(new FBCompileItem() {Type=ItemType.Custom, Command=commans, Output=output, OutputExtension=extension});
+                    project.ExistsFlags.Set((int)ItemType.Custom, true);
                 }
             }
         }
