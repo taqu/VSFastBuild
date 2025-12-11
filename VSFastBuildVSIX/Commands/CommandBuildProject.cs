@@ -400,7 +400,9 @@ namespace VSFastBuildVSIX
                     Type typeRC = CPPTasksAssembly.GetType("Microsoft.Build.CPPTasks.RC");
                     Type typeLink = CPPTasksAssembly.GetType("Microsoft.Build.CPPTasks.Link");
                     Type typeLIB = CPPTasksAssembly.GetType("Microsoft.Build.CPPTasks.LIB");
-                    if (null != typeCL && null != typeRC && null != typeLink && null != typeLIB)
+                    Type typeFXC = CPPTasksAssembly.GetType("Microsoft.Build.FXCTask.FXC");
+                    Type typeCustom = CPPTasksAssembly.GetType("Microsoft.Build.CPPTasks.CustomBuild");
+                    if (null != typeCL && null != typeRC && null != typeLink && null != typeLIB && null != typeFXC && null != typeCustom)
                     {
                         return CPPTasksAssembly;
                     }
