@@ -32,7 +32,7 @@ namespace VSFastBuildVSIX
 
         public static async Task<VSFastBuildVSIXPackage> GetPackageAsync()
         {
-			VSFastBuildVSIXPackage package;
+            VSFastBuildVSIXPackage package;
             if (null != package_ && package_.TryGetTarget(out package))
             {
                 return package;

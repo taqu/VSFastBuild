@@ -51,11 +51,12 @@ namespace VSFastBuildVSIX
             if (package.IsBuildProcessRunning())
             {
                 package.CancelBuildProcess();
-                await StopMonitor(package);
+                await StopMonitorAsync(package);
                 return;
             }
             commandText_ = Command.Text;
             Command.Text = "Cancel " + commandText_;
+
             await ThreadHelper.JoinableTaskFactory.SwitchToMainThreadAsync();
             EnvDTE80.DTE2 dte = package.DTE;
             SelectedItems selectedItems = dte.SelectedItems;
@@ -99,7 +100,7 @@ namespace VSFastBuildVSIX
                 return;
             }
             targets.Sort((x0,x1)=>{
-                    return string.Compare(x0.Name, x1.Name);
+                return string.Compare(x0.Name, x1.Name);
             });
             StringBuilder stringBuilder = new StringBuilder();
             foreach (EnvDTE.Project p in targets)
@@ -139,7 +140,7 @@ namespace VSFastBuildVSIX
             public EnvDTE.Project project_;
             public ProjectInSolution projectInSolution_;
         }
-        public static async Task StartMonitor(ToolkitPackage package, bool show=false)
+        public static async Task StartMonitorAsync(ToolkitPackage package, bool show=false)
         {
             ToolkitToolWindowPane pane;
             if (show)
@@ -160,7 +161,7 @@ namespace VSFastBuildVSIX
             }
         }
 
-        public static async Task StopMonitor(ToolkitPackage package)
+        public static async Task StopMonitorAsync(ToolkitPackage package)
         {
             ToolkitToolWindowPane pane = await package.FindToolWindowAsync(typeof(ToolWindowMonitor.Pane), 0, false, new CancellationToken()) as ToolkitToolWindowPane;
             if (null != pane)
@@ -173,7 +174,7 @@ namespace VSFastBuildVSIX
             }
         }
 
-        public static async Task ResetMonitor(ToolkitPackage package)
+        public static async Task ResetMonitorAsync(ToolkitPackage package)
         {
             ToolkitToolWindowPane pane = await package.FindToolWindowAsync(typeof(ToolWindowMonitor.Pane), 0, false, new CancellationToken()) as ToolkitToolWindowPane;
             if (null != pane)
@@ -407,7 +408,6 @@ namespace VSFastBuildVSIX
             }
             return CPPTasksAssembly;
         }
-
         private static Assembly GetCUDATaskAssembly(string CUDAPath)
         {
             try
@@ -441,6 +441,7 @@ namespace VSFastBuildVSIX
 
         private class BuildContext
         {
+            public ProjectCollection projectCollection_ = new ProjectCollection();
             public Assembly CppTaskAssembly_;
             public Assembly CUDATaskAssembly_;
             public string VCTargetsPath_ = string.Empty;
@@ -607,11 +608,6 @@ namespace VSFastBuildVSIX
             buildContext.WindowsSDK_LibraryPath_ = GetFirstPath(activeConfig.Evaluate("$(WindowsSDK_LibraryPath_x64)"));
             buildContext.WindowsSDK_ExecutablePath_ = GetFirstPath(activeConfig.Evaluate("$(WindowsSDK_ExecutablePath_x64)"));
             buildContext.WindowsSDKDir_ = GetFirstPath(activeConfig.Evaluate("$(WindowsSDKDir)"));
-            buildContext.CppTaskAssembly_ = GetCPPTaskAssembly(buildContext.VCTargetsPath_);
-            if (null == buildContext.CppTaskAssembly_)
-            {
-                return false;
-            }
             //buildContext.CLTask_ = Activator.CreateInstance(buildContext.CppTaskAssembly_.GetType("Microsoft.Build.CPPTasks.CL")) as ToolTask;
             //buildContext.LIBTask_ = Activator.CreateInstance(buildContext.CppTaskAssembly_.GetType("Microsoft.Build.CPPTasks.LIB")) as ToolTask;
             //buildContext.RCTask_ = Activator.CreateInstance(buildContext.CppTaskAssembly_.GetType("Microsoft.Build.CPPTasks.RC")) as ToolTask;
@@ -683,7 +679,7 @@ namespace VSFastBuildVSIX
                             vSFastProject.dependencies_.Add(dependentProject);
                         }
                     }
-                    vSFastProject.buildProject_ = new Microsoft.Build.Evaluation.Project(vSFastProject.project_.FullName, buildContext.globalProperties_, null);
+                    vSFastProject.buildProject_ = new Microsoft.Build.Evaluation.Project(vSFastProject.project_.FullName, buildContext.globalProperties_, null, buildContext.projectCollection_);
                     vSFastProjects.Add(vSFastProject);
                 }
                 TopologicalSort(vSFastProjects);
@@ -691,7 +687,21 @@ namespace VSFastBuildVSIX
             string hash = string.Empty;
             if(!CheckRebuild(bffpath, vSFastProjects, out hash))
             {
+                buildContext.projectCollection_.UnloadAllProjects();
                 return true;
+            }
+
+            buildContext.CppTaskAssembly_ = GetCPPTaskAssembly(buildContext.VCTargetsPath_);
+            if (null == buildContext.CppTaskAssembly_)
+            {
+                buildContext.projectCollection_.UnloadAllProjects();
+                return false;
+            }
+
+            if (buildContext.environments_.ContainsKey("CUDA_PATH"))
+            {
+                buildContext.CUDAPath_ = buildContext.environments_["CUDA_PATH"];
+                buildContext.CUDATaskAssembly_ = GetCUDATaskAssembly(buildContext.CUDAPath_);
             }
 
             {
@@ -756,12 +766,6 @@ namespace VSFastBuildVSIX
                 }
                 buildContext.environments_ = directory;
             }
-            if (buildContext.environments_.ContainsKey("CUDA_PATH"))
-            {
-                buildContext.CUDAPath_ = buildContext.environments_["CUDA_PATH"];
-                buildContext.CUDATaskAssembly_ = GetCUDATaskAssembly(buildContext.CUDAPath_);
-            }
-
             // Gather items
             BitArray existsFlags = new BitArray((int)ItemType.Num);
             foreach (VSFastProject project in vSFastProjects)
@@ -884,6 +888,10 @@ namespace VSFastBuildVSIX
                 stringBuilder.AppendLine(".Compiler_RC = 'Compiler_RC'");
             }
 
+            if (existsFlags[(int)ItemType.CUDA])
+            {
+            }
+
             // Librarian
             {
                 buildContext.LibrarianPath_ = $"{buildContext.VC_ExecutablePath_}/lib.exe";
@@ -944,6 +952,7 @@ namespace VSFastBuildVSIX
                 System.IO.File.WriteAllText(System.IO.Path.Combine(fbuilddir, cleanname), cleanBuilder.ToString());
             }
             System.IO.File.WriteAllText(bffpath, stringBuilder.ToString());
+            buildContext.projectCollection_.UnloadAllProjects();
             return true;
         }
 
@@ -1204,10 +1213,17 @@ CudaCompile
 MASM
 FXCompile
             */
-            { // Cuda Compile
+            // CUDA Compile
+            if(null != buildContext.CUDATaskAssembly_){
                 ICollection<Microsoft.Build.Evaluation.ProjectItem> cudaCompileItems = buildProject.GetItems("CudaCompile");
                 foreach(Microsoft.Build.Evaluation.ProjectItem item in cudaCompileItems)
                 {
+                    string[] propertiesToSkip = new string[] { "ObjectFileName", "AssemblerListingLocation", "DiagnosticsFormat" };
+                    object task = Activator.CreateInstance(buildContext.CUDATaskAssembly_.GetType("Nvda.Build.CudaTasks.GenerateDeps"));
+                    Microsoft.Build.Utilities.ToolTask toolTask = task as Microsoft.Build.Utilities.ToolTask;
+                    string tempCompilerOptions = GenerateTaskCommandLine(toolTask, propertiesToSkip, item.Metadata) + " /FS";
+                    StringBuilder optionBuilder = buildContext.optionBuilder_.Clear();
+
                     Log.OutputDebugLine(item.EvaluatedInclude);
                     string linkObjects = item.GetMetadataValue("LinkObjects");
                     foreach(var metadata in item.Metadata)

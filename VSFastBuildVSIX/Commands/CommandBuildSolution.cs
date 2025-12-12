@@ -5,6 +5,7 @@ using Microsoft.VisualStudio.Threading;
 using Microsoft.VisualStudio.VCProjectEngine;
 using System.Collections.Generic;
 using System.Configuration;
+using System.Diagnostics;
 using System.Linq;
 using VSFastBuildCommon;
 using VSFastBuildVSIX.Options;
@@ -26,7 +27,7 @@ namespace VSFastBuildVSIX.Commands
             if (package.IsBuildProcessRunning())
             {
                 package.CancelBuildProcess();
-                await CommandBuildProject.StopMonitor(package);
+                await CommandBuildProject.StopMonitorAsync(package);
                 return;
             }
             commandText_ = Command.Text;
@@ -64,6 +65,7 @@ namespace VSFastBuildVSIX.Commands
             targets.RemoveAll(
                 x =>
                 {
+                    Microsoft.VisualStudio.Shell.ThreadHelper.ThrowIfNotOnUIThread();
                     foreach (string exclude in CommandBuildProject.ExcludeProjects)
                     {
                         string uniqueName = x.UniqueName;
@@ -83,12 +85,22 @@ namespace VSFastBuildVSIX.Commands
             }
             targets.Sort((x0, x1) =>
             {
+                Microsoft.VisualStudio.Shell.ThreadHelper.ThrowIfNotOnUIThread();
                 return string.Compare(x0.Name, x1.Name);
             });
             string rootDirectory = System.IO.Path.GetDirectoryName(dte.Solution.FullName);
             string bffname = string.Format("fbuild_{0}_{1}.bff", solutionConfiguration.Name, solutionConfiguration.PlatformName);
             string bffpath = System.IO.Path.Combine(rootDirectory, bffname);
-            bool result = await CommandBuildProject.BuildForSolutionAsync(package, targets, bffpath);
+            bool result = false;
+
+            try
+            {
+                result = await CommandBuildProject.BuildForSolutionAsync(package, targets, bffpath);
+            }
+            catch (Exception ex)
+            {
+                await Log.OutputDebugLineAsync(ex.Message);
+            }
             if (result)
             {
                 OptionsPage optionPage = VSFastBuildVSIXPackage.Options;
@@ -101,8 +113,9 @@ namespace VSFastBuildVSIX.Commands
                     ToolWindowMonitorControl.TruncateLogFile();
                     if (process.Start())
                     {
+                        await CommandBuildProject.ResetMonitorAsync(package);
                         if (openMonitor) {
-                            await CommandBuildProject.StartMonitor(package, true);
+                            await CommandBuildProject.StartMonitorAsync(package, true);
                         }
                         await process.WaitForExitAsync(package.CancellationToken);
                     }
@@ -113,7 +126,7 @@ namespace VSFastBuildVSIX.Commands
                 }
                 finally
                 {
-                    await CommandBuildProject.StopMonitor(package);
+                    await CommandBuildProject.StopMonitorAsync(package);
                 }
             }
             CommandBuildProject.LeaveProcess(package, Command, commandText_);
