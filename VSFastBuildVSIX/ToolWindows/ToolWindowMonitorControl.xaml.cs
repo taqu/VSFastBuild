@@ -49,6 +49,7 @@ namespace VSFastBuildVSIX
         public const string PrepareBuildStepsText = "Preparing Build Steps";
         public const long TargetPIDCheckPeriodMS = 1 * 1000;
         private const string FastBuildLogPath = @"\FastBuild\FastBuildLog.log";
+        private const int MillisecondsForUpdate = 500;
 
         public static class CommandArgumentIndex
         {
@@ -314,7 +315,7 @@ namespace VSFastBuildVSIX
                 //update timer
                 timer_ = new DispatcherTimer();
                 timer_.Tick += HandleTick;
-                timer_.Interval = new TimeSpan(TimeSpan.TicksPerMillisecond * 1334);
+                timer_.Interval = new TimeSpan(TimeSpan.TicksPerMillisecond * MillisecondsForUpdate);
                 timer_.Start();
             }));
             return true;

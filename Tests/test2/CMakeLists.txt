@@ -17,6 +17,7 @@ set(HEADERS
 set(SOURCES
     "${SOURCE_ROOT}/as_callfunc_x64_msvc_asm.asm"
     "${SOURCE_ROOT}/vectorAdd.cu"
+    "${SOURCE_ROOT}/vectorMul.cu"
     "${SOURCE_ROOT}/test2.cpp")
 
 set(RESOURCES
@@ -61,5 +62,13 @@ set_target_properties(${PROJECT_NAME}
         OUTPUT_NAME_DEBUG "${PROJECT_NAME}" OUTPUT_NAME_RELEASE "${PROJECT_NAME}"
         VS_DEBUGGER_WORKING_DIRECTORY "${OUTPUT_DIRECTORY}")
 
+add_custom_command(TARGET ${PROJECT_NAME} PRE_BUILD
+    COMMAND ${CMAKE_COMMAND} -E cmake_echo_color --cyan "prebuild"
+    COMMENT "Prebuild Message")
+add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD
+    COMMAND ${CMAKE_COMMAND} -E cmake_echo_color --cyan "postbuild"
+    COMMENT "Postbuild Message")
+
 add_dependencies(${PROJECT_NAME} test0 test1)
+
 

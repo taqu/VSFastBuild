@@ -107,7 +107,7 @@ namespace VSFastBuildVSIX.Commands
                 string fbuildPath = optionPage.Path;
                 string fbuldArgs = optionPage.Arguments;
                 bool openMonitor = optionPage.OpenMonitor;
-                System.Diagnostics.Process process = CommandBuildProject.CreateProcessFromBffFile(bffpath, rootDirectory, fbuildPath, fbuldArgs);
+                System.Diagnostics.Process process = CommandBuildProject.CreateProcessFromBffFile(bffpath, fbuildPath, fbuldArgs);
                 try
                 {
                     ToolWindowMonitorControl.TruncateLogFile();

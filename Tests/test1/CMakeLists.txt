@@ -60,6 +60,10 @@ add_custom_command(OUTPUT sample2.o
                    COMMAND D:/Programs/ispc/bin/ispc.exe --target=sse2 ${SOURCE_ROOT}/sample2.ispc -o sample2.o
                    DEPENDS sample2.ispc)
 
+add_custom_command(TARGET ${PROJECT_NAME} PRE_BUILD
+    COMMAND ${CMAKE_COMMAND} -E cmake_echo_color --cyan "prebuild"
+    COMMENT "Prebuild Message")
+
 add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD
     COMMAND ${CMAKE_COMMAND} -E copy_if_different
         $<TARGET_FILE:${PROJECT_NAME}> 
