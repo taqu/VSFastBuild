@@ -1,15 +1,12 @@
 using Blake2Fast;
-using Community.VisualStudio.Toolkit;
 using EnvDTE;
 using EnvDTE80;
 using Microsoft.Build.Construction;
 using Microsoft.Build.Evaluation;
 using Microsoft.Build.Utilities;
-using Microsoft.VisualStudio.PlatformUI.OleComponentSupport;
-using Microsoft.VisualStudio.Shell.Interop;
 using Microsoft.VisualStudio.Threading;
 using Microsoft.VisualStudio.VCProjectEngine;
-using System;
+using SharpCompress.Compressors.Xz;
 using System.Buffers;
 using System.Collections;
 using System.Collections.Generic;
@@ -20,11 +17,7 @@ using System.Reflection;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
-using System.Web.UI.Design;
-using System.Windows.Markup;
-using System.Windows.Media.Media3D;
 using VSFastBuildVSIX.Options;
-using static System.Net.Mime.MediaTypeNames;
 
 namespace VSFastBuildVSIX
 {
@@ -105,7 +98,8 @@ namespace VSFastBuildVSIX
                 LeaveProcess(package, Command, commandText_);
                 return;
             }
-            targets.Sort((x0,x1)=>{
+            targets.Sort((x0, x1) =>
+            {
                 return string.Compare(x0.Name, x1.Name);
             });
             StringBuilder stringBuilder = new StringBuilder();
@@ -120,45 +114,143 @@ namespace VSFastBuildVSIX
             string rootDirectory = System.IO.Path.GetDirectoryName(package.DTE.Solution.FullName);
             string bffname = string.Format("fbuild_{0}_{1}_{2}.bff", hash, solutionConfiguration.Name, solutionConfiguration.PlatformName);
             string bffpath = System.IO.Path.Combine(rootDirectory, bffname);
-            bool result = false;
+            Result result;
             try
             {
                 result = await CommandBuildProject.BuildForSolutionAsync(package, targets, bffpath);
+                await RunProcessAsync(result, package, bffpath);
             }
             catch (Exception ex)
             {
                 await Log.OutputDebugLineAsync(ex.Message);
             }
-            if (result)
+            LeaveProcess(package, Command, commandText_);
+        }
+
+        public struct ResultProject
+        {
+            public string name_;
+            public string projectDir_;
+            public string intDir_;
+        }
+
+        public struct Result
+        {
+            public bool success_;
+            public string tracker_;
+            public List<ResultProject> projects_;
+        }
+
+        public static async Task RunProcessAsync(Result result, VSFastBuildVSIXPackage package, string bffpath)
+        {
+            if (!result.success_)
             {
-                OptionsPage optionPage = VSFastBuildVSIXPackage.Options;
-                string fbuildPath = optionPage.Path;
-                string fbuldArgs = optionPage.Arguments;
-                bool openMonitor = optionPage.OpenMonitor;
-                System.Diagnostics.Process process = CommandBuildProject.CreateProcessFromBffFile(bffpath, fbuildPath, fbuldArgs);
+                return;
+            }
+
+            OptionsPage optionPage = VSFastBuildVSIXPackage.Options;
+            string fbuildPath = optionPage.Path;
+            string fbuldArgs = optionPage.Arguments;
+            bool openMonitor = optionPage.OpenMonitor;
+            string arguments = $"/c \"{fbuildPath}\" -config \"{bffpath}\" {fbuldArgs}";
+            if (!fbuldArgs.Contains("-j"))
+            {
+                int numProcessors = VSFastBuildCommon.SystemEnvironment.GetPhysicalProcessorCount();
+                arguments += $" -j{numProcessors}";
+            }
+
+            await Log.AddOutputPaneAsync(Log.PaneBuild);
+            ToolWindowMonitorControl.TruncateLogFile();
+            await CommandBuildProject.ResetMonitorAsync(package);
+            if (openMonitor)
+            {
+                await CommandBuildProject.StartMonitorAsync(package, true);
+            }
+
+            for (int i = 0; i < result.projects_.Count; ++i)
+            {
                 try
                 {
-                    ToolWindowMonitorControl.TruncateLogFile();
+                    string tlogDir = System.IO.Path.Combine(result.projects_[i].intDir_, result.projects_[i].name_ + ".tlog");
+                    System.Diagnostics.Process process = CommandBuildProject.CreateProcess(arguments, i, result, tlogDir);
                     if (process.Start())
                     {
-                        await CommandBuildProject.ResetMonitorAsync(package);
-                        if (openMonitor) {
-                            await CommandBuildProject.StartMonitorAsync(package, true);
-                        }
+                        process.BeginOutputReadLine();
+                        process.BeginErrorReadLine();
                         await process.WaitForExitAsync(package.CancellationToken);
+                        process.CancelErrorRead();
+                        process.CancelOutputRead();
+                        GetTLogFiles(tlogDir);
                     }
                 }
-                catch(Exception ex)
+                catch (Exception ex)
                 {
                     Log.OutputDebugLine(ex.Message);
                 }
-                finally
-                {
-                    await CommandBuildProject.StopMonitorAsync(package);
-                }
             }
-            LeaveProcess(package, Command, commandText_);
+            await CommandBuildProject.StopMonitorAsync(package);
         }
+
+        public static System.Diagnostics.Process CreateProcess(string arguments, int index, Result result, string tlogDir)
+        {
+            try
+            {
+                if (!System.IO.Directory.Exists(tlogDir))
+                {
+                    System.IO.Directory.CreateDirectory(tlogDir);
+                }
+                System.Diagnostics.Process FBProcess = new System.Diagnostics.Process();
+                FBProcess.StartInfo.FileName = result.tracker_;
+                FBProcess.StartInfo.Arguments = $"/i \"{tlogDir}\" {arguments}";
+                FBProcess.StartInfo.RedirectStandardOutput = true;
+                FBProcess.StartInfo.RedirectStandardError = true;
+                FBProcess.StartInfo.CreateNoWindow = true;
+                FBProcess.StartInfo.UseShellExecute = false;
+                FBProcess.StartInfo.WorkingDirectory = result.projects_[index].projectDir_;
+                FBProcess.OutputDataReceived += new DataReceivedEventHandler(FBProcess_OnOutputDataReceived);
+                FBProcess.ErrorDataReceived += new DataReceivedEventHandler(FBProcess_OnErrorDataReceived);
+                return FBProcess;
+            }
+            catch (Exception e)
+            {
+                return null;
+            }
+        }
+
+        private static void FBProcess_OnOutputDataReceived(object sender, DataReceivedEventArgs e)
+        {
+            if (!string.IsNullOrEmpty(e.Data))
+            {
+                Log.OutputBuildLine(e.Data);
+            }
+        }
+
+        private static void FBProcess_OnErrorDataReceived(object sender, DataReceivedEventArgs e)
+        {
+            if (!string.IsNullOrEmpty(e.Data))
+            {
+                Log.OutputBuildLine(e.Data);
+            }
+        }
+
+        private static void GetTLogFiles(string tloDir)
+        {
+            string[] inputs = System.IO.Directory.GetFiles(tloDir, "*.read.1.tlog");
+            Microsoft.Build.Utilities.TaskItem[] inputItems = new Microsoft.Build.Utilities.TaskItem[inputs.Length];
+            for(int i=0; i<inputs.Length; ++i)
+            {
+                inputItems[i] = new Microsoft.Build.Utilities.TaskItem(inputs[i]);
+            }
+            string[] outputs = System.IO.Directory.GetFiles(tloDir, "*.write.1.tlog");
+            Microsoft.Build.Utilities.TaskItem[] outputItems = new Microsoft.Build.Utilities.TaskItem[inputs.Length];
+            for(int i=0; i<outputs.Length; ++i)
+            {
+                outputItems[i] = new Microsoft.Build.Utilities.TaskItem(outputs[i]);
+            }
+            CanonicalTrackedOutputFiles canonicalTrackedOutputFiles = new CanonicalTrackedOutputFiles(outputItems);
+            canonicalTrackedOutputFiles.SaveTlog();
+        }
+
 
         public static void GatherProjectFiles(List<ProjectInSolution> projects, ProjectInSolution project, List<ProjectInSolution> projectsInSolution)
         {
@@ -182,7 +274,7 @@ namespace VSFastBuildVSIX
             public EnvDTE.Project project_;
             public ProjectInSolution projectInSolution_;
         }
-        public static async Task StartMonitorAsync(ToolkitPackage package, bool show=false)
+        public static async Task StartMonitorAsync(ToolkitPackage package, bool show = false)
         {
             ToolkitToolWindowPane pane;
             if (show)
@@ -258,7 +350,7 @@ namespace VSFastBuildVSIX
             public ItemType Type => type_;
             public string Options => options_;
             public CustomBuildItem CustomBuildItem => customBuild_;
-            public string OutputExtension => outputExtension_; 
+            public string OutputExtension => outputExtension_;
             public List<string> InputFiles => inputFiles_;
 
             private ItemType type_;
@@ -276,7 +368,7 @@ namespace VSFastBuildVSIX
                 outputExtension_ = string.Empty;
             }
 
-            public FBCompileItem(ItemType type, string inputFile, string options, string outputExtension=Empty)
+            public FBCompileItem(ItemType type, string inputFile, string options, string outputExtension = Empty)
             {
                 type_ = type;
                 inputFiles_ = new List<string>(16) { inputFile };
@@ -285,9 +377,9 @@ namespace VSFastBuildVSIX
                 outputExtension_ = outputExtension;
             }
 
-            public bool AddIfMatches(ItemType type, string inputFile, string options, string outputExtension=Empty)
+            public bool AddIfMatches(ItemType type, string inputFile, string options, string outputExtension = Empty)
             {
-                if(type_ == ItemType.Custom)
+                if (type_ == ItemType.Custom)
                 {
                     return false;
                 }
@@ -408,7 +500,7 @@ namespace VSFastBuildVSIX
             }
             return CPPTasksAssembly;
         }
-        #if false
+#if false
         private static Assembly GetCUDATaskAssembly(string CUDAPath)
         {
             try
@@ -430,7 +522,7 @@ namespace VSFastBuildVSIX
                 return null;
             }
         }
-        #endif
+#endif
 
         private static void AddExtraDlls(StringBuilder stringBuilder, string rootDir, string pattern)
         {
@@ -469,7 +561,7 @@ namespace VSFastBuildVSIX
             public IDictionary<string, string> globalProperties_;
         }
 
-        
+
         public static string ByteArrayToHexString(byte[] bytes)
         {
             return string.Concat(Array.ConvertAll(bytes, x => x.ToString("X2")));
@@ -477,9 +569,9 @@ namespace VSFastBuildVSIX
 
         public static string ByteArrayToHexStringHalf(byte[] bytes)
         {
-            Span<byte> span = bytes.AsSpan().Slice(0, bytes.Length/2);
+            Span<byte> span = bytes.AsSpan().Slice(0, bytes.Length / 2);
             StringBuilder builder = new StringBuilder();
-            foreach(byte b in span)
+            foreach (byte b in span)
             {
                 builder.Append(b.ToString("X2"));
             }
@@ -492,9 +584,9 @@ namespace VSFastBuildVSIX
             {
                 return path;
             }
-            if (path[path.Length-1] == '/' || path[path.Length-1] == '\\')
+            if (path[path.Length - 1] == '/' || path[path.Length - 1] == '\\')
             {
-                return path.Substring(0, path.Length-1);
+                return path.Substring(0, path.Length - 1);
             }
             return path;
         }
@@ -514,10 +606,11 @@ namespace VSFastBuildVSIX
             {
                 try
                 {
-                    using(System.IO.FileStream fileStream = System.IO.File.OpenRead(vsFastProject.project_.FullName))
+                    using (System.IO.FileStream fileStream = System.IO.File.OpenRead(vsFastProject.project_.FullName))
                     {
                         int bytesRead;
-                        while (0<(bytesRead = fileStream.Read(buffer, 0, buffer.Length))) {
+                        while (0 < (bytesRead = fileStream.Read(buffer, 0, buffer.Length)))
+                        {
                             hasher.Update(buffer.AsSpan(0, bytesRead));
                         }
                     }
@@ -546,7 +639,7 @@ namespace VSFastBuildVSIX
         public static string GetVSMainVersion(string version)
         {
             int period = version.IndexOf(".");
-            return period<0? version : version.Substring(0, period);
+            return period < 0 ? version : version.Substring(0, period);
         }
 
         private static void AddPathList(List<string> paths, string arg)
@@ -577,7 +670,7 @@ namespace VSFastBuildVSIX
         }
 
 
-        public static async Task<bool> BuildForSolutionAsync(VSFastBuildVSIXPackage package, List<EnvDTE.Project> projects, string bffpath)
+        public static async Task<Result> BuildForSolutionAsync(VSFastBuildVSIXPackage package, List<EnvDTE.Project> projects, string bffpath)
         {
             await ThreadHelper.JoinableTaskFactory.SwitchToMainThreadAsync();
             System.Diagnostics.Debug.Assert(null != package);
@@ -626,6 +719,7 @@ namespace VSFastBuildVSIX
             };
 
             List<VSFastProject> vSFastProjects = new List<VSFastProject>(projects.Capacity);
+            Result result;
             {
                 foreach (EnvDTE.Project project in projects)
                 {
@@ -634,7 +728,7 @@ namespace VSFastBuildVSIX
                     {
                         continue;
                     }
-                    VSFastProject vSFastProject = new() { targetName_ = project.Name,project_ = project, dependNames_ = new List<string>(), dependencies_ = new List<VSFastProject>(), uniqueName_ = project.UniqueName, postDepend_ = project.Name};
+                    VSFastProject vSFastProject = new() { targetName_ = project.Name, project_ = project, dependNames_ = new List<string>(), dependencies_ = new List<VSFastProject>(), uniqueName_ = project.UniqueName, postDepend_ = project.Name };
 
                     object[] requiredProjects = buildDependency.RequiredProjects as object[];
                     foreach (object item in requiredProjects)
@@ -674,13 +768,35 @@ namespace VSFastBuildVSIX
                     vSFastProjects.Add(vSFastProject);
                 }
                 TopologicalSort(vSFastProjects);
-                foreach(VSFastProject vSFastProject in vSFastProjects)
+
+                result = new Result()
                 {
-                    foreach(string dependName in vSFastProject.dependNames_)
+                    success_ = false,
+                    tracker_ = System.IO.Path.Combine(buildContext.vsEnvironment_.ToolsInstall, "MSBuild", "Current", "Bin", "amd64", "Tracker.exe"),
+                    projects_ = new List<ResultProject>(vSFastProjects.Count)
+                };
+
+                foreach (VSFastProject vSFastProject in vSFastProjects)
+                {
+                    Microsoft.Build.Evaluation.Project buildProject = vSFastProject.buildProject_;
+                    vSFastProject.configType_ = buildProject.GetProperty("ConfigurationType").EvaluatedValue;
+                    vSFastProject.rootDir_ = System.IO.Path.GetDirectoryName(buildProject.FullPath);
+                    vSFastProject.intDir_ = buildProject.GetProperty("IntDirFullPath").EvaluatedValue.Replace("\\", "/");
+                    vSFastProject.compilerPDB_ = ChopLastFileSeparator(buildProject.GetProperty("IntDirFullPath").EvaluatedValue);
+                    vSFastProject.linkerPDB_ = System.IO.Path.Combine(buildProject.GetProperty("OutDirFullPath").EvaluatedValue, $"{vSFastProject.targetName_}.pdb");
+                    ResultProject resultProject = new ResultProject()
                     {
-                        foreach(VSFastProject dependentProject in vSFastProjects)
+                        name_ = vSFastProject.targetName_,
+                        projectDir_ = vSFastProject.rootDir_,
+                        intDir_ = vSFastProject.intDir_,
+                    };
+                    result.projects_.Add(resultProject);
+
+                    foreach (string dependName in vSFastProject.dependNames_)
+                    {
+                        foreach (VSFastProject dependentProject in vSFastProjects)
                         {
-                            if(dependentProject.uniqueName_ == dependName)
+                            if (dependentProject.uniqueName_ == dependName)
                             {
                                 vSFastProject.dependencies_.Add(dependentProject);
                                 break;
@@ -690,17 +806,19 @@ namespace VSFastBuildVSIX
                 }
             }
             string hash = string.Empty;
-            if(!CheckRebuild(bffpath, vSFastProjects, out hash))
+            if (!CheckRebuild(bffpath, vSFastProjects, out hash))
             {
                 buildContext.projectCollection_.UnloadAllProjects();
-                return true;
+                result.success_ = true;
+                return result;
             }
 
             buildContext.CppTaskAssembly_ = GetCPPTaskAssembly(buildContext.VCTargetsPath_);
             if (null == buildContext.CppTaskAssembly_)
             {
                 buildContext.projectCollection_.UnloadAllProjects();
-                return false;
+                result.success_ = false;
+                return result;
             }
 
             if (buildContext.environments_.ContainsKey("CUDA_PATH"))
@@ -709,33 +827,42 @@ namespace VSFastBuildVSIX
             }
 
             {
-                Dictionary<string, List<string>> paths= new Dictionary<string, List<string>>() {
+                Dictionary<string, List<string>> paths = new Dictionary<string, List<string>>() {
                     { "PATH", new List<string>() },
                     { "LIB", new List<string>() },
                     { "LIBPATH", new List<string>() },
                     { "INCLUDE", new List<string>() },
                 };
-                foreach(KeyValuePair<string, string> environment in buildContext.environments_)
+                foreach (KeyValuePair<string, string> environment in buildContext.environments_)
                 {
-                    if(string.Compare(environment.Key, "PATH", true) == 0){
+                    if (string.Compare(environment.Key, "PATH", true) == 0)
+                    {
                         AddPathList(paths["PATH"], environment.Value);
 
-                    }else if(string.Compare(environment.Key, "LIB", true) == 0){
+                    }
+                    else if (string.Compare(environment.Key, "LIB", true) == 0)
+                    {
                         AddPathList(paths["LIB"], environment.Value);
 
-                    }else if(string.Compare(environment.Key, "LIBPATH", true) == 0){
+                    }
+                    else if (string.Compare(environment.Key, "LIBPATH", true) == 0)
+                    {
                         AddPathList(paths["LIBPATH"], environment.Value);
 
-                    }else if(string.Compare(environment.Key, "INCLUDE", true) == 0){
+                    }
+                    else if (string.Compare(environment.Key, "INCLUDE", true) == 0)
+                    {
                         AddPathList(paths["INCLUDE"], environment.Value);
 
-                    }else if(string.Compare(environment.Key, "CUDA_PATH", true) == 0){
+                    }
+                    else if (string.Compare(environment.Key, "CUDA_PATH", true) == 0)
+                    {
                         buildContext.CUDAPath_ = environment.Value.Replace("\\", "/");
                     }
                 }
-                foreach(VSFastProject project in vSFastProjects)
+                foreach (VSFastProject project in vSFastProjects)
                 {
-                    string rootDir =System.IO.Path.GetDirectoryName(project.buildProject_.FullPath);
+                    string rootDir = System.IO.Path.GetDirectoryName(project.buildProject_.FullPath);
                     AddPathList(paths["PATH"], rootDir, project.buildProject_.GetProperty("Path").EvaluatedValue);
                     AddPathList(paths["LIB"], rootDir, project.buildProject_.GetProperty("LibraryPath").EvaluatedValue);
                     AddPathList(paths["LIBPATH"], rootDir, project.buildProject_.GetProperty("ReferencePath").EvaluatedValue);
@@ -773,7 +900,7 @@ namespace VSFastBuildVSIX
                 buildContext.environments_ = directory;
                 if (!string.IsNullOrEmpty(pathKey) && buildContext.environments_.ContainsKey(pathKey))
                 {
-                    buildContext.pathes_ = buildContext.environments_[pathKey].Split(new char[]{';' }, StringSplitOptions.RemoveEmptyEntries).ToList();
+                    buildContext.pathes_ = buildContext.environments_[pathKey].Split(new char[] { ';' }, StringSplitOptions.RemoveEmptyEntries).ToList();
                 }
                 else
                 {
@@ -808,11 +935,11 @@ namespace VSFastBuildVSIX
 
             {
                 List<string> keyvalue = new List<string>(buildContext.environments_.Count);
-                foreach(KeyValuePair<string, string> environment in buildContext.environments_)
+                foreach (KeyValuePair<string, string> environment in buildContext.environments_)
                 {
                     keyvalue.Add($"  '{environment.Key}={environment.Value}'");
                 }
-                string envs = string.Join(","+Environment.NewLine, keyvalue);
+                string envs = string.Join("," + Environment.NewLine, keyvalue);
                 stringBuilder.AppendLine(".LocalEnv =");
                 stringBuilder.AppendLine("{");
                 stringBuilder.AppendLine(envs);
@@ -828,7 +955,7 @@ namespace VSFastBuildVSIX
                 stringBuilder.AppendLine("Compiler('Compiler_CXX')");
                 stringBuilder.AppendLine("{");
                 stringBuilder.AppendLine($"  .Root = '{buildContext.VC_ExecutablePath_}'");
-                stringBuilder.AppendLine($"  .Executable = '{buildContext.VC_ExecutablePath_}/cl.exe'");
+                stringBuilder.AppendLine($"  .Executable = '{buildContext.VC_ExecutablePath_}/CL.exe'");
                 stringBuilder.AppendLine("  .CompilerFamily = 'msvc'");
                 stringBuilder.AppendLine("  .Environment = .LocalEnv");
                 stringBuilder.AppendLine("  .ExtraFiles =");
@@ -873,7 +1000,7 @@ namespace VSFastBuildVSIX
                 stringBuilder.AppendLine("Compiler('Compiler_RC')");
                 stringBuilder.AppendLine("{");
                 stringBuilder.AppendLine($"  .Root = '{buildContext.WindowsSDK_ExecutablePath_}'");
-                stringBuilder.AppendLine($"  .Executable = '{buildContext.WindowsSDK_ExecutablePath_}\\rc.exe'");
+                stringBuilder.AppendLine($"  .Executable = '{buildContext.WindowsSDK_ExecutablePath_}\\RC.exe'");
                 stringBuilder.AppendLine("  .CompilerFamily = 'custom'");
                 stringBuilder.AppendLine("  .Environment = .LocalEnv");
                 stringBuilder.AppendLine("}");
@@ -886,7 +1013,7 @@ namespace VSFastBuildVSIX
                 stringBuilder.AppendLine("Compiler('Compiler_ASM_MASM')");
                 stringBuilder.AppendLine("{");
                 stringBuilder.AppendLine($"  .Root = '{buildContext.VC_ExecutablePath_}'");
-                stringBuilder.AppendLine($"  .Executable = '{buildContext.VC_ExecutablePath_}/ml64.exe'");
+                stringBuilder.AppendLine($"  .Executable = '{buildContext.VC_ExecutablePath_}\\ml64.exe'");
                 stringBuilder.AppendLine("  .CompilerFamily = 'custom'");
                 stringBuilder.AppendLine("  .Environment = .LocalEnv");
                 stringBuilder.AppendLine("}");
@@ -921,12 +1048,12 @@ namespace VSFastBuildVSIX
 
             // Librarian
             {
-                buildContext.LibrarianPath_ = $"{buildContext.VC_ExecutablePath_}/lib.exe";
+                buildContext.LibrarianPath_ = $"{buildContext.VC_ExecutablePath_}/Lib.exe";
             }
 
             // Linker
             {
-                buildContext.LinkerPath_ = $"{buildContext.VC_ExecutablePath_}/link.exe";
+                buildContext.LinkerPath_ = $"{buildContext.VC_ExecutablePath_}/Link.exe";
             }
 
             foreach (VSFastProject project in vSFastProjects)
@@ -935,7 +1062,8 @@ namespace VSFastBuildVSIX
             }
 
             // All
-            if(0<vSFastProjects.Count){
+            if (0 < vSFastProjects.Count)
+            {
                 List<string> projectTargets = new List<string>(vSFastProjects.Count);
                 foreach (VSFastProject project in vSFastProjects)
                 {
@@ -952,7 +1080,8 @@ namespace VSFastBuildVSIX
                 stringBuilder.AppendLine("}");
             }
             // Clean
-            if(0<buildContext.targets_.Count){
+            if (0 < buildContext.targets_.Count)
+            {
                 string fbuildname = System.IO.Path.GetFileNameWithoutExtension(bffpath);
                 string fbuilddir = System.IO.Path.GetDirectoryName(bffpath);
                 string cleanname = $"{fbuildname}_clean.bat";
@@ -981,7 +1110,8 @@ namespace VSFastBuildVSIX
             }
             System.IO.File.WriteAllText(bffpath, stringBuilder.ToString());
             buildContext.projectCollection_.UnloadAllProjects();
-            return true;
+            result.success_ = true;
+            return result;
         }
 
         private static bool IsBuildTarget(Microsoft.Build.Evaluation.ProjectItem item)
@@ -1014,7 +1144,7 @@ namespace VSFastBuildVSIX
             if (item.Metadata.Where(x => x.Name == "PrecompiledHeader" && x.EvaluatedValue == "Create").Any())
             {
                 precompiledHeaderInfo.PCHInputFile_ = item.EvaluatedInclude;
-                if(!precompiledHeaderInfo.PCHInputFile_.Contains('/') && !precompiledHeaderInfo.PCHInputFile_.Contains('\\'))
+                if (!precompiledHeaderInfo.PCHInputFile_.Contains('/') && !precompiledHeaderInfo.PCHInputFile_.Contains('\\'))
                 {
                     precompiledHeaderInfo.PCHInputFile_ = System.IO.Path.GetFullPath(System.IO.Path.Combine(rootDir, precompiledHeaderInfo.PCHInputFile_));
                 }
@@ -1070,7 +1200,7 @@ namespace VSFastBuildVSIX
             string targetMachinePlatform = string.Empty;
             bool fastMath = false;
             bool hostDebugInfo = false; //-g
-            foreach(ProjectMetadata metaData in metadataList)
+            foreach (ProjectMetadata metaData in metadataList)
             {
                 switch (metaData.Name)
                 {
@@ -1113,7 +1243,7 @@ namespace VSFastBuildVSIX
                 string[] defineLinst = defines.Split(new char[] { ';' }, StringSplitOptions.RemoveEmptyEntries);
                 foreach (string define in defineLinst)
                 {
-                    stringBuilder.Append( $" -D{define}");
+                    stringBuilder.Append($" -D{define}");
                 }
             }
             stringBuilder.Append($" -Xcompiler=\"-{optimization} -{runtime}");
@@ -1156,7 +1286,7 @@ namespace VSFastBuildVSIX
             bool generateDebugInformation = false;
             string warningLevel = string.Empty;
             string defines = string.Empty;
-            foreach(ProjectMetadata metaData in metadataList)
+            foreach (ProjectMetadata metaData in metadataList)
             {
                 switch (metaData.Name)
                 {
@@ -1193,7 +1323,7 @@ namespace VSFastBuildVSIX
                 string[] defineLinst = defines.Split(new char[] { ';' }, StringSplitOptions.RemoveEmptyEntries);
                 foreach (string define in defineLinst)
                 {
-                    stringBuilder.Append( $" /D{define}");
+                    stringBuilder.Append($" /D{define}");
                 }
             }
             stringBuilder.Append(" /Fo\"%2\" \"%1\"");
@@ -1209,16 +1339,17 @@ namespace VSFastBuildVSIX
             customBuildItem.arguments_ = string.Empty;
             customBuildItem.linkOject_ = false;
             customBuildItem.outputAsContent_ = false;
-            foreach(ProjectMetadata metaData in metadataList)
+            foreach (ProjectMetadata metaData in metadataList)
             {
                 switch (metaData.Name)
                 {
                     case "AdditionalInputs":
-                        customBuildItem.inputs_ = metaData.EvaluatedValue.Split(new char[] {';'}, StringSplitOptions.RemoveEmptyEntries).ToList();
+                        customBuildItem.inputs_ = metaData.EvaluatedValue.Split(new char[] { ';' }, StringSplitOptions.RemoveEmptyEntries).ToList();
                         break;
                     case "Outputs":
-                        if (!string.IsNullOrEmpty(metaData.EvaluatedValue)) {
-                            customBuildItem.output_ = metaData.EvaluatedValue.Split(new char[] {';'}, StringSplitOptions.RemoveEmptyEntries).First();
+                        if (!string.IsNullOrEmpty(metaData.EvaluatedValue))
+                        {
+                            customBuildItem.output_ = metaData.EvaluatedValue.Split(new char[] { ';' }, StringSplitOptions.RemoveEmptyEntries).First();
                         }
                         break;
                     case "Command":
@@ -1234,12 +1365,12 @@ namespace VSFastBuildVSIX
             }
             if (!string.IsNullOrEmpty(customBuildItem.command_))
             {
-                string[] lines = customBuildItem.command_.Split(new char[] {'\n','\r'}, StringSplitOptions.RemoveEmptyEntries);
+                string[] lines = customBuildItem.command_.Split(new char[] { '\n', '\r' }, StringSplitOptions.RemoveEmptyEntries);
                 customBuildItem.command_ = string.Empty;
-                foreach(string line in lines)
+                foreach (string line in lines)
                 {
                     if (line.Contains("setlocal")
-                        || line.Contains("endlocal") 
+                        || line.Contains("endlocal")
                         || line.Contains(":cmdEnd")
                         || line.Contains("exit")
                         || line.Contains(":cmErrorLevel")
@@ -1256,7 +1387,7 @@ namespace VSFastBuildVSIX
                     if ('"' == trimed[0])
                     {
                         int commandEnd = 0;
-                        for(int i=1; i<trimed.Length; ++i)
+                        for (int i = 1; i < trimed.Length; ++i)
                         {
                             if ('"' == trimed[i])
                             {
@@ -1266,14 +1397,14 @@ namespace VSFastBuildVSIX
                         }
                         if (1 < commandEnd)
                         {
-                            customBuildItem.command_ = trimed.Substring(0, commandEnd+1);
+                            customBuildItem.command_ = trimed.Substring(0, commandEnd + 1);
                         }
-                        trimed = trimed.Substring(commandEnd+1);
+                        trimed = trimed.Substring(commandEnd + 1);
                     }
                     else
                     {
                         int commandEnd = 0;
-                        for(int i=1; i<trimed.Length; ++i)
+                        for (int i = 1; i < trimed.Length; ++i)
                         {
                             if (char.IsWhiteSpace(trimed[i]))
                             {
@@ -1291,7 +1422,7 @@ namespace VSFastBuildVSIX
                     {
                         customBuildItem.arguments_ = trimed;
                     }
-                    if(!string.IsNullOrEmpty(customBuildItem.command_))
+                    if (!string.IsNullOrEmpty(customBuildItem.command_))
                     {
                         break;
                     }
@@ -1325,23 +1456,18 @@ namespace VSFastBuildVSIX
 
         private static bool GetPropertyBool(ProjectProperty property)
         {
-            if(null == property)
+            if (null == property)
             {
                 return false;
             }
             string value = property.EvaluatedValue;
             bool result = false;
-            return bool.TryParse(value, out result)? result : false;
+            return bool.TryParse(value, out result) ? result : false;
         }
 
         private static void GatherItems(BuildContext buildContext, VSFastProject project)
         {
             Microsoft.Build.Evaluation.Project buildProject = project.buildProject_;
-            project.configType_ = buildProject.GetProperty("ConfigurationType").EvaluatedValue;
-            project.rootDir_ =System.IO.Path.GetDirectoryName(buildProject.FullPath);
-            project.intDir_ = buildProject.GetProperty("IntDirFullPath").EvaluatedValue.Replace("\\", "/");
-            project.compilerPDB_ = ChopLastFileSeparator(buildProject.GetProperty("IntDirFullPath").EvaluatedValue);
-            project.linkerPDB_ = System.IO.Path.Combine(buildProject.GetProperty("OutDirFullPath").EvaluatedValue, $"{project.targetName_}.pdb");
 
             ICollection<Microsoft.Build.Evaluation.ProjectItem> compileItems = buildProject.GetItems("ClCompile");
 
@@ -1371,7 +1497,7 @@ namespace VSFastBuildVSIX
                     if (IsCreatePrecompiledHeader(item))
                     {
                         ToolTask task = (ToolTask)Activator.CreateInstance(buildContext.CppTaskAssembly_.GetType("Microsoft.Build.CPPTasks.CL"));
-                        string pchCompilerOptions = GenerateTaskCommandLine(task, new string[] { "ObjectFileName", "AssemblerListingLocation", "ProgramDataBaseFileName", "XMLDocumentationFileName", "DiagnosticsFormat"}, item.Metadata) + " /FS";
+                        string pchCompilerOptions = GenerateTaskCommandLine(task, new string[] { "ObjectFileName", "AssemblerListingLocation", "ProgramDataBaseFileName", "XMLDocumentationFileName", "DiagnosticsFormat" }, item.Metadata) + " /FS";
 #if false
                         switch (buildContext.platform_)
                         {
@@ -1408,7 +1534,7 @@ namespace VSFastBuildVSIX
                     resourceCompilerOptions = resourceCompilerOptions.Replace("\\", "/").Replace("//", "/").Replace("/TP", string.Empty).Replace("/TC", string.Empty).Replace("/D ", "/D");
                     string formattedCompilerOptions = $"{resourceCompilerOptions} /fo\"%2\" \"%1\"";
                     string evaluatedInclude = System.IO.Path.GetFullPath(System.IO.Path.Combine(project.rootDir_, item.EvaluatedInclude)).Replace("\\", "/").Replace("//", "/");
-                    IEnumerable<FBCompileItem> matchingNodes = project.CompileItems.Where(el => el.AddIfMatches(ItemType.Resource,evaluatedInclude, formattedCompilerOptions, "res"));
+                    IEnumerable<FBCompileItem> matchingNodes = project.CompileItems.Where(el => el.AddIfMatches(ItemType.Resource, evaluatedInclude, formattedCompilerOptions, "res"));
                     if (!matchingNodes.Any())
                     {
                         project.CompileItems.Add(new FBCompileItem(ItemType.Resource, evaluatedInclude, formattedCompilerOptions, "res"));
@@ -1473,12 +1599,12 @@ namespace VSFastBuildVSIX
                         project.ExistsFlags.Set((int)ItemType.CXX, true);
                     }
                 }
-            } 
+            }
 
             // CUDA Compile
             {
                 ICollection<Microsoft.Build.Evaluation.ProjectItem> cudaCompileItems = buildProject.GetItems("CudaCompile");
-                foreach(Microsoft.Build.Evaluation.ProjectItem item in cudaCompileItems)
+                foreach (Microsoft.Build.Evaluation.ProjectItem item in cudaCompileItems)
                 {
                     string tempCompilerOptions = CreateCUDACommandline(buildContext.optionBuilder_, item.Metadata);
                     string evaluatedInclude = System.IO.Path.GetFullPath(System.IO.Path.Combine(project.rootDir_, item.EvaluatedInclude)).Replace("\\", "/").Replace("//", "/");
@@ -1489,12 +1615,12 @@ namespace VSFastBuildVSIX
                         project.ExistsFlags.Set((int)ItemType.CUDA, true);
                     }
                 }
-            } 
+            }
 
             // MASM Compile
             {
                 ICollection<Microsoft.Build.Evaluation.ProjectItem> MASMCompileItems = buildProject.GetItems("MASM");
-                foreach(Microsoft.Build.Evaluation.ProjectItem item in MASMCompileItems)
+                foreach (Microsoft.Build.Evaluation.ProjectItem item in MASMCompileItems)
                 {
                     string tempCompilerOptions = CreateMASMCommandline(buildContext.optionBuilder_, item.Metadata);
                     string evaluatedInclude = System.IO.Path.GetFullPath(System.IO.Path.Combine(project.rootDir_, item.EvaluatedInclude)).Replace("\\", "/").Replace("//", "/");
@@ -1505,13 +1631,13 @@ namespace VSFastBuildVSIX
                         project.ExistsFlags.Set((int)ItemType.MASM, true);
                     }
                 }
-            } 
+            }
 
             // FX Compile
             {
-                string[] propertiesToSkip = new string[] {"ObjectFileOutput"};
+                string[] propertiesToSkip = new string[] { "ObjectFileOutput" };
                 ICollection<Microsoft.Build.Evaluation.ProjectItem> FXCompileItems = buildProject.GetItems("FXCompile");
-                foreach(Microsoft.Build.Evaluation.ProjectItem item in FXCompileItems)
+                foreach (Microsoft.Build.Evaluation.ProjectItem item in FXCompileItems)
                 {
                     ToolTask task = Activator.CreateInstance(buildContext.CppTaskAssembly_.GetType("Microsoft.Build.FXCTask.FXC")) as ToolTask;
                     string tempCompilerOptions = GenerateTaskCommandLine(task, propertiesToSkip, item.Metadata);
@@ -1529,20 +1655,21 @@ namespace VSFastBuildVSIX
                         project.ExistsFlags.Set((int)ItemType.HLSL, true);
                     }
                 }
-            } 
+            }
 
             // Custom Build items
             {
-                string[] propertiesToSkip = new string[] {"ObjectFileOutput"};
+                string[] propertiesToSkip = new string[] { "ObjectFileOutput" };
                 ICollection<Microsoft.Build.Evaluation.ProjectItem> customBuildItems = buildProject.GetItems("CustomBuild");
-                foreach(Microsoft.Build.Evaluation.ProjectItem item in customBuildItems)
+                foreach (Microsoft.Build.Evaluation.ProjectItem item in customBuildItems)
                 {
                     if (item.GetMetadataValue("Message").Contains("CMakeLists.txt"))
                     {
                         continue;
                     }
                     CustomBuildItem customBuildItem = CreateCustomBuildCommandline(item.Metadata);
-                    if (!string.IsNullOrEmpty(customBuildItem.command_)){
+                    if (!string.IsNullOrEmpty(customBuildItem.command_))
+                    {
                         customBuildItem.command_ = ExecWhere(buildContext, customBuildItem.command_);
                         project.CompileItems.Add(new FBCompileItem(customBuildItem));
                         project.ExistsFlags.Set((int)ItemType.Custom, true);
@@ -1609,7 +1736,7 @@ namespace VSFastBuildVSIX
                 }
             }
 
-            if (0<prebuildCount || project.ExistsFlags[(int)ItemType.Custom])
+            if (0 < prebuildCount || project.ExistsFlags[(int)ItemType.Custom])
             {
                 string preBuildDependencies = string.Empty;
                 if (0 < project.dependencies_.Count)
@@ -1633,12 +1760,12 @@ namespace VSFastBuildVSIX
                     preBuildDependencies = dependenciesBuilder.ToString();
                 }
                 {
-                ICollection<Microsoft.Build.Evaluation.ProjectItem> buildEvents = buildProject.GetItems("PreBuildEvent");
+                    ICollection<Microsoft.Build.Evaluation.ProjectItem> buildEvents = buildProject.GetItems("PreBuildEvent");
                     int count = 0;
                     foreach (Microsoft.Build.Evaluation.ProjectItem projectItem in buildEvents)
                     {
                         ProjectMetadata metadata = projectItem.GetMetadata("Command");
-                        if(null == metadata)
+                        if (null == metadata)
                         {
                             continue;
                         }
@@ -1673,7 +1800,8 @@ namespace VSFastBuildVSIX
                         stringBuilder.AppendLine($"  Exec('{name}')");
                         stringBuilder.AppendLine("  {");
                         stringBuilder.Append(preBuildDependencies);
-                        if (!string.IsNullOrEmpty(item.CustomBuildItem.arguments_)) {
+                        if (!string.IsNullOrEmpty(item.CustomBuildItem.arguments_))
+                        {
                             stringBuilder.AppendLine($"    .ExecExecutable = '{item.CustomBuildItem.command_}'");
                             stringBuilder.AppendLine($"    .ExecArguments = '{item.CustomBuildItem.arguments_}'");
                         }
@@ -1681,7 +1809,8 @@ namespace VSFastBuildVSIX
                         {
                             stringBuilder.AppendLine($"    .ExecExecutable = '{item.CustomBuildItem.command_}'");
                         }
-                        if (0 < item.CustomBuildItem.inputs_.Count) {
+                        if (0 < item.CustomBuildItem.inputs_.Count)
+                        {
                             stringBuilder.AppendLine($"    .ExecInput =");
                             stringBuilder.AppendLine("    {");
                             addStringList(stringBuilder, item.CustomBuildItem.inputs_, "    ");
@@ -1692,7 +1821,8 @@ namespace VSFastBuildVSIX
                             stringBuilder.AppendLine($"    .ExecWorkingDir = '{System.IO.Path.GetDirectoryName(item.CustomBuildItem.output_)}'");
                             stringBuilder.AppendLine($"    .ExecOutput = '{item.CustomBuildItem.output_}'");
                             buildContext.targets_.Add(item.CustomBuildItem.output_);
-                            if (item.CustomBuildItem.linkOject_) {
+                            if (item.CustomBuildItem.linkOject_)
+                            {
                                 objTargets.Add(name);
                             }
                         }
@@ -1722,7 +1852,8 @@ namespace VSFastBuildVSIX
             }
 
             string dependenciesName = string.Empty;
-            if (0 < dependencies.Count) {
+            if (0 < dependencies.Count)
+            {
                 dependenciesName = $"{project.targetName_}_deps";
                 stringBuilder.AppendLine($"  Alias('{dependenciesName}')");
                 stringBuilder.AppendLine("  {");
@@ -1999,18 +2130,37 @@ namespace VSFastBuildVSIX
                 } //for (int i = 0
             }
 
+            string lastTargetName = project.targetName_;
+            {
+                ICollection<Microsoft.Build.Evaluation.ProjectItem> postBuildEvents = buildProject.GetItems("PostBuildEvent");
+                int postBuildCount = 0;
+                foreach (Microsoft.Build.Evaluation.ProjectItem buildEvent in postBuildEvents)
+                {
+                    ProjectMetadata metadata = buildEvent.GetMetadata("Command");
+                    if (null == metadata)
+                    {
+                        continue;
+                    }
+                    ++postBuildCount;
+                }
+                if (0 < postBuildCount)
+                {
+                    lastTargetName = $"{project.targetName_}_main";
+                }
+            }
             // Final target
             switch (buildType)
             {
                 case BuildType.Application:
                     {
-                        stringBuilder.AppendLine($"  Executable('{project.targetName_}')");
+                        stringBuilder.AppendLine($"  Executable('{lastTargetName}')");
                         stringBuilder.AppendLine("  {");
                         if (!string.IsNullOrEmpty(dependenciesName))
                         {
                             stringBuilder.AppendLine("    .PreBuildDependencies =");
                             stringBuilder.AppendLine("    {");
-                            if (string.IsNullOrEmpty(fxctargets_deps)) {
+                            if (string.IsNullOrEmpty(fxctargets_deps))
+                            {
                                 stringBuilder.AppendLine($"      '{dependenciesName}'");
                             }
                             else
@@ -2078,13 +2228,14 @@ namespace VSFastBuildVSIX
                 case BuildType.StaticLib:
                     {
                         string compilerOptions = project.CompileItems.Where(el => el.Type == ItemType.CXX).First().Options;
-                        stringBuilder.AppendLine($"  Library('{project.targetName_}')");
+                        stringBuilder.AppendLine($"  Library('{lastTargetName}')");
                         stringBuilder.AppendLine("  {");
                         if (!string.IsNullOrEmpty(dependenciesName))
                         {
                             stringBuilder.AppendLine("    .PreBuildDependencies =");
                             stringBuilder.AppendLine("    {");
-                            if (string.IsNullOrEmpty(fxctargets_deps)) {
+                            if (string.IsNullOrEmpty(fxctargets_deps))
+                            {
                                 stringBuilder.AppendLine($"      '{dependenciesName}'");
                             }
                             else
@@ -2129,13 +2280,14 @@ namespace VSFastBuildVSIX
                     break;
                 case BuildType.DynamicLib:
                     {
-                        stringBuilder.AppendLine($"  DLL('{project.targetName_}')");
+                        stringBuilder.AppendLine($"  DLL('{lastTargetName}')");
                         stringBuilder.AppendLine("  {");
                         if (!string.IsNullOrEmpty(dependenciesName))
                         {
                             stringBuilder.AppendLine("    .PreBuildDependencies =");
                             stringBuilder.AppendLine("    {");
-                            if (string.IsNullOrEmpty(fxctargets_deps)) {
+                            if (string.IsNullOrEmpty(fxctargets_deps))
+                            {
                                 stringBuilder.AppendLine($"      '{dependenciesName}'");
                             }
                             else
@@ -2205,13 +2357,12 @@ namespace VSFastBuildVSIX
                     }
                     break;
             }
-            
-            ICollection<Microsoft.Build.Evaluation.ProjectItem> postBuildEvents = buildProject.GetItems("PostBuildEvent");
-            if (postBuildEvents.Any())
+
             {
+                ICollection<Microsoft.Build.Evaluation.ProjectItem> postBuildEvents = buildProject.GetItems("PostBuildEvent");
                 int count = 0;
-                    List<string> postbuilds = new List<string>();
-                foreach(Microsoft.Build.Evaluation.ProjectItem buildEvent in postBuildEvents)
+                List<string> postbuilds = new List<string>();
+                foreach (Microsoft.Build.Evaluation.ProjectItem buildEvent in postBuildEvents)
                 {
                     ProjectMetadata metadata = buildEvent.GetMetadata("Command");
                     if (null == metadata)
@@ -2230,7 +2381,7 @@ namespace VSFastBuildVSIX
                     stringBuilder.AppendLine("  {");
                     stringBuilder.AppendLine("    .PreBuildDependencies =");
                     stringBuilder.AppendLine("    {");
-                    stringBuilder.AppendLine($"      '{project.targetName_}'");
+                    stringBuilder.AppendLine($"      '{lastTargetName}'");
                     stringBuilder.AppendLine("    }");
                     stringBuilder.AppendLine("    .ExecExecutable = 'C:/Windows/System32/cmd.exe'");
                     stringBuilder.AppendLine($"    .ExecArguments = '/C \"%1\"'");
@@ -2244,7 +2395,7 @@ namespace VSFastBuildVSIX
                 }
                 if (0 < postbuilds.Count)
                 {
-                    string postbuild = $"{project.targetName_}_postbuild";
+                    string postbuild = $"{project.targetName_}";
                     stringBuilder.AppendLine($"  Alias('{postbuild}')");
                     stringBuilder.AppendLine("  {");
                     stringBuilder.AppendLine("    .Targets =");
@@ -2258,35 +2409,7 @@ namespace VSFastBuildVSIX
             stringBuilder.AppendLine("}");
         }
 
-        public static System.Diagnostics.Process CreateProcessFromBffFile(string bffpath, string fbuildPath, string fbuldArgs)
-        {
-            string projectDir = System.IO.Path.GetDirectoryName(bffpath);
-            int numProcessors = VSFastBuildCommon.SystemEnvironment.GetPhysicalProcessorCount();
-            try
-            {
-                System.Diagnostics.Process FBProcess = new System.Diagnostics.Process();
-                FBProcess.StartInfo.FileName = fbuildPath;
-                if (!fbuldArgs.Contains("-j")) {
-                    FBProcess.StartInfo.Arguments = $"-config \"{bffpath}\" {fbuldArgs} -j{numProcessors}";
-                }
-                else
-                {
-                    FBProcess.StartInfo.Arguments = $"-config \"{bffpath}\" {fbuldArgs}";
-                }
-                FBProcess.StartInfo.RedirectStandardOutput = false;
-                FBProcess.StartInfo.RedirectStandardError = false;
-                FBProcess.StartInfo.CreateNoWindow = true;
-                FBProcess.StartInfo.UseShellExecute = false;
-                FBProcess.StartInfo.WorkingDirectory = projectDir;
-                return FBProcess;
-            }
-            catch (Exception e)
-            {
-                return null;
-            }
-        }
-
-        private static Dictionary<string,string> GetVCEnvironments(string toolsInstall)
+        private static Dictionary<string, string> GetVCEnvironments(string toolsInstall)
         {
             string vcvarsall = System.IO.Path.Combine(toolsInstall, "VC", "Auxiliary", "Build", "vcvarsall.bat");
             string cmd = "call \"" + vcvarsall + "\" x64 && set";
@@ -2308,17 +2431,18 @@ namespace VSFastBuildVSIX
 
                 int exitCode = process.ExitCode;
 
-                Dictionary<string,string> environments = new Dictionary<string,string>(16);
+                Dictionary<string, string> environments = new Dictionary<string, string>(16);
                 if (exitCode != 0)
                 {
                     return environments;
                 }
                 string output = stringOutput.ToString();
-                using(StringReader reader = new StringReader(output))
+                using (StringReader reader = new StringReader(output))
                 {
-                    while(true){
+                    while (true)
+                    {
                         string line = reader.ReadLine();
-                        if (null==line)
+                        if (null == line)
                         {
                             break;
                         }
@@ -2327,14 +2451,15 @@ namespace VSFastBuildVSIX
                             break;
                         }
                     }
-                    while(true){
+                    while (true)
+                    {
                         string line = reader.ReadLine();
-                        if (null==line)
+                        if (null == line)
                         {
                             break;
                         }
                         string[] splits = line.Split('=');
-                        if(null == splits || splits.Length < 2)
+                        if (null == splits || splits.Length < 2)
                         {
                             continue;
                         }
@@ -2372,7 +2497,7 @@ namespace VSFastBuildVSIX
             {
                 return path;
             }
-            foreach(string dir in buildContext.pathes_)
+            foreach (string dir in buildContext.pathes_)
             {
                 string fullPath = System.IO.Path.Combine(dir, path);
                 if (System.IO.File.Exists(fullPath))

@@ -9,6 +9,7 @@ using System.Diagnostics;
 using System.Linq;
 using VSFastBuildCommon;
 using VSFastBuildVSIX.Options;
+using static VSFastBuildVSIX.CommandBuildProject;
 
 namespace VSFastBuildVSIX.Commands
 {
@@ -91,43 +92,15 @@ namespace VSFastBuildVSIX.Commands
             string rootDirectory = System.IO.Path.GetDirectoryName(dte.Solution.FullName);
             string bffname = string.Format("fbuild_{0}_{1}.bff", solutionConfiguration.Name, solutionConfiguration.PlatformName);
             string bffpath = System.IO.Path.Combine(rootDirectory, bffname);
-            bool result = false;
-
+            Result result;
             try
             {
                 result = await CommandBuildProject.BuildForSolutionAsync(package, targets, bffpath);
+                await RunProcessAsync(result, package, bffpath);
             }
             catch (Exception ex)
             {
                 await Log.OutputDebugLineAsync(ex.Message);
-            }
-            if (result)
-            {
-                OptionsPage optionPage = VSFastBuildVSIXPackage.Options;
-                string fbuildPath = optionPage.Path;
-                string fbuldArgs = optionPage.Arguments;
-                bool openMonitor = optionPage.OpenMonitor;
-                System.Diagnostics.Process process = CommandBuildProject.CreateProcessFromBffFile(bffpath, fbuildPath, fbuldArgs);
-                try
-                {
-                    ToolWindowMonitorControl.TruncateLogFile();
-                    if (process.Start())
-                    {
-                        await CommandBuildProject.ResetMonitorAsync(package);
-                        if (openMonitor) {
-                            await CommandBuildProject.StartMonitorAsync(package, true);
-                        }
-                        await process.WaitForExitAsync(package.CancellationToken);
-                    }
-                }
-                catch(Exception ex)
-                {
-                    Log.OutputDebugLine(ex.Message);
-                }
-                finally
-                {
-                    await CommandBuildProject.StopMonitorAsync(package);
-                }
             }
             CommandBuildProject.LeaveProcess(package, Command, commandText_);
         }

@@ -16,6 +16,28 @@ namespace VSFastBuildVSIX
             return message;
         }
 
+        public const string PaneDebug = "Debug";
+        public const string PaneBuild = "Build";
+
+        public static async Task AddOutputPaneAsync(string name)
+        {
+            await Microsoft.VisualStudio.Shell.ThreadHelper.JoinableTaskFactory.SwitchToMainThreadAsync();
+            DTE2 dte2 = Microsoft.VisualStudio.Shell.Package.GetGlobalService(typeof(DTE)) as DTE2;
+            EnvDTE.OutputWindow outputWindow = dte2.ToolWindows.OutputWindow;
+            if (null == outputWindow)
+            {
+                return;
+            }
+            foreach (EnvDTE.OutputWindowPane window in outputWindow.OutputWindowPanes)
+            {
+                if (window.Name == name)
+                {
+                    return;
+                }
+            }
+            outputWindow.OutputWindowPanes.Add(name);
+        }
+
         /// <summary>
         /// Print a message to the editor's output
         /// </summary>
@@ -33,7 +55,7 @@ namespace VSFastBuildVSIX
                 //message = AddNewLine(message);
                 foreach (EnvDTE.OutputWindowPane window in outputWindow.OutputWindowPanes)
                 {
-                    if (window.Name == "Debug")
+                    if (window.Name == PaneDebug)
                     {
                         window.OutputString(message);
                     }
@@ -56,7 +78,7 @@ namespace VSFastBuildVSIX
             //message = AddNewLine(message);
             foreach (EnvDTE.OutputWindowPane window in outputWindow.OutputWindowPanes)
             {
-                if (window.Name == "Debug")
+                if (window.Name == PaneDebug)
                 {
                     window.OutputString(message);
                 }
@@ -81,7 +103,7 @@ namespace VSFastBuildVSIX
                 message = AddNewLine(message);
                 foreach (EnvDTE.OutputWindowPane window in outputWindow.OutputWindowPanes)
                 {
-                    if (window.Name == "Build")
+                    if (window.Name == PaneBuild)
                     {
                         window.OutputString(message);
                     }
@@ -103,7 +125,7 @@ namespace VSFastBuildVSIX
             }
             message = AddNewLine(message);
             foreach(EnvDTE.OutputWindowPane window in outputWindow.OutputWindowPanes) {
-                if (window.Name == "Build")
+                if (window.Name == PaneBuild)
                 {
                     window.OutputString(message);
                 }
