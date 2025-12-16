@@ -17,6 +17,7 @@ using System.Reflection;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
+using VSFastBuildCommon;
 using VSFastBuildVSIX.Options;
 
 namespace VSFastBuildVSIX
@@ -177,10 +178,13 @@ namespace VSFastBuildVSIX
                     {
                         process.BeginOutputReadLine();
                         process.BeginErrorReadLine();
-                        await process.WaitForExitAsync(package.CancellationToken);
+                        using(TLogTracker tracker = new TLogTracker(tlogDir)) {
+                            tracker.Start();
+                            await process.WaitForExitAsync(package.CancellationToken);
+                            tracker.Stop();
+                        }
                         process.CancelErrorRead();
                         process.CancelOutputRead();
-                        GetTLogFiles(tlogDir);
                     }
                 }
                 catch (Exception ex)

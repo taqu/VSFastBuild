@@ -2,20 +2,20 @@ using Microsoft.Build.Framework;
 using Microsoft.Build.Utilities;
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.IO;
 using System.Text;
+using System.Text.RegularExpressions;
 
 namespace VSFastBuildCommon
 {
     internal class TLogTracker : IDisposable
     {
+        private Regex TLogRead = new Regex(@"FBuild\.\d{5}\.\d{5}-(.+)\.\d+\.read\.(.*)\.1\.tlog");
+        private Regex TLogWrite = new Regex(@"FBuild\.\d{5}\.\d{5}-(.+)\.\d+\.write\.(.*)\.1\.tlog");
         private const int MaxCount = 16;
         private bool disposed_ = false;
         private FileSystemWatcher watcher_ = null;
-        private List<TaskItem> taskItemInputs_ = new List<TaskItem>(16);
-        private List<TaskItem> taskItemOutputs_ = new List<TaskItem>(16);
-        private CanonicalTrackedInputFiles canonicalTrackedInputFiles_;
-        private CanonicalTrackedOutputFiles canonicalTrackedOutputFiles_;
 
         public TLogTracker(string path)
         {
@@ -36,7 +36,7 @@ namespace VSFastBuildCommon
             watcher_.EnableRaisingEvents = false;
         }
 
-                ~TLogTracker()
+        ~TLogTracker()
         {
             Dispose(false);
         }
@@ -54,7 +54,7 @@ namespace VSFastBuildCommon
             {
                 if (disposing)
                 {
-                    if(null != watcher_)
+                    if (null != watcher_)
                     {
                         watcher_.Dispose();
                         watcher_ = null;
@@ -76,16 +76,6 @@ namespace VSFastBuildCommon
 
         public void Save()
         {
-            if (0 < taskItemInputs_.Count)
-            {
-                AddCanonicalTrackedInputFiles();
-            }
-            if (0 < taskItemOutputs_.Count)
-            {
-                AddCanonicalTrackedOutputFiles();
-            }
-            canonicalTrackedInputFiles_?.SaveTlog();
-            canonicalTrackedOutputFiles_?.SaveTlog();
         }
 
         private void OnCreated(object sender, FileSystemEventArgs e)
@@ -94,44 +84,21 @@ namespace VSFastBuildCommon
             {
                 return;
             }
-            if (e.Name.Contains(".read."))
-            {
-                TaskItem item = new TaskItem(e.FullPath, true);
-                taskItemInputs_.Add(item);
-                if (MaxCount <= taskItemInputs_.Count)
-                {
-                    AddCanonicalTrackedInputFiles();
-                }
-            }else if (e.Name.Contains(".write."))
-            {
-                TaskItem item = new TaskItem(e.FullPath, true);
-                taskItemOutputs_.Add(item);
-                if (MaxCount <= taskItemOutputs_.Count)
-                {
-                    AddCanonicalTrackedOutputFiles();
-                }
-            }
-        }
+            Match match;
 
-        private void AddCanonicalTrackedInputFiles()
-        {
-            if(null == canonicalTrackedInputFiles_)
+            match = TLogRead.Match(e.Name);
+            if (null != match)
             {
-                canonicalTrackedInputFiles_ = new CanonicalTrackedInputFiles(taskItemInputs_.ToArray(), null, null, false, true);
+                string subroot = match.Captures[0].Value;
+                Trace.WriteLine(e.Name + " " + subroot);
             }
-        }
 
-        private void AddCanonicalTrackedOutputFiles()
-        {
-            if(null == canonicalTrackedOutputFiles_)
+            match = TLogWrite.Match(e.Name);
+            if (null != match)
             {
-                canonicalTrackedOutputFiles_ = new CanonicalTrackedOutputFiles(taskItemOutputs_.ToArray());
+                string subroot = match.Captures[0].Value;
+                Trace.WriteLine(e.Name + " " + subroot);
             }
-            else
-            {
-                ITaskItem[] outputs = canonicalTrackedOutputFiles_.OutputsForNonCompositeSource(taskItemOutputs_.ToArray());
-            }
-            taskItemOutputs_.Clear();
         }
     }
 }
