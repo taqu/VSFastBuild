@@ -11,6 +11,9 @@ namespace VSFastBuildCommon
 {
     internal class TLogTracker : IDisposable
     {
+        private static Regex FBuildTLogRead = new Regex(@"FBuild\.\d{5}\.\d{5}\.read\.\d+\.tlog");
+        private static Regex FBuildTLogWrite = new Regex(@"FBuild\.\d{5}\.\d{5}\.write\.\d+\.tlog");
+
         private static Regex TLogRead = new Regex(@"FBuild\.\d{5}\.\d{5}-(.+)\.\d+\.read\.\d+\.tlog");
         private static Regex TLogWrite = new Regex(@"FBuild\.\d{5}\.\d{5}-(.+)\.\d+\.write\.\d+\.tlog");
         private const int MaxCount = 16;
@@ -86,17 +89,39 @@ namespace VSFastBuildCommon
             }
             Match match;
 
-            match = TLogRead.Match(e.Name);
-            if (null != match)
+            match = FBuildTLogRead.Match(e.Name);
+            if (null != match && match.Success)
             {
-                string subroot = match.Captures[0].Value;
+                try {
+                System.IO.File.Delete(e.FullPath);
+                }
+                catch
+                {
+                }
+            }
+
+            match = FBuildTLogWrite.Match(e.Name);
+            if (null != match && match.Success)
+            {
+                try {
+                System.IO.File.Delete(e.FullPath);
+                }
+                catch
+                {
+                }
+            }
+
+            match = TLogRead.Match(e.Name);
+            if (null != match && match.Success)
+            {
+                string subroot = match.Captures[1].Value;
                 Trace.WriteLine(e.Name + " " + subroot);
             }
 
             match = TLogWrite.Match(e.Name);
-            if (null != match)
+            if (null != match && match.Success)
             {
-                string subroot = match.Captures[0].Value;
+                string subroot = match.Captures[1].Value;
                 Trace.WriteLine(e.Name + " " + subroot);
             }
         }
