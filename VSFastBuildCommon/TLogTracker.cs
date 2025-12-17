@@ -11,8 +11,8 @@ namespace VSFastBuildCommon
 {
     internal class TLogTracker : IDisposable
     {
-        private Regex TLogRead = new Regex(@"FBuild\.\d{5}\.\d{5}-(.+)\.\d+\.read\.(.*)\.1\.tlog");
-        private Regex TLogWrite = new Regex(@"FBuild\.\d{5}\.\d{5}-(.+)\.\d+\.write\.(.*)\.1\.tlog");
+        private static Regex TLogRead = new Regex(@"FBuild\.\d{5}\.\d{5}-(.+)\.\d+\.read\.\d+\.tlog");
+        private static Regex TLogWrite = new Regex(@"FBuild\.\d{5}\.\d{5}-(.+)\.\d+\.write\.\d+\.tlog");
         private const int MaxCount = 16;
         private bool disposed_ = false;
         private FileSystemWatcher watcher_ = null;
