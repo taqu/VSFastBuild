@@ -9,19 +9,29 @@ using System.Text.RegularExpressions;
 
 namespace VSFastBuildCommon
 {
-    internal class TLogTracker : IDisposable
+    public class TLogTracker : IDisposable
     {
         private static Regex FBuildTLogRead = new Regex(@"FBuild\.\d{5}\.\d{5}\.read\.\d+\.tlog");
         private static Regex FBuildTLogWrite = new Regex(@"FBuild\.\d{5}\.\d{5}\.write\.\d+\.tlog");
 
         private static Regex TLogRead = new Regex(@"FBuild\.\d{5}\.\d{5}-(.+)\.\d+\.read\.\d+\.tlog");
         private static Regex TLogWrite = new Regex(@"FBuild\.\d{5}\.\d{5}-(.+)\.\d+\.write\.\d+\.tlog");
+
+        private struct TLogEntry
+        {
+            public string name_;
+            public StringBuilder inputs_;
+            public StringBuilder outputs_;
+        }
+        private string path_ = string.Empty;
+        private Dictionary<string, TLogEntry> logEntries_ = new Dictionary<string, TLogEntry>();
         private const int MaxCount = 16;
         private bool disposed_ = false;
         private FileSystemWatcher watcher_ = null;
 
         public TLogTracker(string path)
         {
+            path_ = path;
             watcher_ = new FileSystemWatcher(path);
             watcher_.NotifyFilter = NotifyFilters.Attributes
                                  | NotifyFilters.CreationTime
@@ -81,6 +91,17 @@ namespace VSFastBuildCommon
         {
         }
 
+        private void TryDelete(string path)
+        {
+            try
+            {
+                System.IO.File.Delete(path);
+            }
+            catch
+            {
+            }
+        }
+
         private void OnCreated(object sender, FileSystemEventArgs e)
         {
             if (string.IsNullOrEmpty(e.Name))
@@ -114,15 +135,27 @@ namespace VSFastBuildCommon
             match = TLogRead.Match(e.Name);
             if (null != match && match.Success)
             {
-                string subroot = match.Captures[1].Value;
+                string subroot = match.Groups[1].Value;
                 Trace.WriteLine(e.Name + " " + subroot);
             }
 
             match = TLogWrite.Match(e.Name);
             if (null != match && match.Success)
             {
-                string subroot = match.Captures[1].Value;
+                string subroot = match.Groups[1].Value;
                 Trace.WriteLine(e.Name + " " + subroot);
+            }
+        }
+
+        private void WriteRead(string name, string path)
+        {
+            TLogEntry logEntry;
+            if (!logEntries_.TryGetValue(name, out logEntry))
+            {
+                logEntry.name_ = name;
+                logEntry.inputs_ = new StringBuilder(256);
+                logEntry.outputs_ = new StringBuilder(256);
+                logEntries_.Add(name, logEntry);
             }
         }
     }
