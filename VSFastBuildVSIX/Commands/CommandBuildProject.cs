@@ -168,28 +168,34 @@ namespace VSFastBuildVSIX
                 await CommandBuildProject.StartMonitorAsync(package, true);
             }
 
-            for (int i = 0; i < result.projects_.Count; ++i)
+            using (CancellationTokenSource cancellationTokenSource = new CancellationTokenSource())
             {
-                try
+                for (int i = 0; i < result.projects_.Count; ++i)
                 {
-                    string tlogDir = System.IO.Path.Combine(result.projects_[i].intDir_, result.projects_[i].name_ + ".tlog");
-                    System.Diagnostics.Process process = CommandBuildProject.CreateProcess(arguments, i, result, tlogDir);
-                    if (process.Start())
+                    Task traskTracker = null;
+                    try
                     {
-                        process.BeginOutputReadLine();
-                        process.BeginErrorReadLine();
-                        using(TLogTracker tracker = new TLogTracker(tlogDir)) {
-                            tracker.Start();
-                            await process.WaitForExitAsync(package.CancellationToken);
-                            tracker.Stop();
+                        string tlogDir = System.IO.Path.Combine(result.projects_[i].intDir_, result.projects_[i].name_ + ".tlog");
+                        System.Diagnostics.Process process = CommandBuildProject.CreateProcess(arguments, i, result, tlogDir);
+                        if (process.Start())
+                        {
+                            process.BeginOutputReadLine();
+                            process.BeginErrorReadLine();
+                            using (TLogTracker tracker = new TLogTracker(tlogDir))
+                            {
+                                traskTracker = Task.Run(() => tracker.Run(cancellationTokenSource.Token));
+                                await process.WaitForExitAsync(package.CancellationToken);
+                                cancellationTokenSource.Cancel();
+                                await traskTracker;
+                            }
+                            process.CancelErrorRead();
+                            process.CancelOutputRead();
                         }
-                        process.CancelErrorRead();
-                        process.CancelOutputRead();
                     }
-                }
-                catch (Exception ex)
-                {
-                    Log.OutputDebugLine(ex.Message);
+                    catch (Exception ex)
+                    {
+                        Log.OutputDebugLine(ex.Message);
+                    }
                 }
             }
             await CommandBuildProject.StopMonitorAsync(package);
