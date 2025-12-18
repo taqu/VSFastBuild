@@ -462,6 +462,7 @@ namespace VSFastBuildCommon
                 }
                 //TryDelete(path);
             }
+            StringBuilder stringBuilder = new StringBuilder(1024);
             foreach (KeyValuePair<string, TLogEntry> logEntry in logEntries_)
             {
                 try
@@ -470,11 +471,19 @@ namespace VSFastBuildCommon
                     path = System.IO.Path.Combine(path_, $"{logEntry.Key}.read.1.tlog");
                     System.IO.File.AppendAllText(path, logEntry.Value.inputs_.ToString(), Encoding.Unicode);
                     path = System.IO.Path.Combine(path_, $"{logEntry.Key}.write.1.tlog");
-                    foreach(WriteCommand writeCommand in logEntry.Value.outputs_.Values)
+                    using (FileStream fileStream = new FileStream(path, FileMode.Append, FileAccess.Write, FileShare.None))
+                    using(StreamWriter streamWriter = new StreamWriter(fileStream))
                     {
-                        System.IO.File.AppendAllText(path, $"# \"{writeCommand.input_}\" /Fo\"{writeCommand.output_}\" {writeCommand.options_}{Environment.NewLine}", Encoding.Unicode);
+                        stringBuilder.Clear();
+                        Dictionary<string, List<WriteEntry>>.ValueCollection dictionary = logEntry.Value.outputs_.Values;
+                        for(int i=0; i<dictionary.Count; ++i)
+                        {
+                        }
+                        foreach (List<WriteEntry> writeEntryList in logEntry.Value.outputs_.Values)
+                        {
+                        }
+                        System.IO.File.AppendAllText(path, logEntry.Value.outputs_.ToString(), Encoding.Unicode);
                     }
-                    System.IO.File.AppendAllText(path, logEntry.Value.outputs_.ToString(), Encoding.Unicode);
                 }
                 catch
                 {
