@@ -6,7 +6,6 @@ using Microsoft.Build.Evaluation;
 using Microsoft.Build.Utilities;
 using Microsoft.VisualStudio.Threading;
 using Microsoft.VisualStudio.VCProjectEngine;
-using SharpCompress.Compressors.Xz;
 using System.Buffers;
 using System.Collections;
 using System.Collections.Generic;

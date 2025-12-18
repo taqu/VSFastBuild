@@ -89,7 +89,7 @@ namespace VSFastBuildVSIX
         /// <summary>
         /// Print a message to the editor's output
         /// </summary>
-        public static void OutputBuildLine(string message)
+        public static void OutputBuild(string message)
         {
             _ = ThreadHelper.JoinableTaskFactory.RunAsync(async () =>
             {
@@ -100,7 +100,6 @@ namespace VSFastBuildVSIX
                 {
                     return;
                 }
-                message = AddNewLine(message);
                 foreach (EnvDTE.OutputWindowPane window in outputWindow.OutputWindowPanes)
                 {
                     if (window.Name == PaneBuild)
@@ -115,7 +114,7 @@ namespace VSFastBuildVSIX
         /// <summary>
 		/// Print a message to the editor's output
 		/// </summary>
-		public static async Task OutputBuildLineAsync(string message)
+		public static async Task OutputBuildAsync(string message)
         {
             await Microsoft.VisualStudio.Shell.ThreadHelper.JoinableTaskFactory.SwitchToMainThreadAsync();
             DTE2 dte2 = Microsoft.VisualStudio.Shell.Package.GetGlobalService(typeof(DTE)) as DTE2;
@@ -123,7 +122,6 @@ namespace VSFastBuildVSIX
             if(null == outputWindow) {
                 return;
             }
-            message = AddNewLine(message);
             foreach(EnvDTE.OutputWindowPane window in outputWindow.OutputWindowPanes) {
                 if (window.Name == PaneBuild)
                 {
@@ -131,6 +129,24 @@ namespace VSFastBuildVSIX
                 }
             }
             Trace.WriteLine(message);
+        }
+
+        /// <summary>
+        /// Print a message to the editor's output
+        /// </summary>
+        public static void OutputBuildLine(string message)
+        {
+            message = AddNewLine(message);
+            OutputBuild(message);
+        }
+
+        /// <summary>
+		/// Print a message to the editor's output
+		/// </summary>
+		public static async Task OutputBuildLineAsync(string message)
+        {
+            message = AddNewLine(message);
+            await OutputBuildAsync(message);
         }
     }
 }

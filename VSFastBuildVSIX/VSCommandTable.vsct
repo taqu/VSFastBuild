@@ -64,6 +64,9 @@
 		<CommandPlacement guid="VSFastBuildVSIX" id="CommandFBuildProject" priority="0x3000">
 			<Parent guid="VSMainMenu" id="ProjectNode.BuildGroup"/>
 		</CommandPlacement>
+		<CommandPlacement guid="VSFastBuildVSIX" id="CommandFBuildProject" priority="0x3000">
+			<Parent guid="VSMainMenu" id="ProjectNode.MultiProjectBuildGroup"/>
+		</CommandPlacement>
 
 		<CommandPlacement guid="VSFastBuildVSIX" id="CommandFBuildMonitor" priority="0x3000">
 			<Parent guid="VSMainMenu" id="View.DevWindowsGroup.OtherWindows.Group1"/>

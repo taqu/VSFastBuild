@@ -311,7 +311,7 @@ namespace VSFastBuildCommon
         {
             public string name_;
             public StringBuilder inputs_;
-            public StringBuilder outputs_;
+            public Dictionary<string, WriteCommand> outputs_;
         }
         private string path_ = string.Empty;
         private Dictionary<string, TLogEntry> logEntries_ = new Dictionary<string, TLogEntry>();
@@ -391,18 +391,18 @@ namespace VSFastBuildCommon
                     continue;
                 }
 
-                match = LastTLogRead.Match(name);
-                if(null != match && match.Success)
-                {
-                    string subroot = match.Groups[1].Value;
-                    LoadRead(subroot, path);
-                }
-                match = LastTLogWrite.Match(name);
-                if (null != match && match.Success)
-                {
-                    string subroot = match.Groups[1].Value;
-                    LoadWrite(subroot, path);
-                }
+                //match = LastTLogRead.Match(name);
+                //if(null != match && match.Success)
+                //{
+                //    string subroot = match.Groups[1].Value;
+                //    LoadRead(subroot, path);
+                //}
+                //match = LastTLogWrite.Match(name);
+                //if (null != match && match.Success)
+                //{
+                //    string subroot = match.Groups[1].Value;
+                //    LoadWrite(subroot, path);
+                //}
             }
         }
 
@@ -451,9 +451,9 @@ namespace VSFastBuildCommon
                 {
                     string path;
                     path = System.IO.Path.Combine(path_, $"{logEntry.Key}.read.1.tlog");
-                    System.IO.File.WriteAllText(path, logEntry.Value.inputs_.ToString());
+                    System.IO.File.AppendAllText(path, logEntry.Value.inputs_.ToString(), Encoding.Unicode);
                     path = System.IO.Path.Combine(path_, $"{logEntry.Key}.write.1.tlog");
-                    System.IO.File.WriteAllText(path, logEntry.Value.outputs_.ToString());
+                    System.IO.File.AppendAllText(path, logEntry.Value.outputs_.ToString(), Encoding.Unicode);
                 }
                 catch
                 {
@@ -471,6 +471,29 @@ namespace VSFastBuildCommon
             }
         }
 
+        private string ParseReadCommand(string line)
+        {
+            int index;
+            index = line.IndexOf('\"');
+            if(index < 0)
+            {
+                return string.Empty;
+            }
+            ReadOnlySpan<char> sub = line.AsSpan(index + 1);
+            index = sub.IndexOf('\"');
+            if(index < 0)
+            {
+                return string.Empty;
+            }
+            sub = sub.Slice(index + 1);
+            index = sub.IndexOf('\"');
+            if(index < 0)
+            {
+                return string.Empty;
+            }
+            return sub.Slice(0, index).ToString().ToUpper();
+        }
+
         private void AddRead(string name, string path)
         {
             TLogEntry logEntry;
@@ -478,7 +501,7 @@ namespace VSFastBuildCommon
             {
                 logEntry.name_ = name;
                 logEntry.inputs_ = new StringBuilder(256);
-                logEntry.outputs_ = new StringBuilder(256);
+                logEntry.outputs_ = new Dictionary<string, WriteCommand>(64);
                 logEntries_.Add(name, logEntry);
             }
             try
@@ -487,7 +510,6 @@ namespace VSFastBuildCommon
                 using (StreamReader streamReader = new StreamReader(stream))
                 {
                     string line;
-                    bool first = true;
                     while (null != (line = streamReader.ReadLine()))
                     {
                         if (string.IsNullOrEmpty(line))
@@ -496,14 +518,17 @@ namespace VSFastBuildCommon
                         }
                         if (line.StartsWith("#"))
                         {
-                            continue;
-                        }
-                        if (first)
-                        {
+                            string input = ParseReadCommand(line);
+                            if (string.IsNullOrEmpty(input))
+                            {
+                                break;
+                            }
                             logEntry.inputs_.Append("^");
+                            logEntry.inputs_.AppendLine(input);
                         }
-                        logEntry.inputs_.AppendLine(line);
-                        first = false;
+                        else {
+                            logEntry.inputs_.AppendLine(line);
+                        }
                     }
                 }
             }
@@ -512,6 +537,7 @@ namespace VSFastBuildCommon
             }
         }
 
+        #if false
         private void LoadRead(string name, string path)
         {
             TLogEntry logEntry;
@@ -542,6 +568,64 @@ namespace VSFastBuildCommon
                 {
                 }
         }
+        #endif
+
+        private struct WriteCommand
+        {
+            public bool Valid()
+            {
+                return !string.IsNullOrEmpty(input_) && !string.IsNullOrEmpty(output_);
+            }
+            public string input_;
+            public string output_;
+            public string options_;
+        }
+
+        private WriteCommand ParseWriteCommand(string line)
+        {
+            WriteCommand writeCommand = new WriteCommand()
+            {
+                input_ = string.Empty,
+                output_ = string.Empty,
+                options_ = string.Empty
+            };
+            int index;
+            index = line.IndexOf('\"');
+            if(index < 0)
+            {
+                return writeCommand;
+            }
+            ReadOnlySpan<char> sub = line.AsSpan(index + 1);
+            index = sub.IndexOf('\"');
+            if(index < 0)
+            {
+                return writeCommand;
+            }
+            sub = sub.Slice(index + 1);
+            index = sub.IndexOf('\"');
+            if(index < 0)
+            {
+                return writeCommand;
+            }
+            writeCommand.input_ = sub.Slice(0, index).ToString().ToUpper();
+            sub = sub.Slice(index + 1);
+
+            line = sub.ToString();
+            index = line.IndexOf("/Fo\"");
+            if(index < 0)
+            {
+                return writeCommand;
+            }
+            line = line.Substring(index + 4);
+            index = line.IndexOf("\"");
+            if(index < 0)
+            {
+                return writeCommand;
+            }
+            writeCommand.output_ = line.Substring(0, index).ToUpper();
+            writeCommand.options_ = line.Substring(index + 1).Trim();
+            return writeCommand;
+        }
 
         private void AddWrite(string name, string path)
         {
@@ -550,7 +634,7 @@ namespace VSFastBuildCommon
             {
                 logEntry.name_ = name;
                 logEntry.inputs_ = new StringBuilder(256);
-                logEntry.outputs_ = new StringBuilder(256);
+                logEntry.outputs_ = new Dictionary<string, WriteCommand>(64);
                 logEntries_.Add(name, logEntry);
             }
             try
@@ -559,7 +643,6 @@ namespace VSFastBuildCommon
                 using (StreamReader streamReader = new StreamReader(stream))
                 {
                     string line;
-                    bool first = true;
                     while (null != (line = streamReader.ReadLine()))
                     {
                         if (string.IsNullOrEmpty(line))
@@ -568,14 +651,12 @@ namespace VSFastBuildCommon
                         }
                         if (line.StartsWith("#"))
                         {
-                            continue;
+                            WriteCommand writeCommand = ParseWriteCommand(line);
+                            if (writeCommand.Valid())
+                            {
+                                logEntry.outputs_.Add(writeCommand.options_, writeCommand);
+                            }
                         }
-                        if (first)
-                        {
-                            logEntry.outputs_.Append("^");
-                        }
-                        logEntry.outputs_.AppendLine(line);
-                        first = false;
                     }
                 }
             }
@@ -583,6 +664,8 @@ namespace VSFastBuildCommon
             {
             }
         }
+
+        #if false
         private void LoadWrite(string name, string path)
         {
             TLogEntry logEntry;
@@ -613,6 +696,7 @@ namespace VSFastBuildCommon
             {
             }
         }
+        #endif
     }
 #endif
 }
