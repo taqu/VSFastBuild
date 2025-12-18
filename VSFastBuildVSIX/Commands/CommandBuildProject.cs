@@ -172,7 +172,6 @@ namespace VSFastBuildVSIX
             {
                 for (int i = 0; i < result.projects_.Count; ++i)
                 {
-                    Task traskTracker = null;
                     try
                     {
                         string tlogDir = System.IO.Path.Combine(result.projects_[i].intDir_, result.projects_[i].name_ + ".tlog");
@@ -183,10 +182,9 @@ namespace VSFastBuildVSIX
                             process.BeginErrorReadLine();
                             using (TLogTracker tracker = new TLogTracker(tlogDir))
                             {
-                                traskTracker = Task.Run(() => tracker.Run(cancellationTokenSource.Token));
+                                tracker.Start();
                                 await process.WaitForExitAsync(package.CancellationToken);
-                                cancellationTokenSource.Cancel();
-                                await traskTracker;
+                                tracker.Save();
                             }
                             process.CancelErrorRead();
                             process.CancelOutputRead();

@@ -7,9 +7,11 @@ using System.IO;
 using System.Text;
 using System.Text.RegularExpressions;
 using System.Threading;
+using System.Windows.Documents;
 
 namespace VSFastBuildCommon
 {
+#if false
     public class TLogTracker : IDisposable
     {
         private static Regex FBuildTLogRead = new Regex(@"^FBuild\.\d{5}\.\d{5}\.read\.\d+\.tlog");
@@ -287,4 +289,330 @@ namespace VSFastBuildCommon
             }
         }
     }
+#else
+    public class TLogTracker : IDisposable
+    {
+        private static Regex FBuildTLogRead = new Regex(@"^FBuild\.\d{5}\.\d{5}\.read\.\d+\.tlog");
+        private static Regex FBuildTLogWrite = new Regex(@"^FBuild\.\d{5}\.\d{5}\.write\.\d+\.tlog");
+
+        private static Regex TLogRead = new Regex(@"^FBuild\.\d{5}\.\d{5}-([a-zA-Z0-9\-_]+)\.(\d+\.)?read\.\d+\.tlog");
+        private static Regex TLogWrite = new Regex(@"^FBuild\.\d{5}\.\d{5}-([a-zA-Z0-9\-_]+)\.(\d+\.)?write\.\d+\.tlog");
+
+        private static Regex LastTLogRead = new Regex(@"^([a-zA-Z0-9\-_]+)\.read\.\d+\.tlog");
+        private static Regex LastTLogWrite = new Regex(@"^([a-zA-Z0-9\-_]+)\.write\.\d+\.tlog");
+
+        private const int TryCount = 64;
+        private const int WaitTime = 134;
+
+        private const int TryDeleteCount = 128;
+        private const int WaitDeleteTime = 268;
+
+        private struct TLogEntry
+        {
+            public string name_;
+            public StringBuilder inputs_;
+            public StringBuilder outputs_;
+        }
+        private string path_ = string.Empty;
+        private Dictionary<string, TLogEntry> logEntries_ = new Dictionary<string, TLogEntry>();
+        private const int MaxCount = 16;
+        private bool disposed_ = false;
+        private FileSystemWatcher watcher_ = null;
+        private readonly AutoResetEvent autoResetEvent_ = new AutoResetEvent(false);
+        private Queue<Tuple<string, string>> paths_ = new Queue<Tuple<string, string>>(16);
+
+        public TLogTracker(string path)
+        {
+            path_ = path;
+        }
+
+        ~TLogTracker()
+        {
+            Dispose(false);
+        }
+
+
+        public void Dispose()
+        {
+            Dispose(true);
+            GC.SuppressFinalize(this);
+        }
+
+        protected virtual void Dispose(bool disposing)
+        {
+            if (!disposed_)
+            {
+                if (disposing)
+                {
+                    if (null != watcher_)
+                    {
+                        watcher_.Dispose();
+                        watcher_ = null;
+                    }
+                }
+                disposed_ = true;
+            }
+        }
+
+        public void Start()
+        {
+            logEntries_.Clear();
+
+            //clean and current
+            foreach (string path in System.IO.Directory.GetFiles(path_, "*.tlog"))
+            {
+                string name = System.IO.Path.GetFileName(path);
+
+                Match match;
+                match = TLogRead.Match(name);
+                if (null != match && match.Success)
+                {
+                    TryDelete(path);
+                    continue;
+                }
+
+                match = TLogWrite.Match(name);
+                if (null != match && match.Success)
+                {
+                    TryDelete(path);
+                    continue;
+                }
+                match = FBuildTLogRead.Match(name);
+                if (null != match && match.Success)
+                {
+                    TryDelete(path);
+                    continue;
+                }
+
+                match = FBuildTLogWrite.Match(name);
+                if (null != match && match.Success)
+                {
+                    TryDelete(path);
+                    continue;
+                }
+
+                match = LastTLogRead.Match(name);
+                if(null != match && match.Success)
+                {
+                    string subroot = match.Groups[1].Value;
+                    LoadRead(subroot, path);
+                }
+                match = LastTLogWrite.Match(name);
+                if (null != match && match.Success)
+                {
+                    string subroot = match.Groups[1].Value;
+                    LoadWrite(subroot, path);
+                }
+            }
+        }
+
+        public void Save()
+        {
+            foreach (string path in System.IO.Directory.GetFiles(path_, "*.tlog"))
+            {
+                string name = System.IO.Path.GetFileName(path);
+
+                Match match;
+                match = TLogRead.Match(name);
+                if (null != match && match.Success)
+                {
+                    string subroot = match.Groups[1].Value;
+                    AddRead(subroot, path);
+                    TryDelete(path);
+                    continue;
+                }
+
+                match = TLogWrite.Match(name);
+                if (null != match && match.Success)
+                {
+                    string subroot = match.Groups[1].Value;
+                    AddWrite(subroot, path);
+                    TryDelete(path);
+                    continue;
+                }
+                match = FBuildTLogRead.Match(name);
+                if (null != match && match.Success)
+                {
+                    TryDelete(path);
+                    continue;
+                }
+
+                match = FBuildTLogWrite.Match(name);
+                if (null != match && match.Success)
+                {
+                    TryDelete(path);
+                    continue;
+                }
+                //TryDelete(path);
+            }
+            foreach (KeyValuePair<string, TLogEntry> logEntry in logEntries_)
+            {
+                try
+                {
+                    string path;
+                    path = System.IO.Path.Combine(path_, $"{logEntry.Key}.read.1.tlog");
+                    System.IO.File.WriteAllText(path, logEntry.Value.inputs_.ToString());
+                    path = System.IO.Path.Combine(path_, $"{logEntry.Key}.write.1.tlog");
+                    System.IO.File.WriteAllText(path, logEntry.Value.outputs_.ToString());
+                }
+                catch
+                {
+                }
+            }
+        }
+        private void TryDelete(string path)
+        {
+            try
+            {
+                System.IO.File.Delete(path);
+            }
+            catch (Exception e)
+            {
+            }
+        }
+
+        private void AddRead(string name, string path)
+        {
+            TLogEntry logEntry;
+            if (!logEntries_.TryGetValue(name, out logEntry))
+            {
+                logEntry.name_ = name;
+                logEntry.inputs_ = new StringBuilder(256);
+                logEntry.outputs_ = new StringBuilder(256);
+                logEntries_.Add(name, logEntry);
+            }
+            try
+            {
+                using (FileStream stream = new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.None))
+                using (StreamReader streamReader = new StreamReader(stream))
+                {
+                    string line;
+                    bool first = true;
+                    while (null != (line = streamReader.ReadLine()))
+                    {
+                        if (string.IsNullOrEmpty(line))
+                        {
+                            continue;
+                        }
+                        if (line.StartsWith("#"))
+                        {
+                            continue;
+                        }
+                        if (first)
+                        {
+                            logEntry.inputs_.Append("^");
+                        }
+                        logEntry.inputs_.AppendLine(line);
+                        first = false;
+                    }
+                }
+            }
+            catch (Exception)
+            {
+            }
+        }
+
+        private void LoadRead(string name, string path)
+        {
+            TLogEntry logEntry;
+            if (!logEntries_.TryGetValue(name, out logEntry))
+            {
+                logEntry.name_ = name;
+                logEntry.inputs_ = new StringBuilder(256);
+                logEntry.outputs_ = new StringBuilder(256);
+                logEntries_.Add(name, logEntry);
+            }
+                try
+                {
+                    using (FileStream stream = new FileStream(path, FileMode.Open, FileAccess.ReadWrite, FileShare.None))
+                    using (StreamReader streamReader = new StreamReader(stream))
+                    {
+                        string line;
+                        while (null != (line = streamReader.ReadLine()))
+                        {
+                        if (string.IsNullOrEmpty(line))
+                        {
+                            continue;
+                        }
+                        logEntry.inputs_.AppendLine(line);
+                        }
+                    }
+                }
+                catch (Exception)
+                {
+                }
+        }
+
+        private void AddWrite(string name, string path)
+        {
+            TLogEntry logEntry;
+            if (!logEntries_.TryGetValue(name, out logEntry))
+            {
+                logEntry.name_ = name;
+                logEntry.inputs_ = new StringBuilder(256);
+                logEntry.outputs_ = new StringBuilder(256);
+                logEntries_.Add(name, logEntry);
+            }
+            try
+            {
+                using (FileStream stream = new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.None))
+                using (StreamReader streamReader = new StreamReader(stream))
+                {
+                    string line;
+                    bool first = true;
+                    while (null != (line = streamReader.ReadLine()))
+                    {
+                        if (string.IsNullOrEmpty(line))
+                        {
+                            continue;
+                        }
+                        if (line.StartsWith("#"))
+                        {
+                            continue;
+                        }
+                        if (first)
+                        {
+                            logEntry.outputs_.Append("^");
+                        }
+                        logEntry.outputs_.AppendLine(line);
+                        first = false;
+                    }
+                }
+            }
+            catch (Exception)
+            {
+            }
+        }
+        private void LoadWrite(string name, string path)
+        {
+            TLogEntry logEntry;
+            if (!logEntries_.TryGetValue(name, out logEntry))
+            {
+                logEntry.name_ = name;
+                logEntry.inputs_ = new StringBuilder(256);
+                logEntry.outputs_ = new StringBuilder(256);
+                logEntries_.Add(name, logEntry);
+            }
+            try
+            {
+                using (FileStream stream = new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.None))
+                using (StreamReader streamReader = new StreamReader(stream))
+                {
+                    string line;
+                    while (null != (line = streamReader.ReadLine()))
+                    {
+                        if (string.IsNullOrEmpty(line))
+                        {
+                            continue;
+                        }
+                        logEntry.outputs_.AppendLine(line);
+                    }
+                }
+            }
+            catch (Exception)
+            {
+            }
+        }
+    }
+#endif
 }
