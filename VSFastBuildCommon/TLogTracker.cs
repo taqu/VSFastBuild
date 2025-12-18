@@ -307,11 +307,28 @@ namespace VSFastBuildCommon
         private const int TryDeleteCount = 128;
         private const int WaitDeleteTime = 268;
 
+        private struct WriteCommand
+        {
+            public bool Valid()
+            {
+                return !string.IsNullOrEmpty(input_) && !string.IsNullOrEmpty(output_);
+            }
+            public string input_;
+            public string output_;
+            public string options_;
+        }
+
+        private struct WriteEntry
+        {
+            public string input_;
+            public string output_;
+        }
+
         private struct TLogEntry
         {
             public string name_;
             public StringBuilder inputs_;
-            public Dictionary<string, WriteCommand> outputs_;
+            public Dictionary<string, List<WriteEntry>> outputs_;
         }
         private string path_ = string.Empty;
         private Dictionary<string, TLogEntry> logEntries_ = new Dictionary<string, TLogEntry>();
@@ -453,6 +470,10 @@ namespace VSFastBuildCommon
                     path = System.IO.Path.Combine(path_, $"{logEntry.Key}.read.1.tlog");
                     System.IO.File.AppendAllText(path, logEntry.Value.inputs_.ToString(), Encoding.Unicode);
                     path = System.IO.Path.Combine(path_, $"{logEntry.Key}.write.1.tlog");
+                    foreach(WriteCommand writeCommand in logEntry.Value.outputs_.Values)
+                    {
+                        System.IO.File.AppendAllText(path, $"# \"{writeCommand.input_}\" /Fo\"{writeCommand.output_}\" {writeCommand.options_}{Environment.NewLine}", Encoding.Unicode);
+                    }
                     System.IO.File.AppendAllText(path, logEntry.Value.outputs_.ToString(), Encoding.Unicode);
                 }
                 catch
@@ -501,7 +522,7 @@ namespace VSFastBuildCommon
             {
                 logEntry.name_ = name;
                 logEntry.inputs_ = new StringBuilder(256);
-                logEntry.outputs_ = new Dictionary<string, WriteCommand>(64);
+                logEntry.outputs_ = new Dictionary<string, List<WriteEntry>>(16);
                 logEntries_.Add(name, logEntry);
             }
             try
@@ -570,17 +591,6 @@ namespace VSFastBuildCommon
         }
         #endif
 
-        private struct WriteCommand
-        {
-            public bool Valid()
-            {
-                return !string.IsNullOrEmpty(input_) && !string.IsNullOrEmpty(output_);
-            }
-            public string input_;
-            public string output_;
-            public string options_;
-        }
-
         private WriteCommand ParseWriteCommand(string line)
         {
             WriteCommand writeCommand = new WriteCommand()
@@ -634,7 +644,7 @@ namespace VSFastBuildCommon
             {
                 logEntry.name_ = name;
                 logEntry.inputs_ = new StringBuilder(256);
-                logEntry.outputs_ = new Dictionary<string, WriteCommand>(64);
+                logEntry.outputs_ = new Dictionary<string, List<WriteEntry>>(16);
                 logEntries_.Add(name, logEntry);
             }
             try
@@ -652,9 +662,21 @@ namespace VSFastBuildCommon
                         if (line.StartsWith("#"))
                         {
                             WriteCommand writeCommand = ParseWriteCommand(line);
-                            if (writeCommand.Valid())
+                            if (!writeCommand.Valid())
                             {
-                                logEntry.outputs_.Add(writeCommand.options_, writeCommand);
+                                continue;
+                            }
+
+                            List<WriteEntry> writeEntry;
+                            if (logEntry.outputs_.TryGetValue(writeCommand.options_, out writeEntry))
+                            {
+                                writeEntry.Add(new WriteEntry() { input_ = writeCommand.input_, output_ = writeCommand.output_ });
+                            }
+                            else
+                            {
+                                writeEntry = new List<WriteEntry>(16);
+                                writeEntry.Add(new WriteEntry() { input_ = writeCommand.input_, output_ = writeCommand.output_ });
+                                logEntry.outputs_.Add(writeCommand.options_, writeEntry);
                             }
                         }
                     }
