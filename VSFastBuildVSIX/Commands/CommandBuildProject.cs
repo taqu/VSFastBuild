@@ -114,15 +114,24 @@ namespace VSFastBuildVSIX
             string rootDirectory = System.IO.Path.GetDirectoryName(package.DTE.Solution.FullName);
             string bffname = string.Format("fbuild_{0}_{1}_{2}.bff", hash, solutionConfiguration.Name, solutionConfiguration.PlatformName);
             string bffpath = System.IO.Path.Combine(rootDirectory, bffname);
+
+            await Log.AddOutputPaneAsync(Log.PaneBuild);
             Result result;
             try
             {
+                await Log.OutputBuildAsync($"--- VSFastBuild begin building {bffname}---");
                 result = await CommandBuildProject.BuildForSolutionAsync(package, targets, bffpath);
-                await RunProcessAsync(result, package, bffpath);
+
+                if (!VSFastBuildVSIXPackage.Options.GenOnly)
+                {
+                    await Log.OutputBuildAsync($"--- VSFastBuild begin running {bffname}---");
+                    await RunProcessAsync(result, package, bffpath);
+                }
+                await Log.OutputBuildAsync($"--- VSFastBuild end {bffname} ---");
             }
             catch (Exception ex)
             {
-                await Log.OutputDebugLineAsync(ex.Message);
+                await Log.OutputDebugAsync(ex.Message);
             }
             LeaveProcess(package, Command, commandText_);
         }
@@ -159,7 +168,6 @@ namespace VSFastBuildVSIX
                 arguments += $" -j{numProcessors}";
             }
 
-            await Log.AddOutputPaneAsync(Log.PaneBuild);
             ToolWindowMonitorControl.TruncateLogFile();
             await CommandBuildProject.ResetMonitorAsync(package);
             if (openMonitor)
@@ -191,7 +199,7 @@ namespace VSFastBuildVSIX
                     }
                     catch (Exception ex)
                     {
-                        Log.OutputDebugLine(ex.Message);
+                        await Log.OutputDebugAsync(ex.Message);
                     }
                 }
             }
@@ -992,8 +1000,8 @@ namespace VSFastBuildVSIX
                 AddExtraDlls(stringBuilder, buildContext.VC_ExecutablePath_, "tbbmalloc.dll");
                 AddExtraDlls(stringBuilder, buildContext.VC_ExecutablePath_, "vcmeta.dll");
                 AddExtraDlls(stringBuilder, buildContext.VC_ExecutablePath_, "vcruntime*.dll");
-                stringBuilder.AppendLine("    '$Root$/1033/clui.dll',");
-                stringBuilder.AppendLine("    '$Root$/1033/mspft140ui.dll'");
+                //stringBuilder.AppendLine("    '$Root$/1033/clui.dll',");
+                //stringBuilder.AppendLine("    '$Root$/1033/mspft140ui.dll'");
 
                 stringBuilder.AppendLine("  }");
                 stringBuilder.AppendLine("}");

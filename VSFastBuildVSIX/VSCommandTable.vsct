@@ -1,15 +1,15 @@
 <?xml version="1.0" encoding="utf-8"?>
 <CommandTable xmlns="http://schemas.microsoft.com/VisualStudio/2005-10-18/CommandTable" xmlns:xs="http://www.w3.org/2001/XMLSchema">
 
-	<Extern href="stdidcmd.h"/>
-	<Extern href="vsshlids.h"/>
-	<Include href="KnownImageIds.vsct"/>
-	<Include href="VSGlobals.vsct"/>
+	<Extern href="stdidcmd.h" />
+	<Extern href="vsshlids.h" />
+	<Include href="KnownImageIds.vsct" />
+	<Include href="VSGlobals.vsct" />
 
 	<Commands package="VSFastBuildVSIX">
 		<Groups>
-			<Group guid="VSFastBuildVSIX" id="VSFastBuildSolutionMenuGroup" priority="0x1000"/>
-			<Group guid="VSFastBuildVSIX" id="VSFastBuildProjectGroup" priority="0x1000"/>
+			<Group guid="VSFastBuildVSIX" id="VSFastBuildSolutionMenuGroup" priority="0x1000" />
+			<Group guid="VSFastBuildVSIX" id="VSFastBuildProjectGroup" priority="0x1000" />
 		</Groups>
 		<Menus>
 			<Menu guid="VSFastBuildVSIX" id="VSFastBuildBuildMenu" type="Menu">
@@ -43,14 +43,25 @@
 					<CommandName>FBuildMonitor</CommandName>
 				</Strings>
 			</Button>
-		</Buttons>
+			<Button guid="VSFastBuildVSIX" id="CommandFBuildClean" priority="0x101" type="Button">
+				<Icon guid="VSFastBuildImages" id="icon_menu" />
+				<Strings>
+					<ButtonText>FastBuild Clean</ButtonText>
+					<CommandName>FBuildClean</CommandName>
+				</Strings>
+			</Button>
+    </Buttons>
 		<Bitmaps>
 			<Bitmap guid="VSFastBuildImages" href="Resources\icon_menu.png" usedList="icon_menu" />
-		</Bitmaps>
+		  <Bitmap guid="guidImages" href="Commands\Resources\CommandClean.png" usedList="bmpPic1, bmpPic2, bmpPicSearch, bmpPicX, bmpPicArrows, bmpPicStrikethrough" />
+    </Bitmaps>
 	</Commands>
 
 	<CommandPlacements>
 		<CommandPlacement guid="VSFastBuildVSIX" id="CommandFBuildSolution" priority="0x1000">
+			<Parent guid="VSMainMenu" id="Build.SolutionGroup" />
+		</CommandPlacement>
+		<CommandPlacement guid="VSFastBuildVSIX" id="CommandFBuildClean" priority="0x1001">
 			<Parent guid="VSMainMenu" id="Build.SolutionGroup" />
 		</CommandPlacement>
 
@@ -59,17 +70,17 @@
 		</CommandPlacement>
 
 		<CommandPlacement guid="VSFastBuildVSIX" id="CommandFBuildSolution" priority="0x3000">
-			<Parent guid="VSMainMenu" id="SolutionNode.BuildGroup"/>
+			<Parent guid="VSMainMenu" id="SolutionNode.BuildGroup" />
 		</CommandPlacement>
 		<CommandPlacement guid="VSFastBuildVSIX" id="CommandFBuildProject" priority="0x3000">
-			<Parent guid="VSMainMenu" id="ProjectNode.BuildGroup"/>
+			<Parent guid="VSMainMenu" id="ProjectNode.BuildGroup" />
 		</CommandPlacement>
 		<CommandPlacement guid="VSFastBuildVSIX" id="CommandFBuildProject" priority="0x3000">
-			<Parent guid="VSMainMenu" id="ProjectNode.MultiProjectBuildGroup"/>
+			<Parent guid="VSMainMenu" id="ProjectNode.MultiProjectBuildGroup" />
 		</CommandPlacement>
 
 		<CommandPlacement guid="VSFastBuildVSIX" id="CommandFBuildMonitor" priority="0x3000">
-			<Parent guid="VSMainMenu" id="View.DevWindowsGroup.OtherWindows.Group1"/>
+			<Parent guid="VSMainMenu" id="View.DevWindowsGroup.OtherWindows.Group1" />
 		</CommandPlacement>
 	</CommandPlacements>
 
@@ -81,9 +92,19 @@
 			<IDSymbol name="CommandFBuildSolution" value="0x2000" />
 			<IDSymbol name="CommandFBuildProject" value="0x2001" />
 			<IDSymbol name="CommandFBuildMonitor" value="0x2002" />
+			<IDSymbol name="CommandFBuildClean" value="0x2003" />
 		</GuidSymbol>
 		<GuidSymbol name="VSFastBuildImages" value="{334E00CC-D085-4475-A258-7B02C3133597}">
 			<IDSymbol name="icon_menu" value="1" />
 		</GuidSymbol>
-	</Symbols>
+	
+    <GuidSymbol value="{bf66704f-c9c9-4236-931f-b61d861bc317}" name="guidImages">
+      <IDSymbol name="bmpPic1" value="1" />
+      <IDSymbol name="bmpPic2" value="2" />
+      <IDSymbol name="bmpPicSearch" value="3" />
+      <IDSymbol name="bmpPicX" value="4" />
+      <IDSymbol name="bmpPicArrows" value="5" />
+      <IDSymbol name="bmpPicStrikethrough" value="6" />
+    </GuidSymbol>
+  </Symbols>
 </CommandTable>

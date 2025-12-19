@@ -95,8 +95,15 @@ namespace VSFastBuildVSIX.Commands
             Result result;
             try
             {
+                await Log.OutputBuildAsync($"--- VSFastBuild begin building {bffname}---");
                 result = await CommandBuildProject.BuildForSolutionAsync(package, targets, bffpath);
-                await RunProcessAsync(result, package, bffpath);
+
+                if (!VSFastBuildVSIXPackage.Options.GenOnly)
+                {
+                    await Log.OutputBuildAsync($"--- VSFastBuild begin running {bffname}---");
+                    await RunProcessAsync(result, package, bffpath);
+                }
+                await Log.OutputBuildAsync($"--- VSFastBuild end {bffname} ---");
             }
             catch (Exception ex)
             {

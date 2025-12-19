@@ -41,7 +41,7 @@ namespace VSFastBuildVSIX
         /// <summary>
         /// Print a message to the editor's output
         /// </summary>
-        public static void OutputDebugLine(string message)
+        public static void OutputDebug(string message)
         {
             _ = ThreadHelper.JoinableTaskFactory.RunAsync(async () =>
             {
@@ -52,7 +52,6 @@ namespace VSFastBuildVSIX
                 {
                     return;
                 }
-                //message = AddNewLine(message);
                 foreach (EnvDTE.OutputWindowPane window in outputWindow.OutputWindowPanes)
                 {
                     if (window.Name == PaneDebug)
@@ -64,18 +63,18 @@ namespace VSFastBuildVSIX
             });
         }
 
-		/// <summary>
-		/// Print a message to the editor's output
-		/// </summary>
-		public static async Task OutputDebugLineAsync(string message)
+        /// <summary>
+        /// Print a message to the editor's output
+        /// </summary>
+        public static async Task OutputDebugAsync(string message)
         {
             await Microsoft.VisualStudio.Shell.ThreadHelper.JoinableTaskFactory.SwitchToMainThreadAsync();
             DTE2 dte2 = Microsoft.VisualStudio.Shell.Package.GetGlobalService(typeof(DTE)) as DTE2;
             EnvDTE.OutputWindow outputWindow = dte2.ToolWindows.OutputWindow;
-            if(null == outputWindow) {
+            if (null == outputWindow)
+            {
                 return;
             }
-            //message = AddNewLine(message);
             foreach (EnvDTE.OutputWindowPane window in outputWindow.OutputWindowPanes)
             {
                 if (window.Name == PaneDebug)
@@ -84,6 +83,24 @@ namespace VSFastBuildVSIX
                 }
             }
             Trace.WriteLine(message);
+        }
+
+        /// <summary>
+        /// Print a message to the editor's output
+        /// </summary>
+        public static void OutputDebugLine(string message)
+        {
+            message = AddNewLine(message);
+            OutputDebug(message);
+        }
+
+		/// <summary>
+		/// Print a message to the editor's output
+		/// </summary>
+		public static async Task OutputDebugLineAsync(string message)
+        {
+            message = AddNewLine(message);
+            await OutputDebugAsync(message);
         }
 
         /// <summary>
