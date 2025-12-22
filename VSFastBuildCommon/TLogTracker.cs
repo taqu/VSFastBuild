@@ -1,9 +1,12 @@
 using Microsoft.Build.Framework;
 using Microsoft.Build.Utilities;
+using SharpCompress.Common.Rar;
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
+using System.Linq;
+using System.Runtime.InteropServices;
 using System.Text;
 using System.Text.RegularExpressions;
 using System.Threading;
@@ -11,287 +14,152 @@ using System.Windows.Documents;
 
 namespace VSFastBuildCommon
 {
-#if false
     public class TLogTracker : IDisposable
     {
-        private static Regex FBuildTLogRead = new Regex(@"^FBuild\.\d{5}\.\d{5}\.read\.\d+\.tlog");
-        private static Regex FBuildTLogWrite = new Regex(@"^FBuild\.\d{5}\.\d{5}\.write\.\d+\.tlog");
-
-        private static Regex TLogRead = new Regex(@"^FBuild\.\d{5}\.\d{5}-([a-zA-Z0-9\-_]+)\.(\d+\.)?read\.\d+\.tlog");
-        private static Regex TLogWrite = new Regex(@"^FBuild\.\d{5}\.\d{5}-([a-zA-Z0-9\-_]+)\.(\d+\.)?write\.\d+\.tlog");
-
-        private const int TryCount = 64;
-        private const int WaitTime = 134;
-
-        private const int TryDeleteCount = 128;
-        private const int WaitDeleteTime = 268;
-
-        private struct TLogEntry
+        public class CommandLineParser
         {
-            public string name_;
-            public StringBuilder inputs_;
-            public StringBuilder outputs_;
-        }
-        private string path_ = string.Empty;
-        private Dictionary<string, TLogEntry> logEntries_ = new Dictionary<string, TLogEntry>();
-        private const int MaxCount = 16;
-        private bool disposed_ = false;
-        private FileSystemWatcher watcher_ = null;
-        private readonly AutoResetEvent autoResetEvent_ = new AutoResetEvent(false);
-        private Queue<Tuple<string, string>> paths_ = new Queue<Tuple<string, string>>(16);
+            [DllImport("shell32.dll", CharSet = CharSet.Unicode)]
+            private static extern IntPtr CommandLineToArgvW([MarshalAs(UnmanagedType.LPWStr)] string lpCmdLine, out int pNumArgs);
 
-        public TLogTracker(string path)
-        {
-            path_ = path;
-            watcher_ = new FileSystemWatcher(path);
-            watcher_.NotifyFilter = NotifyFilters.Attributes
-                                 | NotifyFilters.CreationTime
-                                 | NotifyFilters.DirectoryName
-                                 | NotifyFilters.FileName
-                                 | NotifyFilters.LastAccess
-                                 | NotifyFilters.LastWrite
-                                 | NotifyFilters.Security
-                                 | NotifyFilters.Size;
+            [DllImport("kernel32.dll")]
+            private static extern IntPtr LocalFree(IntPtr hMem);
 
-            watcher_.Created += OnCreated;
-
-            watcher_.Filter = "*.tlog";
-            watcher_.IncludeSubdirectories = false;
-            watcher_.EnableRaisingEvents = false;
-        }
-
-        ~TLogTracker()
-        {
-            Dispose(false);
-        }
-
-
-        public void Dispose()
-        {
-            Dispose(true);
-            GC.SuppressFinalize(this);
-        }
-
-        protected virtual void Dispose(bool disposing)
-        {
-            if (!disposed_)
+            public enum CommandType
             {
-                if (disposing)
-                {
-                    if (null != watcher_)
-                    {
-                        watcher_.Dispose();
-                        watcher_ = null;
-                    }
-                }
-                disposed_ = true;
+                Cmd,
+                PowerShell,
+                Cl,
+                Link,
+                Lib_Link,
+                Lib,
+                Unknown,
             }
-        }
 
-        public void Run(CancellationToken cancellationToken)
-        {
-            Start();
-            for (; ; )
+            public struct Command
             {
-                if (cancellationToken.IsCancellationRequested)
-                {
-                    break;
-                }
-                autoResetEvent_.WaitOne(WaitTime);
-
-                Tuple<string, string>[] paths = null;
-                lock (paths_)
-                {
-                    if(0 < paths_.Count) {
-                        paths = paths_.ToArray();
-                        paths_.Clear();
-                    }
-                }
-                if(null == paths)
-                {
-                    continue;
-                }
-                foreach (Tuple<string, string> path in paths)
-                {
-                    Match match;
-                    match = TLogRead.Match(path.Item1);
-                    if (null != match && match.Success)
-                    {
-                        string subroot = match.Groups[1].Value;
-                        AddRead(subroot, path.Item2);
-                        TryDelete(path.Item2);
-                        continue;
-                    }
-
-                    match = TLogWrite.Match(path.Item1);
-                    if (null != match && match.Success)
-                    {
-                        string subroot = match.Groups[1].Value;
-                        AddWrite(subroot, path.Item2);
-                        TryDelete(path.Item2);
-                        continue;
-                    }
-                    //match = FBuildTLogRead.Match(path.Item1);
-                    //if (null != match && match.Success)
-                    //{
-                    //    TryDelete(path.Item2);
-                    //    continue;
-                    //}
-
-                    //match = FBuildTLogWrite.Match(path.Item1);
-                    //if (null != match && match.Success)
-                    //{
-                    //    TryDelete(path.Item2);
-                    //    continue;
-                    //}
-                    TryDelete(path.Item2);
-                }
+                public CommandType type_;
+                public string name_;
+                public string input_;
+                public string output_;
+                public string options_;
             }
-            Stop();
-            Save();
-        }
 
-        private void Start()
-        {
-            watcher_.EnableRaisingEvents = true;
-        }
-
-        private void Stop()
-        {
-            watcher_.EnableRaisingEvents = false;
-        }
-
-        private void Save()
-        {
-            foreach(KeyValuePair<string, TLogEntry> logEntry in logEntries_)
+            public static string[] Parse(string text)
             {
+                IntPtr argsPtr = CommandLineToArgvW(text, out var argsNum);
+                if (IntPtr.Zero == argsPtr)
+                {
+                    return null;
+                }
                 try
                 {
-                    string path;
-                    path = System.IO.Path.Combine(path_, $"{logEntry.Key}.read.1.tlog");
-                    System.IO.File.WriteAllText(path, logEntry.Value.inputs_.ToString());
-                    path = System.IO.Path.Combine(path_, $"{logEntry.Key}.write.1.tlog");
-                    System.IO.File.WriteAllText(path, logEntry.Value.outputs_.ToString());
+                    return Enumerable
+                      .Range(0, argsNum)
+                      .Select(i => Marshal.PtrToStringUni(Marshal.ReadIntPtr(argsPtr, i * IntPtr.Size)))
+                      .ToArray();
                 }
-                catch
+                finally
                 {
-                }
-            }
-        }
-
-        private void TryDelete(string path)
-        {
-            for (int i = 0; i < TryDeleteCount; ++i)
-            {
-                try
-                {
-                    System.IO.File.Delete(path);
-                    break;
-                }
-                catch (Exception e)
-                {
-                    Thread.Sleep(WaitDeleteTime);
+                    LocalFree(argsPtr);
                 }
             }
-        }
 
-        private void OnCreated(object sender, FileSystemEventArgs e)
-        {
-            if (string.IsNullOrEmpty(e.Name) || string.IsNullOrEmpty(e.FullPath))
+            public Command GetCommand(string text)
             {
-                return;
-            }
-
-            lock(paths_)
-            {
-                paths_.Enqueue(new Tuple<string, string>(e.Name, e.FullPath));
-                autoResetEvent_.Set();
-            }
-        }
-
-        private void AddRead(string name, string path)
-        {
-            TLogEntry logEntry;
-            if (!logEntries_.TryGetValue(name, out logEntry))
-            {
-                logEntry.name_ = name;
-                logEntry.inputs_ = new StringBuilder(256);
-                logEntry.outputs_ = new StringBuilder(256);
-                logEntries_.Add(name, logEntry);
-            }
-            for (int i = 0; i < TryCount; ++i)
-            {
-                try
+                string[] args = Parse(text);
+                Command command = new Command()
                 {
-                    using (FileStream stream = new FileStream(path, FileMode.Open, FileAccess.ReadWrite, FileShare.None))
-                    using (StreamReader streamReader = new StreamReader(stream))
+                    type_ = CommandType.Unknown,
+                    name_ = string.Empty,
+                    input_ = string.Empty,
+                    output_ = string.Empty,
+                    options_ = string.Empty,
+                };
+                if (null == args)
+                {
+                    return command;
+                }
+                if (args.Length < 1)
+                {
+                    return command;
+                }
+                optionBuilder_.Clear();
+                command.name_ = args[0].Trim('"');
+                for (int i = 1; i < args.Length; ++i)
+                {
+                    System.Diagnostics.Debug.Assert(0 < args[i].Length);
+                    if (args[i].StartsWith("/Fo"))
                     {
-                        string line;
-                        while (null != (line = streamReader.ReadLine()))
+                        if (args[i] == "/Fo")
                         {
-                            if (string.IsNullOrEmpty(line))
+                            if ((i + 1) < args.Length)
                             {
-                                continue;
+                                command.output_ = args[i + 1].Trim('"');
                             }
-                            if (line.StartsWith("#"))
-                            {
-                                continue;
-                            }
-                            logEntry.inputs_.AppendLine(line);
                         }
-                        break;
+                        else
+                        {
+                            command.output_ = args[i].Substring(3).Trim('"');
+                        }
+                    }
+                    else if (args[i].StartsWith("/OUT:"))
+                    {
+                        if (args[i] == "/OUT:")
+                        {
+                            if ((i + 1) < args.Length)
+                            {
+                                command.output_ = args[i + 1].Trim('"');
+                            }
+                        }
+                        else
+                        {
+                            command.output_ = args[i].Substring(4).Trim('"');
+                        }
+                    }
+                    else if (args[i].StartsWith("/") || args[i].StartsWith("-"))
+                    {
+                        if (0 < optionBuilder_.Length)
+                        {
+                            optionBuilder_.Append(' ');
+                        }
+                        optionBuilder_.Append(args[i]);
+                    }
+                    else
+                    {
+                        if (string.IsNullOrEmpty(command.input_))
+                        {
+                            command.input_ = args[i];
+                        }
                     }
                 }
-                catch (Exception)
+                command.options_ = optionBuilder_.ToString();
+                string name = System.IO.Path.GetFileNameWithoutExtension(command.name_).ToLowerInvariant();
+                switch (name)
                 {
-                    Thread.Sleep(WaitTime);
+                    case "cmd":
+                        command.type_ = CommandType.Cmd;
+                        break;
+                    case "powershell":
+                        command.type_ = CommandType.PowerShell;
+                        break;
+                    case "cl":
+                        command.type_ = CommandType.Cl;
+                        break;
+                    case "link":
+                        command.type_ = CommandType.Link;
+                        break;
+                    case "lib":
+                        command.type_ = CommandType.Lib;
+                        break;
+                    default:
+                        command.type_ = CommandType.Unknown;
+                        break;
                 }
+                return command;
             }
+            private StringBuilder optionBuilder_ = new StringBuilder();
         }
 
-        private void AddWrite(string name, string path)
-        {
-            TLogEntry logEntry;
-            if (!logEntries_.TryGetValue(name, out logEntry))
-            {
-                logEntry.name_ = name;
-                logEntry.inputs_ = new StringBuilder(256);
-                logEntry.outputs_ = new StringBuilder(256);
-                logEntries_.Add(name, logEntry);
-            }
-            for (int i = 0; i < TryCount; ++i)
-            {
-                try
-                {
-                    using (FileStream stream = new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.None))
-                    using (StreamReader streamReader = new StreamReader(stream))
-                    {
-                        string line;
-                        while (null != (line = streamReader.ReadLine()))
-                        {
-                            if (string.IsNullOrEmpty(line))
-                            {
-                                continue;
-                            }
-                            if (line.StartsWith("#"))
-                            {
-                                continue;
-                            }
-                            logEntry.outputs_.AppendLine(line);
-                        }
-                        break;
-                    }
-                }
-                catch (Exception)
-                {
-                    Thread.Sleep(WaitTime);
-                }
-            }
-        }
-    }
-#else
-    public class TLogTracker : IDisposable
-    {
         private static Regex FBuildTLogRead = new Regex(@"^FBuild\.\d{5}\.\d{5}\.read\.\d+\.tlog");
         private static Regex FBuildTLogWrite = new Regex(@"^FBuild\.\d{5}\.\d{5}\.write\.\d+\.tlog");
 
@@ -301,15 +169,9 @@ namespace VSFastBuildCommon
         private static Regex LastTLogRead = new Regex(@"^([a-zA-Z0-9\-_]+)\.read\.\d+\.tlog");
         private static Regex LastTLogWrite = new Regex(@"^([a-zA-Z0-9\-_]+)\.write\.\d+\.tlog");
 
-        private struct WriteCommand
+        private class ReadEntry
         {
-            public bool Valid()
-            {
-                return !string.IsNullOrEmpty(input_) && !string.IsNullOrEmpty(output_);
-            }
-            public string input_;
-            public string output_;
-            public string options_;
+            public List<string> files_;
         }
 
         private struct WriteEntry
@@ -321,10 +183,11 @@ namespace VSFastBuildCommon
         private struct TLogEntry
         {
             public string name_;
-            public Dictionary<string, List<string>> inputs_;
+            public Dictionary<string, ReadEntry> inputs_;
             public Dictionary<string, List<WriteEntry>> outputs_;
         }
         private string path_ = string.Empty;
+        private CommandLineParser commandLineParser_ = new CommandLineParser();
         private Dictionary<string, TLogEntry> logEntries_ = new Dictionary<string, TLogEntry>();
         private const int MaxCount = 16;
         private bool disposed_ = false;
@@ -414,6 +277,33 @@ namespace VSFastBuildCommon
             }
         }
 
+        private static bool NeedSaveRead(KeyValuePair<string, TLogEntry> logEntry)
+        {
+            Dictionary<string, ReadEntry>.ValueCollection dictionary = logEntry.Value.inputs_.Values;
+            foreach (KeyValuePair<string, ReadEntry> entry in logEntry.Value.inputs_)
+            {
+                if (0 < entry.Value.files_.Count)
+                {
+                    return true;
+                }
+            }
+            return false;
+        }
+
+        private static bool NeedSaveWrite(KeyValuePair<string, TLogEntry> logEntry)
+        {
+            Dictionary<string, List<WriteEntry>>.ValueCollection dictionary = logEntry.Value.outputs_.Values;
+            foreach (List<WriteEntry> writeEntryList in dictionary)
+            {
+                if (0 < writeEntryList.Count)
+                {
+                    return true;
+                }
+            }
+            return false;
+        }
+
+
         public void Save()
         {
             foreach (string path in System.IO.Directory.GetFiles(path_, "*.tlog"))
@@ -453,46 +343,93 @@ namespace VSFastBuildCommon
                 }
                 //TryDelete(path);
             }
+
+            // check rsp
+            foreach (KeyValuePair<string, TLogEntry> logEntry in logEntries_)
+            {
+                foreach (List<WriteEntry> writeEntryList in logEntry.Value.outputs_.Values)
+                {
+                    for (int i = 0; i < writeEntryList.Count; ++i)
+                    {
+                        string input = writeEntryList[i].input_.TrimEnd('"').TrimEnd();
+                        if (input.EndsWith(".rsp", StringComparison.OrdinalIgnoreCase))
+                        {
+
+                        }
+                    }
+                }
+            }
+            List<string> inputList = new List<string>();
             StringBuilder stringBuilder = new StringBuilder(1024);
             foreach (KeyValuePair<string, TLogEntry> logEntry in logEntries_)
             {
                 try
                 {
                     string path;
-                    path = System.IO.Path.Combine(path_, $"{logEntry.Key}.read.1.tlog");
-                    using (FileStream fileStream = new FileStream(path, FileMode.Append, FileAccess.Write, FileShare.None))
-                    using (StreamWriter streamWriter = new StreamWriter(fileStream, Encoding.Unicode))
+                    if (NeedSaveRead(logEntry))
                     {
-                        Dictionary<string, List<string>>.ValueCollection dictionary = logEntry.Value.inputs_.Values;
-                        foreach (KeyValuePair<string, List<string>> entry in logEntry.Value.inputs_)
+                        path = System.IO.Path.Combine(path_, $"{logEntry.Key}.read.1.tlog");
+                        using (FileStream fileStream = new FileStream(path, FileMode.Create, FileAccess.Write, FileShare.None))
+                        using (StreamWriter streamWriter = new StreamWriter(fileStream, Encoding.Unicode))
                         {
-                            streamWriter.Write('^');
-                            streamWriter.WriteLine(entry.Key);
-                            foreach(string l in entry.Value) {
-                                streamWriter.WriteLine(l);
+                            Dictionary<string, ReadEntry>.ValueCollection dictionary = logEntry.Value.inputs_.Values;
+                            foreach (KeyValuePair<string, ReadEntry> entry in logEntry.Value.inputs_)
+                            {
+                                streamWriter.Write('^');
+                                string input = entry.Key.TrimEnd('"').TrimEnd();
+                                if(input.EndsWith(".rsp", StringComparison.OrdinalIgnoreCase))
+                                {
+                                    inputList.Clear();
+                                    for(int i=0; i< entry.Value.files_.Count; ++i)
+                                    {
+                                        if(!entry.Value.files_[i].EndsWith(".OBJ", StringComparison.OrdinalIgnoreCase))
+                                        {
+                                            continue;
+                                        }
+                                        inputList.Add(entry.Value.files_[i]);
+                                    }
+                                    string inputs = string.Join("|", inputList);
+                                    streamWriter.WriteLine(inputs);
+                                }
+                                else
+                                {
+                                    streamWriter.WriteLine(entry.Key);
+                                }
+                                streamWriter.WriteLine(entry.Key);
+                                foreach (string l in entry.Value.files_)
+                                {
+                                    if(l.EndsWith(".rsp", StringComparison.OrdinalIgnoreCase)){
+                                        continue;
+                                    }
+                                    streamWriter.WriteLine(l);
+                                }
                             }
                         }
                     }
 
-                    path = System.IO.Path.Combine(path_, $"{logEntry.Key}.write.1.tlog");
-                    using (FileStream fileStream = new FileStream(path, FileMode.Append, FileAccess.Write, FileShare.None))
-                    using(StreamWriter streamWriter = new StreamWriter(fileStream, Encoding.Unicode))
+                    if (NeedSaveWrite(logEntry))
                     {
-                        Dictionary<string, List<WriteEntry>>.ValueCollection dictionary = logEntry.Value.outputs_.Values;
-                        foreach (List<WriteEntry> writeEntryList in dictionary)
+                        path = System.IO.Path.Combine(path_, $"{logEntry.Key}.write.1.tlog");
+                        using (FileStream fileStream = new FileStream(path, FileMode.Append, FileAccess.Write, FileShare.None))
+                        using (StreamWriter streamWriter = new StreamWriter(fileStream, Encoding.Unicode))
                         {
-                            for(int i=0;  i<writeEntryList.Count; ++i)
+                            Dictionary<string, List<WriteEntry>>.ValueCollection dictionary = logEntry.Value.outputs_.Values;
+                            foreach (List<WriteEntry> writeEntryList in dictionary)
                             {
-                                streamWriter.Write(writeEntryList[i].input_);
-                                if(i != (writeEntryList.Count - 1))
+                                streamWriter.Write('^');
+                                for (int i = 0; i < writeEntryList.Count; ++i)
                                 {
-                                    streamWriter.Write("|");
+                                    streamWriter.Write(writeEntryList[i].input_);
+                                    if (i != (writeEntryList.Count - 1))
+                                    {
+                                        streamWriter.Write("|");
+                                    }
                                 }
-                            }
-                            streamWriter.WriteLine();
-                            for (int i = 0; i < writeEntryList.Count; ++i)
-                            {
-                                streamWriter.WriteLine(writeEntryList[i].output_);
+                                streamWriter.WriteLine();
+                                for (int i = 0; i < writeEntryList.Count; ++i)
+                                {
+                                    streamWriter.WriteLine(writeEntryList[i].output_);
+                                }
                             }
                         }
                     }
@@ -513,41 +450,13 @@ namespace VSFastBuildCommon
             }
         }
 
-        private string ParseReadCommand(string line)
-        {
-            int start;
-            start = line.IndexOf('\"');
-            if(start < 0)
-            {
-                return string.Empty;
-            }
-            start = line.IndexOf('\"', start + 1);
-            if (start < 0)
-            {
-                return string.Empty;
-            }
-
-            start = line.IndexOf('\"', start + 1);
-            if (start < 0)
-            {
-                return string.Empty;
-            }
-            start += 1;
-            int end = line.IndexOf('\"', start);
-            if (end < 0)
-            {
-                return string.Empty;
-            }
-            return line.Substring(start, end-start).ToUpper();
-        }
-
         private void AddRead(string name, string path)
         {
             TLogEntry logEntry;
             if (!logEntries_.TryGetValue(name, out logEntry))
             {
                 logEntry.name_ = name;
-                logEntry.inputs_ = new Dictionary<string, List<string>>(MaxCount);
+                logEntry.inputs_ = new Dictionary<string, ReadEntry>(MaxCount);
                 logEntry.outputs_ = new Dictionary<string, List<WriteEntry>>(MaxCount);
                 logEntries_.Add(name, logEntry);
             }
@@ -556,7 +465,7 @@ namespace VSFastBuildCommon
                 using (FileStream stream = new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.None))
                 using (StreamReader streamReader = new StreamReader(stream))
                 {
-                    List<string> list = null;
+                    ReadEntry readEntry = null;
                     string line;
                     while (null != (line = streamReader.ReadLine()))
                     {
@@ -564,23 +473,26 @@ namespace VSFastBuildCommon
                         {
                             continue;
                         }
-                        if (line.StartsWith("#"))
+                        if (line.StartsWith("#Command: "))
                         {
-                            string input = ParseReadCommand(line);
-                            if (string.IsNullOrEmpty(input))
+                            line = line.Substring("#Command: ".Length);
+                            CommandLineParser.Command command = commandLineParser_.GetCommand(line);
+                            if (string.IsNullOrEmpty(command.input_))
                             {
                                 break;
                             }
-                            if(!logEntry.inputs_.TryGetValue(input, out list))
+                            if (!logEntry.inputs_.TryGetValue(command.input_, out readEntry))
                             {
-                                list = new List<string>(MaxCount);
-                                logEntry.inputs_.Add(input, list);
+                                readEntry = new ReadEntry();
+                                readEntry.files_ = new List<string>(MaxCount);
+                                logEntry.inputs_.Add(command.input_, readEntry);
                             }
                         }
-                        else {
-                            if (list.FindIndex((string x0) => x0 == line) < 0)
+                        else if(null != readEntry)
+                        {
+                            if (readEntry.files_.FindIndex((string x0) => x0 == line) < 0)
                             {
-                                list.Add(line);
+                                readEntry.files_.Add(line);
                             }
                         }
                     }
@@ -597,7 +509,7 @@ namespace VSFastBuildCommon
             if (!logEntries_.TryGetValue(name, out logEntry))
             {
                 logEntry.name_ = name;
-                logEntry.inputs_ = new Dictionary<string, List<string>>(MaxCount);
+                logEntry.inputs_ = new Dictionary<string, ReadEntry>(MaxCount);
                 logEntry.outputs_ = new Dictionary<string, List<WriteEntry>>(MaxCount);
                 logEntries_.Add(name, logEntry);
             }
@@ -607,7 +519,7 @@ namespace VSFastBuildCommon
                 using (StreamReader streamReader = new StreamReader(stream))
                 {
                     string line;
-                    List<string> list = null;
+                    ReadEntry readEntry = null;
                     while (null != (line = streamReader.ReadLine()))
                     {
                         if (string.IsNullOrEmpty(line))
@@ -617,70 +529,23 @@ namespace VSFastBuildCommon
                         if (line.StartsWith("^"))
                         {
                             line = line.Substring(1);
-                            if (!logEntry.inputs_.TryGetValue(line, out list))
+                            if (!logEntry.inputs_.TryGetValue(line, out readEntry))
                             {
-                                list = new List<string>(MaxCount);
-                                logEntry.inputs_.Add(line, list);
+                                readEntry = new ReadEntry();
+                                readEntry.files_ = new List<string>(MaxCount);
+                                logEntry.inputs_.Add(line, readEntry);
                             }
-                        }
-                        else if (null != list)
+                        }   
+                        else if (null != readEntry)
                         {
-                            list.Add(line);
+                            readEntry.files_.Add(line);
                         }
                     }
                 }
             }
-            catch (Exception) {
-            }
-        }
-
-        private WriteCommand ParseWriteCommand(string line)
-        {
-            WriteCommand writeCommand = new WriteCommand()
+            catch (Exception)
             {
-                input_ = string.Empty,
-                output_ = string.Empty,
-                options_ = string.Empty
-            };
-            int start;
-            start = line.IndexOf('\"');
-            if(start < 0)
-            {
-                return writeCommand;
             }
-
-            start = line.IndexOf('\"', start + 1);
-            if (start < 0)
-            {
-                return writeCommand;
-            }
-            start = line.IndexOf('\"', start + 1);
-            if (start < 0)
-            {
-                return writeCommand;
-            }
-            ++start;
-            int end = line.IndexOf('\"', start);
-            if (end < 0)
-            {
-                return writeCommand;
-            }
-            writeCommand.input_ = line.Substring(start, end - start).ToUpper();
-            start = line.IndexOf("/Fo\"", end + 1);
-            if (start < 0)
-            {
-                return writeCommand;
-            }
-
-            start += 4;
-            end = line.IndexOf('\"', start);
-            if (end < 0)
-            {
-                return writeCommand;
-            }
-            writeCommand.output_ = line.Substring(start, end - start).ToUpper();
-            writeCommand.options_ = line.Substring(end + 1).Trim();
-            return writeCommand;
         }
 
         private void AddWrite(string name, string path)
@@ -689,7 +554,7 @@ namespace VSFastBuildCommon
             if (!logEntries_.TryGetValue(name, out logEntry))
             {
                 logEntry.name_ = name;
-                logEntry.inputs_ = new Dictionary<string, List<string>>(MaxCount);
+                logEntry.inputs_ = new Dictionary<string, ReadEntry>(MaxCount);
                 logEntry.outputs_ = new Dictionary<string, List<WriteEntry>>(MaxCount);
                 logEntries_.Add(name, logEntry);
             }
@@ -705,24 +570,32 @@ namespace VSFastBuildCommon
                         {
                             continue;
                         }
-                        if (line.StartsWith("#"))
+                        if (line.StartsWith("#Command: "))
                         {
-                            WriteCommand writeCommand = ParseWriteCommand(line);
-                            if (!writeCommand.Valid())
+                            line = line.Substring("#Command: ".Length);
+                            CommandLineParser.Command command = commandLineParser_.GetCommand(line);
+                            if (string.IsNullOrEmpty(command.input_))
+                            {
+                                continue;
+                            }
+                            string input = command.input_.TrimEnd('"').TrimEnd();
+                            if(input.EndsWith(".rsp", StringComparison.OrdinalIgnoreCase))
+                            {
+                            }else if(string.IsNullOrEmpty(command.output_))
                             {
                                 continue;
                             }
 
                             List<WriteEntry> writeEntry;
-                            if (logEntry.outputs_.TryGetValue(writeCommand.options_, out writeEntry))
+                            if (logEntry.outputs_.TryGetValue(command.options_, out writeEntry))
                             {
-                                writeEntry.Add(new WriteEntry() { input_ = writeCommand.input_, output_ = writeCommand.output_ });
+                                writeEntry.Add(new WriteEntry() { input_ = command.input_, output_ = command.output_ });
                             }
                             else
                             {
                                 writeEntry = new List<WriteEntry>(16);
-                                writeEntry.Add(new WriteEntry() { input_ = writeCommand.input_, output_ = writeCommand.output_ });
-                                logEntry.outputs_.Add(writeCommand.options_, writeEntry);
+                                writeEntry.Add(new WriteEntry() { input_ = command.input_, output_ = command.output_ });
+                                logEntry.outputs_.Add(command.options_, writeEntry);
                             }
                         }
                     }
@@ -733,7 +606,7 @@ namespace VSFastBuildCommon
             }
         }
 
-        #if false
+#if false
         private void LoadWrite(string name, string path)
         {
             TLogEntry logEntry;
@@ -764,7 +637,6 @@ namespace VSFastBuildCommon
             {
             }
         }
-        #endif
-    }
 #endif
+    }
 }

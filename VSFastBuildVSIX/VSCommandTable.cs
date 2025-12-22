@@ -18,6 +18,9 @@ namespace VSFastBuildVSIX
 
         public const string VSFastBuildImagesString = "334e00cc-d085-4475-a258-7b02c3133597";
         public static Guid VSFastBuildImages = new Guid(VSFastBuildImagesString);
+
+        public const string guidImagesString = "bf66704f-c9c9-4236-931f-b61d861bc317";
+        public static Guid guidImages = new Guid(guidImagesString);
     }
 
     /// <summary>
@@ -25,13 +28,24 @@ namespace VSFastBuildVSIX
     /// </summary>
     internal sealed partial class PackageIds
     {
-        public const int VSFastBuildBuildMenu = 0x1000;
-        public const int VSFastBuildSolutionMenuGroup = 0x1001;
-        public const int VSFastBuildProjectGroup = 0x1002;
-        public const int CommandFBuildSolution = 0x2000;
-        public const int CommandFBuildProject = 0x2001;
-        public const int CommandFBuildMonitor = 0x2002;
-        public const int CommandFBuildClean = 0x2003;
+        public const int VSFastBuildMenuGroup = 0x1000;
+        public const int VSFastBuildMenuSolutionGroup = 0x1001;
+        public const int VSFastBuildMenuProjectGroup = 0x1002;
+        public const int VSFastBuildMenuToolGroup = 0x1003;
+        public const int VSFastBuildMenu = 0x2000;
+        public const int VSFastBuildMenuController = 0x2001;
+        public const int CommandFBuildSolution = 0x3000;
+        public const int CommandFBuildProject = 0x3001;
+        public const int CommandFBuildMonitor = 0x3002;
+        public const int CommandFBuildClean = 0x3003;
+        public const int CommandFBuildReload = 0x3004;
+        public const int CommandFBuildDynamicStart = 0x3005;
         public const int icon_menu = 0x0001;
+        public const int bmpPic1 = 0x0001;
+        public const int bmpPic2 = 0x0002;
+        public const int bmpPicSearch = 0x0003;
+        public const int bmpPicX = 0x0004;
+        public const int bmpPicArrows = 0x0005;
+        public const int bmpPicStrikethrough = 0x0006;
     }
 }

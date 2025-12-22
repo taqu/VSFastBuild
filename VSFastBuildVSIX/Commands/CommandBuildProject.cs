@@ -141,6 +141,8 @@ namespace VSFastBuildVSIX
             public string name_;
             public string projectDir_;
             public string intDir_;
+            public string configuration_;
+            public string platform_;
         }
 
         public struct Result
@@ -148,6 +150,7 @@ namespace VSFastBuildVSIX
             public bool success_;
             public string tracker_;
             public List<ResultProject> projects_;
+            public string lastbuildstate_;
         }
 
         public static async Task RunProcessAsync(Result result, VSFastBuildVSIXPackage package, string bffpath)
@@ -192,6 +195,13 @@ namespace VSFastBuildVSIX
                                 tracker.Start();
                                 await process.WaitForExitAsync(package.CancellationToken);
                                 tracker.Save();
+                                string lastbuildstateFile = System.IO.Path.Combine(tlogDir, $"{result.projects_[i].name_}.lastbuildstate");
+                                try
+                                {
+                                    string lastbuildstate = $"{result.lastbuildstate_}\r\n{result.projects_[i].configuration_}|{result.projects_[i].platform_}|{result.projects_[i].projectDir_}|";
+                                    System.IO.File.WriteAllText(lastbuildstateFile, lastbuildstate, Encoding.UTF8);
+                                }
+                                catch { }
                             }
                             process.CancelErrorRead();
                             process.CancelOutputRead();
@@ -289,6 +299,7 @@ namespace VSFastBuildVSIX
             public EnvDTE.Project project_;
             public ProjectInSolution projectInSolution_;
         }
+
         public static async Task StartMonitorAsync(ToolkitPackage package, bool show = false)
         {
             ToolkitToolWindowPane pane;
@@ -515,29 +526,6 @@ namespace VSFastBuildVSIX
             }
             return CPPTasksAssembly;
         }
-#if false
-        private static Assembly GetCUDATaskAssembly(string CUDAPath)
-        {
-            try
-            {
-                string path = System.IO.Path.Combine(CUDAPath, "extras", "visual_studio_integration", "MSBuildExtensions");
-                IEnumerable<string> files = System.IO.Directory.EnumerateFiles(path, "*.dll");
-                foreach (string file in files)
-                {
-                    if (file.Contains("Nvda.Build.CudaTasks"))
-                    {
-                        Assembly assembly = Assembly.LoadFrom(file);
-                        return assembly;
-                    }
-                }
-                return null;
-            }
-            catch
-            {
-                return null;
-            }
-        }
-#endif
 
         private static void AddExtraDlls(StringBuilder stringBuilder, string rootDir, string pattern)
         {
@@ -702,8 +690,10 @@ namespace VSFastBuildVSIX
             //string VCIDEInstallDir = activeConfig.Evaluate("$(VCIDEInstallDir)");
             //string VCINSTALLDIR = activeConfig.Evaluate("$(VCINSTALLDIR)");
             //string VCToolsInstallDir = activeConfig.Evaluate("$(VCToolsInstallDir)");
-            //string VCToolsVersion = activeConfig.Evaluate("$(VCToolsVersion)");
+            string VCToolsVersion = activeConfig.Evaluate("$(VCToolsVersion)");
             string VisualStudioVersion = activeConfig.Evaluate("$(VisualStudioVersion)");
+            string PlatformToolSet = activeConfig.Evaluate("$(PlatformToolSet)");
+            string VCToolArchitecture = activeConfig.Evaluate("$(VCToolArchitecture)");
             //string VSINSTALLDIR = activeConfig.Evaluate("$(VSINSTALLDIR)");
             string WindowsSDKVersion = activeConfig.Evaluate("$(SDKVersion)");
             //string WindowsSDK_ExecutablePath_x64 = activeConfig.Evaluate("$(WindowsSDK_ExecutablePath_x64)");
@@ -788,8 +778,10 @@ namespace VSFastBuildVSIX
                 {
                     success_ = false,
                     tracker_ = System.IO.Path.Combine(buildContext.vsEnvironment_.ToolsInstall, "MSBuild", "Current", "Bin", "amd64", "Tracker.exe"),
-                    projects_ = new List<ResultProject>(vSFastProjects.Count)
+                    projects_ = new List<ResultProject>(vSFastProjects.Count),
+                    lastbuildstate_ = string.Empty
                 };
+                result.lastbuildstate_ = $"PlatformToolSet={PlatformToolSet}:VCToolArchitecture={VCToolArchitecture}:VCToolsVersion={VCToolsVersion}:TargetPlatformVersion={WindowsSDKVersion}:";
 
                 foreach (VSFastProject vSFastProject in vSFastProjects)
                 {
@@ -804,6 +796,8 @@ namespace VSFastBuildVSIX
                         name_ = vSFastProject.targetName_,
                         projectDir_ = vSFastProject.rootDir_,
                         intDir_ = vSFastProject.intDir_,
+                        configuration_ = buildProject.GetProperty("Configuration").EvaluatedValue,
+                        platform_ = buildProject.GetProperty("Platform").EvaluatedValue,
                     };
                     result.projects_.Add(resultProject);
 

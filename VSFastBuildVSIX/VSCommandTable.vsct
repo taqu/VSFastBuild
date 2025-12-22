@@ -8,13 +8,21 @@
 
 	<Commands package="VSFastBuildVSIX">
 		<Groups>
-			<Group guid="VSFastBuildVSIX" id="VSFastBuildSolutionMenuGroup" priority="0x1000" />
-			<Group guid="VSFastBuildVSIX" id="VSFastBuildProjectGroup" priority="0x1000" />
+			<Group guid="VSFastBuildVSIX" id="VSFastBuildMenuGroup" priority="0x100" />
+			<Group guid="VSFastBuildVSIX" id="VSFastBuildMenuSolutionGroup" priority="0x100" />
+			<Group guid="VSFastBuildVSIX" id="VSFastBuildMenuProjectGroup" priority="0x100" />
+			<Group guid="VSFastBuildVSIX" id="VSFastBuildMenuToolGroup" priority="0x100" />
 		</Groups>
 		<Menus>
-			<Menu guid="VSFastBuildVSIX" id="VSFastBuildBuildMenu" type="Menu">
+			<Menu guid="VSFastBuildVSIX" id="VSFastBuildMenu" type="Menu">
 				<Strings>
 					<ButtonText>FastBuild</ButtonText>
+				</Strings>
+			</Menu>
+			<Menu guid="VSFastBuildVSIX" id="VSFastBuildMenuController" type="MenuController">
+				<CommandFlag>DynamicVisibility</CommandFlag>
+				<Strings>
+					<ButtonText></ButtonText>
 				</Strings>
 			</Menu>
 		</Menus>
@@ -36,37 +44,75 @@
 				</Strings>
 			</Button>
 			<Button guid="VSFastBuildVSIX" id="CommandFBuildMonitor" priority="0x100" type="Button">
-				<Icon guid="VSFastBuildImages" id="icon_menu" />
-				<CommandFlag>TextChanges</CommandFlag>
+				<Icon guid="ImageCatalogGuid" id="Monitor" />
+				<CommandFlag>IconIsMoniker</CommandFlag>
 				<Strings>
 					<ButtonText>FastBuild Monitor</ButtonText>
 					<CommandName>FBuildMonitor</CommandName>
 				</Strings>
 			</Button>
-			<Button guid="VSFastBuildVSIX" id="CommandFBuildClean" priority="0x101" type="Button">
-				<Icon guid="VSFastBuildImages" id="icon_menu" />
+			<Button guid="VSFastBuildVSIX" id="CommandFBuildClean" priority="0x100" type="Button">
+				<Icon guid="ImageCatalogGuid" id="CleanData" />
+				<CommandFlag>IconIsMoniker</CommandFlag>
 				<Strings>
 					<ButtonText>FastBuild Clean</ButtonText>
 					<CommandName>FBuildClean</CommandName>
 				</Strings>
 			</Button>
-    </Buttons>
+			<Button guid="VSFastBuildVSIX" id="CommandFBuildReload" priority="0x100" type="Button">
+				<Icon guid="ImageCatalogGuid" id="Sync" />
+				<CommandFlag>IconIsMoniker</CommandFlag>
+				<Strings>
+					<ButtonText>FastBuild Reload</ButtonText>
+					<CommandName>FBuildReload</CommandName>
+				</Strings>
+			</Button>
+			<Button guid="VSFastBuildVSIX" id="CommandFBuildDynamicStart" priority="0x100" >
+				<CommandFlag>DynamicItemStart</CommandFlag>
+				<CommandFlag>DynamicVisibility</CommandFlag>
+				<CommandFlag>TextChanges</CommandFlag>
+				<!-- This text does not appear. -->
+				<Strings>
+					<ButtonText>Project</ButtonText>
+				</Strings>
+			</Button>
+		</Buttons>
 		<Bitmaps>
 			<Bitmap guid="VSFastBuildImages" href="Resources\icon_menu.png" usedList="icon_menu" />
-		  <Bitmap guid="guidImages" href="Commands\Resources\CommandClean.png" usedList="bmpPic1, bmpPic2, bmpPicSearch, bmpPicX, bmpPicArrows, bmpPicStrikethrough" />
-    </Bitmaps>
+        </Bitmaps>
 	</Commands>
 
 	<CommandPlacements>
-		<CommandPlacement guid="VSFastBuildVSIX" id="CommandFBuildSolution" priority="0x1000">
-			<Parent guid="VSMainMenu" id="Build.SolutionGroup" />
+		<CommandPlacement guid="VSFastBuildVSIX" id="VSFastBuildMenuGroup" priority="0x100">
+			<Parent guid="VSMainMenu" id="Extensions" />
 		</CommandPlacement>
-		<CommandPlacement guid="VSFastBuildVSIX" id="CommandFBuildClean" priority="0x1001">
-			<Parent guid="VSMainMenu" id="Build.SolutionGroup" />
+		<CommandPlacement guid="VSFastBuildVSIX" id="VSFastBuildMenu" priority="0x100">
+			<Parent guid="VSFastBuildVSIX" id="VSFastBuildMenuGroup" />
+		</CommandPlacement>
+		<CommandPlacement guid="VSFastBuildVSIX" id="VSFastBuildMenuSolutionGroup" priority="0x100">
+			<Parent guid="VSFastBuildVSIX" id="VSFastBuildMenu" />
+		</CommandPlacement>
+		<CommandPlacement guid="VSFastBuildVSIX" id="VSFastBuildMenuProjectGroup" priority="0x101">
+			<Parent guid="VSFastBuildVSIX" id="VSFastBuildMenu" />
+		</CommandPlacement>
+		<CommandPlacement guid="VSFastBuildVSIX" id="VSFastBuildMenuToolGroup" priority="0x102">
+			<Parent guid="VSFastBuildVSIX" id="VSFastBuildMenu" />
 		</CommandPlacement>
 
-		<CommandPlacement guid="VSFastBuildVSIX" id="CommandFBuildProject" priority="0x1000">
-			<Parent guid="VSMainMenu" id="Build.SelectionGroup" />
+		<CommandPlacement guid="VSFastBuildVSIX" id="CommandFBuildSolution" priority="0x100">
+			<Parent guid="VSFastBuildVSIX" id="VSFastBuildMenuSolutionGroup" />
+		</CommandPlacement>
+		<CommandPlacement guid="VSFastBuildVSIX" id="CommandFBuildProject" priority="0x100">
+			<Parent guid="VSFastBuildVSIX" id="VSFastBuildMenuProjectGroup" />
+		</CommandPlacement>
+		<CommandPlacement guid="VSFastBuildVSIX" id="CommandFBuildClean" priority="0x100">
+			<Parent guid="VSFastBuildVSIX" id="VSFastBuildMenuToolGroup" />
+		</CommandPlacement>
+		<CommandPlacement guid="VSFastBuildVSIX" id="CommandFBuildMonitor" priority="0x101">
+			<Parent guid="VSFastBuildVSIX" id="VSFastBuildMenuToolGroup" />
+		</CommandPlacement>
+		<CommandPlacement guid="VSFastBuildVSIX" id="CommandFBuildReload" priority="0x102">
+			<Parent guid="VSFastBuildVSIX" id="VSFastBuildMenuToolGroup" />
 		</CommandPlacement>
 
 		<CommandPlacement guid="VSFastBuildVSIX" id="CommandFBuildSolution" priority="0x3000">
@@ -78,21 +124,26 @@
 		<CommandPlacement guid="VSFastBuildVSIX" id="CommandFBuildProject" priority="0x3000">
 			<Parent guid="VSMainMenu" id="ProjectNode.MultiProjectBuildGroup" />
 		</CommandPlacement>
-
-		<CommandPlacement guid="VSFastBuildVSIX" id="CommandFBuildMonitor" priority="0x3000">
-			<Parent guid="VSMainMenu" id="View.DevWindowsGroup.OtherWindows.Group1" />
-		</CommandPlacement>
 	</CommandPlacements>
 
+	<VisibilityConstraints>
+		<!--Make the MenuController show up only when there is a solution with more than one project loaded-->
+		<VisibilityItem guid="VSFastBuildVSIX" id="VSFastBuildMenuController" context="UICONTEXT_SolutionHasMultipleProjects"/>
+	</VisibilityConstraints>
 	<Symbols>
 		<GuidSymbol name="VSFastBuildVSIX" value="{73d9eb2b-a45e-4cf2-81ec-517c78ad7093}">
-			<IDSymbol name="VSFastBuildBuildMenu" value="0x1000" />
-			<IDSymbol name="VSFastBuildSolutionMenuGroup" value="0x1001" />
-			<IDSymbol name="VSFastBuildProjectGroup" value="0x1002" />
-			<IDSymbol name="CommandFBuildSolution" value="0x2000" />
-			<IDSymbol name="CommandFBuildProject" value="0x2001" />
-			<IDSymbol name="CommandFBuildMonitor" value="0x2002" />
-			<IDSymbol name="CommandFBuildClean" value="0x2003" />
+			<IDSymbol name="VSFastBuildMenuGroup" value="0x1000" />
+			<IDSymbol name="VSFastBuildMenuSolutionGroup" value="0x1001" />
+			<IDSymbol name="VSFastBuildMenuProjectGroup" value="0x1002" />
+			<IDSymbol name="VSFastBuildMenuToolGroup" value="0x1003" />
+			<IDSymbol name="VSFastBuildMenu" value="0x2000" />
+			<IDSymbol name="VSFastBuildMenuController" value="0x2001" />
+			<IDSymbol name="CommandFBuildSolution" value="0x3000" />
+			<IDSymbol name="CommandFBuildProject" value="0x3001" />
+			<IDSymbol name="CommandFBuildMonitor" value="0x3002" />
+			<IDSymbol name="CommandFBuildClean" value="0x3003" />
+			<IDSymbol name="CommandFBuildReload" value="0x3004" />
+			<IDSymbol name="CommandFBuildDynamicStart" value="0x3005" />
 		</GuidSymbol>
 		<GuidSymbol name="VSFastBuildImages" value="{334E00CC-D085-4475-A258-7B02C3133597}">
 			<IDSymbol name="icon_menu" value="1" />
