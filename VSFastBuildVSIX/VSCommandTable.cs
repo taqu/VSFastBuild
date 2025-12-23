@@ -33,13 +33,11 @@ namespace VSFastBuildVSIX
         public const int VSFastBuildMenuProjectGroup = 0x1002;
         public const int VSFastBuildMenuToolGroup = 0x1003;
         public const int VSFastBuildMenu = 0x2000;
-        public const int VSFastBuildMenuController = 0x2001;
         public const int CommandFBuildSolution = 0x3000;
         public const int CommandFBuildProject = 0x3001;
         public const int CommandFBuildMonitor = 0x3002;
         public const int CommandFBuildClean = 0x3003;
-        public const int CommandFBuildReload = 0x3004;
-        public const int CommandFBuildDynamicStart = 0x3005;
+        public const int CommandFBuildBFF = 0x3004;
         public const int icon_menu = 0x0001;
         public const int bmpPic1 = 0x0001;
         public const int bmpPic2 = 0x0002;

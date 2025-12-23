@@ -102,6 +102,7 @@ namespace VSFastBuildVSIX.Commands
                 {
                     await Log.OutputBuildAsync($"--- VSFastBuild begin running {bffname}---");
                     await RunProcessAsync(result, package, bffpath);
+                    await Log.OutputBuildAsync($"--- VSFastBuild end running {bffname}---");
                 }
                 await Log.OutputBuildAsync($"--- VSFastBuild end {bffname} ---");
             }

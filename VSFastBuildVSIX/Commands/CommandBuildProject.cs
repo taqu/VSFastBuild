@@ -126,6 +126,7 @@ namespace VSFastBuildVSIX
                 {
                     await Log.OutputBuildAsync($"--- VSFastBuild begin running {bffname}---");
                     await RunProcessAsync(result, package, bffpath);
+                    await Log.OutputBuildAsync($"--- VSFastBuild end running {bffname}---");
                 }
                 await Log.OutputBuildAsync($"--- VSFastBuild end {bffname} ---");
             }
@@ -185,6 +186,11 @@ namespace VSFastBuildVSIX
                     try
                     {
                         string tlogDir = System.IO.Path.Combine(result.projects_[i].intDir_, result.projects_[i].name_ + ".tlog");
+                        using (TLogTracker tracker = new TLogTracker(tlogDir))
+                        {
+                            tracker.Check();
+                        }
+
                         System.Diagnostics.Process process = CommandBuildProject.CreateProcess(arguments, i, result, tlogDir);
                         if (process.Start())
                         {
@@ -216,6 +222,49 @@ namespace VSFastBuildVSIX
             await CommandBuildProject.StopMonitorAsync(package);
         }
 
+        public static async Task RunProcessAsync(VSFastBuildVSIXPackage package, string bffpath)
+        {
+            OptionsPage optionPage = VSFastBuildVSIXPackage.Options;
+            string fbuildPath = optionPage.Path;
+            string fbuldArgs = optionPage.Arguments;
+            bool openMonitor = optionPage.OpenMonitor;
+            string arguments = $"\"{fbuildPath}\" -config \"{bffpath}\" {fbuldArgs}";
+            if (!fbuldArgs.Contains("-j"))
+            {
+                int numProcessors = VSFastBuildCommon.SystemEnvironment.GetPhysicalProcessorCount();
+                arguments += $" -j{numProcessors}";
+            }
+            string workingDir = System.IO.Path.GetDirectoryName(bffpath);
+
+            ToolWindowMonitorControl.TruncateLogFile();
+            await CommandBuildProject.ResetMonitorAsync(package);
+            if (openMonitor)
+            {
+                await CommandBuildProject.StartMonitorAsync(package, true);
+            }
+
+            using (CancellationTokenSource cancellationTokenSource = new CancellationTokenSource())
+            {
+                try
+                {
+                    System.Diagnostics.Process process = CommandBuildProject.CreateProcess(bffpath, arguments, workingDir);
+                    if (process.Start())
+                    {
+                        process.BeginOutputReadLine();
+                        process.BeginErrorReadLine();
+                        await process.WaitForExitAsync(package.CancellationToken);
+                        process.CancelErrorRead();
+                        process.CancelOutputRead();
+                    }
+                }
+                catch (Exception ex)
+                {
+                    await Log.OutputDebugAsync(ex.Message);
+                }
+            }
+            await CommandBuildProject.StopMonitorAsync(package);
+        }
+
         public static System.Diagnostics.Process CreateProcess(string arguments, int index, Result result, string tlogDir)
         {
             try
@@ -232,6 +281,28 @@ namespace VSFastBuildVSIX
                 FBProcess.StartInfo.CreateNoWindow = true;
                 FBProcess.StartInfo.UseShellExecute = false;
                 FBProcess.StartInfo.WorkingDirectory = result.projects_[index].projectDir_;
+                FBProcess.OutputDataReceived += new DataReceivedEventHandler(FBProcess_OnOutputDataReceived);
+                FBProcess.ErrorDataReceived += new DataReceivedEventHandler(FBProcess_OnErrorDataReceived);
+                return FBProcess;
+            }
+            catch (Exception e)
+            {
+                return null;
+            }
+        }
+
+        public static System.Diagnostics.Process CreateProcess(string fbuildPath, string arguments, string workingDir)
+        {
+            try
+            {
+                System.Diagnostics.Process FBProcess = new System.Diagnostics.Process();
+                FBProcess.StartInfo.FileName = fbuildPath;
+                FBProcess.StartInfo.Arguments = arguments;
+                FBProcess.StartInfo.RedirectStandardOutput = true;
+                FBProcess.StartInfo.RedirectStandardError = true;
+                FBProcess.StartInfo.CreateNoWindow = true;
+                FBProcess.StartInfo.UseShellExecute = false;
+                FBProcess.StartInfo.WorkingDirectory = workingDir;
                 FBProcess.OutputDataReceived += new DataReceivedEventHandler(FBProcess_OnOutputDataReceived);
                 FBProcess.ErrorDataReceived += new DataReceivedEventHandler(FBProcess_OnErrorDataReceived);
                 return FBProcess;
