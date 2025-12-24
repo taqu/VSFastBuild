@@ -308,6 +308,10 @@ namespace VSFastBuildCommon
         public void Check()
         {
             logEntries_.Clear();
+            if (!System.IO.Directory.Exists(path_))
+            {
+                return;
+            }
             foreach (string path in System.IO.Directory.GetFiles(path_, "*.tlog"))
             {
                 string name = System.IO.Path.GetFileName(path);
@@ -331,12 +335,14 @@ namespace VSFastBuildCommon
                 match = FBuildTLogRead.Match(name);
                 if (null != match && match.Success)
                 {
+                    TryDelete(path);
                     continue;
                 }
 
                 match = FBuildTLogWrite.Match(name);
                 if (null != match && match.Success)
                 {
+                    TryDelete(path);
                     continue;
                 }
             }

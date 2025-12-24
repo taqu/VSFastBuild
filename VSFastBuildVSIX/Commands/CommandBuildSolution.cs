@@ -84,27 +84,19 @@ namespace VSFastBuildVSIX.Commands
                 CommandBuildProject.LeaveProcess(package, Command, commandText_);
                 return;
             }
-            targets.Sort((x0, x1) =>
-            {
-                Microsoft.VisualStudio.Shell.ThreadHelper.ThrowIfNotOnUIThread();
-                return string.Compare(x0.Name, x1.Name);
-            });
-            string rootDirectory = System.IO.Path.GetDirectoryName(dte.Solution.FullName);
-            string bffname = string.Format("fbuild_{0}_{1}.bff", solutionConfiguration.Name, solutionConfiguration.PlatformName);
-            string bffpath = System.IO.Path.Combine(rootDirectory, bffname);
             Result result;
             try
             {
-                await Log.OutputBuildAsync($"--- VSFastBuild begin building {bffname}---");
-                result = await CommandBuildProject.BuildForSolutionAsync(package, targets, bffpath);
+                await Log.OutputBuildAsync($"--- VSFastBuild begin building ---");
+                result = await CommandBuildProject.BuildForSolutionAsync(package, targets, true);
 
                 if (!VSFastBuildVSIXPackage.Options.GenOnly)
                 {
-                    await Log.OutputBuildAsync($"--- VSFastBuild begin running {bffname}---");
-                    await RunProcessAsync(result, package, bffpath);
-                    await Log.OutputBuildAsync($"--- VSFastBuild end running {bffname}---");
+                    await Log.OutputBuildAsync($"--- VSFastBuild begin running {result.bffName_}---");
+                    await RunProcessAsync(result, package, result.bffPath_);
+                    await Log.OutputBuildAsync($"--- VSFastBuild end running {result.bffName_}---");
                 }
-                await Log.OutputBuildAsync($"--- VSFastBuild end {bffname} ---");
+                await Log.OutputBuildAsync($"--- VSFastBuild end ---");
             }
             catch (Exception ex)
             {

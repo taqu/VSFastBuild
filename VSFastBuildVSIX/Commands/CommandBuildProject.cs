@@ -4,6 +4,7 @@ using EnvDTE80;
 using Microsoft.Build.Construction;
 using Microsoft.Build.Evaluation;
 using Microsoft.Build.Utilities;
+using Microsoft.VisualStudio.Shell.Interop;
 using Microsoft.VisualStudio.Threading;
 using Microsoft.VisualStudio.VCProjectEngine;
 using System.Buffers;
@@ -98,37 +99,20 @@ namespace VSFastBuildVSIX
                 LeaveProcess(package, Command, commandText_);
                 return;
             }
-            targets.Sort((x0, x1) =>
-            {
-                return string.Compare(x0.Name, x1.Name);
-            });
-            StringBuilder stringBuilder = new StringBuilder();
-            foreach (EnvDTE.Project p in targets)
-            {
-                stringBuilder.Append(p.Name);
-            }
-            byte[] bytes = Encoding.UTF8.GetBytes(stringBuilder.ToString());
-            string hash = ByteArrayToHexStringHalf(MurmurHash.MurmurHash3.ComputeHash(bytes));
-            SolutionBuild2 solutionBuild = package.DTE.Solution.SolutionBuild as SolutionBuild2;
-            SolutionConfiguration2 solutionConfiguration = solutionBuild.ActiveConfiguration as SolutionConfiguration2;
-            string rootDirectory = System.IO.Path.GetDirectoryName(package.DTE.Solution.FullName);
-            string bffname = string.Format("fbuild_{0}_{1}_{2}.bff", hash, solutionConfiguration.Name, solutionConfiguration.PlatformName);
-            string bffpath = System.IO.Path.Combine(rootDirectory, bffname);
-
             await Log.AddOutputPaneAsync(Log.PaneBuild);
             Result result;
             try
             {
-                await Log.OutputBuildAsync($"--- VSFastBuild begin building {bffname}---");
-                result = await CommandBuildProject.BuildForSolutionAsync(package, targets, bffpath);
+                await Log.OutputBuildAsync($"--- VSFastBuild begin building ---");
+                result = await CommandBuildProject.BuildForSolutionAsync(package, targets, false);
 
                 if (!VSFastBuildVSIXPackage.Options.GenOnly)
                 {
-                    await Log.OutputBuildAsync($"--- VSFastBuild begin running {bffname}---");
-                    await RunProcessAsync(result, package, bffpath);
-                    await Log.OutputBuildAsync($"--- VSFastBuild end running {bffname}---");
+                    await Log.OutputBuildAsync($"--- VSFastBuild begin running {result.bffName_}---");
+                    await RunProcessAsync(result, package, result.bffPath_);
+                    await Log.OutputBuildAsync($"--- VSFastBuild end running {result.bffName_}---");
                 }
-                await Log.OutputBuildAsync($"--- VSFastBuild end {bffname} ---");
+                await Log.OutputBuildAsync($"--- VSFastBuild end ---");
             }
             catch (Exception ex)
             {
@@ -149,6 +133,8 @@ namespace VSFastBuildVSIX
         public struct Result
         {
             public bool success_;
+            public string bffPath_;
+            public string bffName_;
             public string tracker_;
             public List<ResultProject> projects_;
             public string lastbuildstate_;
@@ -328,25 +314,6 @@ namespace VSFastBuildVSIX
                 Log.OutputBuildLine(e.Data);
             }
         }
-
-        private static void GetTLogFiles(string tloDir)
-        {
-            string[] inputs = System.IO.Directory.GetFiles(tloDir, "*.read.1.tlog");
-            Microsoft.Build.Utilities.TaskItem[] inputItems = new Microsoft.Build.Utilities.TaskItem[inputs.Length];
-            for(int i=0; i<inputs.Length; ++i)
-            {
-                inputItems[i] = new Microsoft.Build.Utilities.TaskItem(inputs[i]);
-            }
-            string[] outputs = System.IO.Directory.GetFiles(tloDir, "*.write.1.tlog");
-            Microsoft.Build.Utilities.TaskItem[] outputItems = new Microsoft.Build.Utilities.TaskItem[inputs.Length];
-            for(int i=0; i<outputs.Length; ++i)
-            {
-                outputItems[i] = new Microsoft.Build.Utilities.TaskItem(outputs[i]);
-            }
-            CanonicalTrackedOutputFiles canonicalTrackedOutputFiles = new CanonicalTrackedOutputFiles(outputItems);
-            canonicalTrackedOutputFiles.SaveTlog();
-        }
-
 
         public static void GatherProjectFiles(List<ProjectInSolution> projects, ProjectInSolution project, List<ProjectInSolution> projectsInSolution)
         {
@@ -743,8 +710,7 @@ namespace VSFastBuildVSIX
             }
         }
 
-
-        public static async Task<Result> BuildForSolutionAsync(VSFastBuildVSIXPackage package, List<EnvDTE.Project> projects, string bffpath)
+        public static async Task<Result> BuildForSolutionAsync(VSFastBuildVSIXPackage package, List<EnvDTE.Project> projects, bool buildAsSolution)
         {
             await ThreadHelper.JoinableTaskFactory.SwitchToMainThreadAsync();
             System.Diagnostics.Debug.Assert(null != package);
@@ -795,16 +761,17 @@ namespace VSFastBuildVSIX
             };
 
             List<VSFastProject> vSFastProjects = new List<VSFastProject>(projects.Capacity);
+            string bffpath = string.Empty;
             Result result;
             {
-                foreach (EnvDTE.Project project in projects)
+                for(int i=0; i < projects.Count; ++i)
                 {
-                    BuildDependency buildDependency = solutionBuild.BuildDependencies.Item(project.UniqueName);
+                    BuildDependency buildDependency = solutionBuild.BuildDependencies.Item(projects[i].UniqueName);
                     if (null == buildDependency)
                     {
                         continue;
                     }
-                    VSFastProject vSFastProject = new() { targetName_ = project.Name, project_ = project, dependNames_ = new List<string>(), dependencies_ = new List<VSFastProject>(), uniqueName_ = project.UniqueName, postDepend_ = project.Name };
+                    VSFastProject vSFastProject = new() { targetName_ = projects[i].Name, project_ = projects[i], dependNames_ = new List<string>(), dependencies_ = new List<VSFastProject>(), uniqueName_ = projects[i].UniqueName, postDepend_ = projects[i].Name };
 
                     object[] requiredProjects = buildDependency.RequiredProjects as object[];
                     foreach (object item in requiredProjects)
@@ -838,16 +805,25 @@ namespace VSFastBuildVSIX
                         if (!found)
                         {
                             vSFastProject.dependNames_.Add(uniqueName);
+                            if(!projects.Any(x=>x.UniqueName == uniqueName))
+                            {
+                            projects.Add(dependentProject);
+                                }
                         }
                     }
                     vSFastProject.buildProject_ = new Microsoft.Build.Evaluation.Project(vSFastProject.project_.FullName, buildContext.globalProperties_, null, buildContext.projectCollection_);
                     vSFastProjects.Add(vSFastProject);
                 }
+                vSFastProjects.Sort((x0, x1) => {
+                    return string.Compare(x0.targetName_, x1.targetName_);
+                });
                 TopologicalSort(vSFastProjects);
 
                 result = new Result()
                 {
                     success_ = false,
+                    bffPath_ = string.Empty,
+                    bffName_ = string.Empty,
                     tracker_ = System.IO.Path.Combine(buildContext.vsEnvironment_.ToolsInstall, "MSBuild", "Current", "Bin", "amd64", "Tracker.exe"),
                     projects_ = new List<ResultProject>(vSFastProjects.Count),
                     lastbuildstate_ = string.Empty
@@ -883,6 +859,26 @@ namespace VSFastBuildVSIX
                             }
                         }
                     }
+                }
+
+                if (buildAsSolution)
+                {
+                    string rootDirectory = System.IO.Path.GetDirectoryName(package.DTE.Solution.FullName);
+                    result.bffName_ = string.Format("fbuild_{0}_{1}.bff", solutionConfiguration.Name, solutionConfiguration.PlatformName);
+                    result.bffPath_ = bffpath = System.IO.Path.Combine(rootDirectory, result.bffName_);
+                }
+                else
+                {
+                    StringBuilder bffBuilder = buildContext.stringBuilder_.Clear();
+                    foreach (VSFastProject p in vSFastProjects)
+                    {
+                        bffBuilder.Append(p.targetName_);
+                    }
+                    byte[] bytes = Encoding.UTF8.GetBytes(bffBuilder.ToString());
+                    string strinHash = ByteArrayToHexStringHalf(MurmurHash.MurmurHash3.ComputeHash(bytes));
+                    string rootDirectory = System.IO.Path.GetDirectoryName(package.DTE.Solution.FullName);
+                    result.bffName_ = string.Format("fbuild_{0}_{1}_{2}.bff", strinHash, solutionConfiguration.Name, solutionConfiguration.PlatformName);
+                    result.bffPath_ = bffpath = System.IO.Path.Combine(rootDirectory, result.bffName_);
                 }
             }
             string hash = string.Empty;
