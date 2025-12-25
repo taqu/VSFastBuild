@@ -11,6 +11,7 @@ using System.Text;
 using System.Text.RegularExpressions;
 using System.Threading;
 using System.Windows.Documents;
+using static System.Windows.Forms.LinkLabel;
 
 namespace VSFastBuildCommon
 {
@@ -263,12 +264,12 @@ namespace VSFastBuildCommon
                     continue;
                 }
 
-                match = LastTLogRead.Match(name);
-                if (null != match && match.Success)
-                {
-                    string subroot = match.Groups[1].Value;
-                    LoadRead(subroot, path);
-                }
+                //match = LastTLogRead.Match(name);
+                //if (null != match && match.Success)
+                //{
+                //    string subroot = match.Groups[1].Value;
+                //    LoadRead(subroot, path);
+                //}
                 //match = LastTLogWrite.Match(name);
                 //if (null != match && match.Success)
                 //{
@@ -280,6 +281,10 @@ namespace VSFastBuildCommon
 
         private static bool NeedSaveRead(KeyValuePair<string, TLogEntry> logEntry)
         {
+            if(0<=logEntry.Key.IndexOf("Link-cvtres", StringComparison.OrdinalIgnoreCase))
+            {
+                return false;
+            }
             Dictionary<string, ReadEntry>.ValueCollection dictionary = logEntry.Value.inputs_.Values;
             foreach (ReadEntry entry in dictionary)
             {
@@ -293,6 +298,10 @@ namespace VSFastBuildCommon
 
         private static bool NeedSaveWrite(KeyValuePair<string, TLogEntry> logEntry)
         {
+            if(0<=logEntry.Key.IndexOf("Link-cvtres", StringComparison.OrdinalIgnoreCase))
+            {
+                return false;
+            }
             Dictionary<string, WriteEntry>.ValueCollection dictionary = logEntry.Value.outputs_.Values;
             foreach (WriteEntry entry in dictionary)
             {
@@ -308,6 +317,18 @@ namespace VSFastBuildCommon
             return false;
         }
 
+        private static bool NeedSaveCommand(KeyValuePair<string, TLogEntry> logEntry)
+        {
+            if(0<=logEntry.Key.IndexOf("Link-cvtres", StringComparison.OrdinalIgnoreCase))
+            {
+                return false;
+            }
+            if(0<=logEntry.Key.IndexOf("Link", StringComparison.OrdinalIgnoreCase))
+            {
+                return false;
+            }
+            return true;
+        }
 
         public void Check()
         {
@@ -396,11 +417,11 @@ namespace VSFastBuildCommon
             {
                 foreach (WriteEntry writeEntry in logEntry.Value.outputs_.Values)
                 {
-                    string input = writeEntry.command_.input_.TrimEnd('"').TrimEnd();
-                    if (input.EndsWith(".rsp", StringComparison.OrdinalIgnoreCase))
+                    string input = writeEntry.command_.input_.TrimEnd('"').TrimStart('@').TrimEnd().ToUpperInvariant();
+                    if (input.EndsWith(".RSP", StringComparison.OrdinalIgnoreCase))
                     {
                         ReadEntry readEntry;
-                        if (logEntry.Value.inputs_.TryGetValue(writeEntry.command_.input_.ToUpperInvariant(), out readEntry)){
+                        if (logEntry.Value.inputs_.TryGetValue(input, out readEntry)){
                             for(int i=0; i<readEntry.files_.Count;)
                             {
                                 if (readEntry.files_[i].EndsWith("RSP", StringComparison.OrdinalIgnoreCase))
@@ -427,15 +448,15 @@ namespace VSFastBuildCommon
                     if (NeedSaveRead(logEntry))
                     {
                         path = System.IO.Path.Combine(path_, $"{logEntry.Key}.read.1.tlog");
-                        using (FileStream fileStream = new FileStream(path, FileMode.Create, FileAccess.Write, FileShare.None))
+                        using (FileStream fileStream = new FileStream(path, FileMode.Append, FileAccess.Write, FileShare.None))
                         using (StreamWriter streamWriter = new StreamWriter(fileStream, Encoding.Unicode))
                         {
                             Dictionary<string, ReadEntry>.ValueCollection dictionary = logEntry.Value.inputs_.Values;
                             foreach (KeyValuePair<string, ReadEntry> entry in logEntry.Value.inputs_)
                             {
                                 streamWriter.Write('^');
-                                string input = entry.Key.TrimEnd('"').TrimEnd();
-                                if(input.EndsWith(".rsp", StringComparison.OrdinalIgnoreCase))
+                                string input = entry.Key.TrimEnd('"').TrimStart('@').TrimEnd();
+                                if(input.EndsWith(".RSP", StringComparison.OrdinalIgnoreCase))
                                 {
                                     inputList.Clear();
                                     for(int i=0; i< entry.Value.files_.Count; ++i)
@@ -491,26 +512,19 @@ namespace VSFastBuildCommon
                         }
                     }
 
-                    #if false
-                    {//commands
+                    if(NeedSaveCommand(logEntry)){
                         path = System.IO.Path.Combine(path_, $"{logEntry.Key}.command.1.tlog");
                         using (FileStream fileStream = new FileStream(path, FileMode.Append, FileAccess.Write, FileShare.None))
                         using (StreamWriter streamWriter = new StreamWriter(fileStream, Encoding.Unicode))
                         {
-                            foreach (KeyValuePair<string, WriteEntry> entry in logEntry.Value.inputs_)
+                            foreach (KeyValuePair<string, ReadEntry> entry in logEntry.Value.inputs_)
                             {
-                                if(string.is)
                                 streamWriter.Write('^');
                                 streamWriter.WriteLine(entry.Value.command_.input_);
                                 streamWriter.WriteLine(entry.Value.command_.options_);
-                                for (int i = 0; i < entry.Value.outputs_.Count; ++i)
-                                {
-                                    streamWriter.WriteLine(entry.Value.outputs_[i]);
-                                }
                             }
                         }
                     }
-                    #endif
                 }
                 catch
                 {
@@ -559,12 +573,12 @@ namespace VSFastBuildCommon
                             {
                                 break;
                             }
-                            string key = command.input_.ToUpperInvariant();
+                            string key = command.input_.TrimEnd('"').TrimStart('@').TrimEnd().ToUpperInvariant();
                             if (!logEntry.inputs_.TryGetValue(key, out readEntry))
                             {
                                 readEntry = new ReadEntry();
                                 readEntry.command_ = command;
-                                logEntry.inputs_.Add(command.input_, readEntry);
+                                logEntry.inputs_.Add(key, readEntry);
                             }
                         }
                         else if(null != readEntry)
@@ -582,6 +596,7 @@ namespace VSFastBuildCommon
             }
         }
 
+#if false
         private void LoadRead(string name, string path)
         {
             TLogEntry logEntry;
@@ -626,6 +641,7 @@ namespace VSFastBuildCommon
             {
             }
         }
+#endif
 
         private void AddWrite(string name, string path)
         {
@@ -666,15 +682,15 @@ namespace VSFastBuildCommon
                                 writeEntry.command_ = command;
                                 logEntry.outputs_.Add(key, writeEntry);
                             }
-                            string input = command.input_.TrimEnd('"').TrimEnd();
-                            if (input.EndsWith(".rsp", StringComparison.OrdinalIgnoreCase))
+                            string input = command.input_.TrimEnd('"').TrimStart('@').TrimEnd();
+                            if (input.EndsWith(".RSP", StringComparison.OrdinalIgnoreCase))
                             {
                             }
                             else
                             {
-                                if (!string.IsNullOrEmpty(command.input_))
+                                if (!string.IsNullOrEmpty(input))
                                 {
-                                    writeEntry.inputs_.Add(command.input_.ToUpperInvariant());
+                                    writeEntry.inputs_.Add(input);
                                 }
                                 if (!string.IsNullOrEmpty(command.output_))
                                 {
