@@ -296,6 +296,10 @@ namespace VSFastBuildCommon
             Dictionary<string, WriteEntry>.ValueCollection dictionary = logEntry.Value.outputs_.Values;
             foreach (WriteEntry entry in dictionary)
             {
+                if (entry.inputs_.Count <= 0)
+                {
+                    continue;
+                }
                 if (0 < entry.outputs_.Count)
                 {
                     return true;
@@ -436,7 +440,7 @@ namespace VSFastBuildCommon
                                     inputList.Clear();
                                     for(int i=0; i< entry.Value.files_.Count; ++i)
                                     {
-                                        if(!entry.Value.files_[i].EndsWith(".OBJ", StringComparison.OrdinalIgnoreCase))
+                                        if(entry.Value.files_[i].EndsWith(".RSP", StringComparison.OrdinalIgnoreCase))
                                         {
                                             continue;
                                         }
@@ -451,6 +455,10 @@ namespace VSFastBuildCommon
                                 }
                                 foreach (string l in entry.Value.files_)
                                 {
+                                    if (l.EndsWith(".RSP", StringComparison.OrdinalIgnoreCase))
+                                    {
+                                        continue;
+                                    }
                                     streamWriter.WriteLine(l);
                                 }
                             }
@@ -513,7 +521,7 @@ namespace VSFastBuildCommon
         {
             try
             {
-                System.IO.File.Delete(path);
+                //System.IO.File.Delete(path);
             }
             catch (Exception e)
             {

@@ -37,11 +37,8 @@ namespace VSFastBuildVSIX.Commands
             {
                 return files_;
             }
-            //OleMenuCommandService commandService = await package.GetServiceAsync(typeof(IMenuCommandService)) as OleMenuCommandService;
-            //commandService.FindCommand(new CommandID(PackageGuids.VSFastBuildVSIX, PackageIds.CommandFBuildBFF)).;
-
             EnvDTE80.DTE2 dte = package.DTE;
-            if (null == dte.Solution)
+            if (null == dte.Solution || string.IsNullOrEmpty(dte.Solution.FullName))
             {
                 return files_;
             }
@@ -62,6 +59,10 @@ namespace VSFastBuildVSIX.Commands
             }
             foreach (EnvDTE.Project project in dte.Solution.Projects)
             {
+                if(null == project || string.IsNullOrEmpty(project.FullName))
+                {
+                    continue;
+                }
                 string projectDir = System.IO.Path.GetDirectoryName(project.FullName);
                 foreach(string path in System.IO.Directory.GetFiles(projectDir, "*.bff"))
                 {
