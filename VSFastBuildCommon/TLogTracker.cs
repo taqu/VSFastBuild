@@ -40,7 +40,7 @@ namespace VSFastBuildCommon
             {
                 public CommandType type_;
                 public string name_;
-                public string input_;
+                public List<string> inputs_;
                 public string output_;
                 public string options_;
             }
@@ -72,7 +72,7 @@ namespace VSFastBuildCommon
                 {
                     type_ = CommandType.Unknown,
                     name_ = string.Empty,
-                    input_ = string.Empty,
+                    inputs_ = new List<string>(),
                     output_ = string.Empty,
                     options_ = string.Empty,
                 };
@@ -85,8 +85,8 @@ namespace VSFastBuildCommon
                     return command;
                 }
                 optionBuilder_.Clear();
-                command.name_ = args[0].Trim('"');
-                for (int i = 1; i < args.Length; ++i)
+                command.name_ = args[0];
+                for (int i = 1; i < args.Length;)
                 {
                     System.Diagnostics.Debug.Assert(0 < args[i].Length);
                     if (args[i].StartsWith("/Fo"))
@@ -95,12 +95,18 @@ namespace VSFastBuildCommon
                         {
                             if ((i + 1) < args.Length)
                             {
-                                command.output_ = args[i + 1].Trim('"');
+                                command.output_ = args[i + 1];
+                                i+=2;
+                            }
+                            else
+                            {
+                                ++i;
                             }
                         }
                         else
                         {
-                            command.output_ = args[i].Substring(3).Trim('"');
+                            command.output_ = args[i].Substring(3);
+                            ++i;
                         }
                     }
                     else if (args[i].StartsWith("/OUT:"))
@@ -109,12 +115,44 @@ namespace VSFastBuildCommon
                         {
                             if ((i + 1) < args.Length)
                             {
-                                command.output_ = args[i + 1].Trim('"');
+                                command.output_ = args[i + 1];
+                                i += 2;
+                            }
+                            else
+                            {
+                                ++i;
                             }
                         }
                         else
                         {
-                            command.output_ = args[i].Substring(4).Trim('"');
+                            command.output_ = args[i].Substring(4);
+                            ++i;
+                        }
+                    }
+                    else if (args[i].StartsWith("/ifcOutput", StringComparison.OrdinalIgnoreCase))
+                    {
+                        if (0 < optionBuilder_.Length)
+                        {
+                            optionBuilder_.Append(' ');
+                        }
+                        optionBuilder_.Append(args[i]);
+
+                        if(args[i].ToUpperInvariant() == "/IFCOUTPUT")
+                        {
+                            if ((i + 1) < args.Length)
+                            {
+                                optionBuilder_.Append(' ');
+                                optionBuilder_.Append(args[i + 1]);
+                                i += 2;
+                            }
+                            else
+                            {
+                                ++i;
+                            }
+                        }
+                        else
+                        {
+                            ++i;
                         }
                     }
                     else if (args[i].StartsWith("/") || args[i].StartsWith("-"))
@@ -124,13 +162,12 @@ namespace VSFastBuildCommon
                             optionBuilder_.Append(' ');
                         }
                         optionBuilder_.Append(args[i]);
+                        ++i;
                     }
                     else
                     {
-                        if (string.IsNullOrEmpty(command.input_))
-                        {
-                            command.input_ = args[i];
-                        }
+                        command.inputs_.Add(args[i]);
+                        ++i;
                     }
                 }
                 command.options_ = optionBuilder_.ToString();
@@ -163,9 +200,11 @@ namespace VSFastBuildCommon
 
         private static Regex FBuildTLogRead = new Regex(@"^FBuild\.\d+\.\d+\.read\.\d+\.tlog");
         private static Regex FBuildTLogWrite = new Regex(@"^FBuild\.\d+\.\d+\.write\.\d+\.tlog");
+        private static Regex FBuildTLogCommand = new Regex(@"^FBuild\.\d+\.\d+\.command\.\d+\.tlog");
 
         private static Regex TLogRead = new Regex(@"^FBuild\.\d+\.\d+-([a-zA-Z0-9\-_]+)\.(\d+\.)?read\.\d+\.tlog");
         private static Regex TLogWrite = new Regex(@"^FBuild\.\d+\.\d+-([a-zA-Z0-9\-_]+)\.(\d+\.)?write\.\d+\.tlog");
+        private static Regex TLogCommand = new Regex(@"^FBuild\.\d+\.\d+-([a-zA-Z0-9\-_]+)\.(\d+\.)?command\.\d+\.tlog");
 
         private static Regex LastTLogRead = new Regex(@"^([a-zA-Z0-9\-_]+)\.read\.\d+\.tlog");
         private static Regex LastTLogWrite = new Regex(@"^([a-zA-Z0-9\-_]+)\.write\.\d+\.tlog");
@@ -175,6 +214,7 @@ namespace VSFastBuildCommon
             public CommandLineParser.Command command_;
             public List<string> files_ = new List<string>(Capacity);
         }
+
         private class WriteEntry
         {
             public CommandLineParser.Command command_;
@@ -182,21 +222,45 @@ namespace VSFastBuildCommon
             public List<string> outputs_ = new List<string>(Capacity);
         }
 
+        private class CommandEntry
+        {
+            public CommandLineParser.Command command_;
+        }
+
         private struct TLogEntry
         {
             public string name_;
             public Dictionary<string, ReadEntry> inputs_;
             public Dictionary<string, WriteEntry> outputs_;
+            public Dictionary<string, CommandEntry> commands_;
         }
+
+        public string Path { get { return work_; } }
         private string path_ = string.Empty;
+        private string work_ = string.Empty;
+        private string temp_ = string.Empty;
         private CommandLineParser commandLineParser_ = new CommandLineParser();
         private Dictionary<string, TLogEntry> logEntries_ = new Dictionary<string, TLogEntry>();
         private const int Capacity = 16;
         private bool disposed_ = false;
 
-        public TLogTracker(string path)
+        public TLogTracker(string path, string temp)
         {
+            System.Diagnostics.Debug.Assert(!string.IsNullOrEmpty(path));
             path_ = path;
+            if (!System.IO.Directory.Exists(path_))
+            {
+                System.IO.Directory.CreateDirectory(path_);
+            }
+
+            work_ = path_ + ".tmp";
+            if (!System.IO.Directory.Exists(work_))
+            {
+                System.IO.Directory.CreateDirectory(work_);
+            }
+
+            temp_ = temp;
+
         }
 
         ~TLogTracker()
@@ -222,6 +286,8 @@ namespace VSFastBuildCommon
                         logEntries_.Clear();
                         logEntries_ = null;
                     }
+                    path_ = null;
+                    work_ = null;
                 }
                 disposed_ = true;
             }
@@ -230,9 +296,8 @@ namespace VSFastBuildCommon
         public void Start()
         {
             logEntries_.Clear();
-
             //clean and current
-            foreach (string path in System.IO.Directory.GetFiles(path_, "*.tlog"))
+            foreach (string path in System.IO.Directory.GetFiles(work_, "*.tlog"))
             {
                 string name = System.IO.Path.GetFileName(path);
 
@@ -250,6 +315,14 @@ namespace VSFastBuildCommon
                     TryDelete(path);
                     continue;
                 }
+
+                match = TLogCommand.Match(name);
+                if (null != match && match.Success)
+                {
+                    TryDelete(path);
+                    continue;
+                }
+
                 match = FBuildTLogRead.Match(name);
                 if (null != match && match.Success)
                 {
@@ -258,6 +331,13 @@ namespace VSFastBuildCommon
                 }
 
                 match = FBuildTLogWrite.Match(name);
+                if (null != match && match.Success)
+                {
+                    TryDelete(path);
+                    continue;
+                }
+
+                match = FBuildTLogCommand.Match(name);
                 if (null != match && match.Success)
                 {
                     TryDelete(path);
@@ -276,12 +356,17 @@ namespace VSFastBuildCommon
                 //    string subroot = match.Groups[1].Value;
                 //    LoadWrite(subroot, path);
                 //}
+                TryDelete(path);
             }
         }
 
         private static bool NeedSaveRead(KeyValuePair<string, TLogEntry> logEntry)
         {
             if(0<=logEntry.Key.IndexOf("Link-cvtres", StringComparison.OrdinalIgnoreCase))
+            {
+                return false;
+            }
+            if(0<=logEntry.Key.IndexOf("CMD", StringComparison.OrdinalIgnoreCase))
             {
                 return false;
             }
@@ -319,62 +404,12 @@ namespace VSFastBuildCommon
 
         private static bool NeedSaveCommand(KeyValuePair<string, TLogEntry> logEntry)
         {
-            if(0<=logEntry.Key.IndexOf("Link-cvtres", StringComparison.OrdinalIgnoreCase))
-            {
-                return false;
-            }
-            if(0<=logEntry.Key.IndexOf("Link", StringComparison.OrdinalIgnoreCase))
-            {
-                return false;
-            }
             return true;
         }
 
-        public void Check()
-        {
-            logEntries_.Clear();
-            if (!System.IO.Directory.Exists(path_))
-            {
-                return;
-            }
-            foreach (string path in System.IO.Directory.GetFiles(path_, "*.tlog"))
-            {
-                string name = System.IO.Path.GetFileName(path);
-
-                Match match;
-                match = TLogRead.Match(name);
-                if (null != match && match.Success)
-                {
-                    string subroot = match.Groups[1].Value;
-                    AddRead(subroot, path);
-                    continue;
-                }
-
-                match = TLogWrite.Match(name);
-                if (null != match && match.Success)
-                {
-                    string subroot = match.Groups[1].Value;
-                    AddWrite(subroot, path);
-                    continue;
-                }
-                match = FBuildTLogRead.Match(name);
-                if (null != match && match.Success)
-                {
-                    TryDelete(path);
-                    continue;
-                }
-
-                match = FBuildTLogWrite.Match(name);
-                if (null != match && match.Success)
-                {
-                    TryDelete(path);
-                    continue;
-                }
-            }
-        }
         public void Save()
         {
-            foreach (string path in System.IO.Directory.GetFiles(path_, "*.tlog"))
+            foreach (string path in System.IO.Directory.GetFiles(work_, "*.tlog"))
             {
                 string name = System.IO.Path.GetFileName(path);
 
@@ -396,6 +431,16 @@ namespace VSFastBuildCommon
                     TryDelete(path);
                     continue;
                 }
+
+                match = TLogCommand.Match(name);
+                if (null != match && match.Success)
+                {
+                    string subroot = match.Groups[1].Value;
+                    AddCommand(subroot, path);
+                    TryDelete(path);
+                    continue;
+                }
+
                 match = FBuildTLogRead.Match(name);
                 if (null != match && match.Success)
                 {
@@ -409,7 +454,14 @@ namespace VSFastBuildCommon
                     TryDelete(path);
                     continue;
                 }
-                //TryDelete(path);
+
+                match = FBuildTLogCommand.Match(name);
+                if (null != match && match.Success)
+                {
+                    TryDelete(path);
+                    continue;
+                }
+                TryDelete(path);
             }
 
             // check rsp
@@ -417,7 +469,7 @@ namespace VSFastBuildCommon
             {
                 foreach (WriteEntry writeEntry in logEntry.Value.outputs_.Values)
                 {
-                    string input = writeEntry.command_.input_.TrimEnd('"').TrimStart('@').TrimEnd().ToUpperInvariant();
+                    string input = writeEntry.command_.inputs_[0].TrimEnd('"').TrimEnd().ToUpperInvariant();
                     if (input.EndsWith(".RSP", StringComparison.OrdinalIgnoreCase))
                     {
                         ReadEntry readEntry;
@@ -517,11 +569,10 @@ namespace VSFastBuildCommon
                         using (FileStream fileStream = new FileStream(path, FileMode.Append, FileAccess.Write, FileShare.None))
                         using (StreamWriter streamWriter = new StreamWriter(fileStream, Encoding.Unicode))
                         {
-                            foreach (KeyValuePair<string, ReadEntry> entry in logEntry.Value.inputs_)
+                            foreach (KeyValuePair<string, CommandEntry> entry in logEntry.Value.commands_)
                             {
                                 streamWriter.Write('^');
-                                streamWriter.WriteLine(entry.Value.command_.input_);
-                                streamWriter.WriteLine(entry.Value.command_.options_);
+                                streamWriter.WriteLine(entry.Key);
                             }
                         }
                     }
@@ -550,6 +601,7 @@ namespace VSFastBuildCommon
                 logEntry.name_ = name;
                 logEntry.inputs_ = new Dictionary<string, ReadEntry>(Capacity);
                 logEntry.outputs_ = new Dictionary<string, WriteEntry>(Capacity);
+                logEntry.commands_ = new Dictionary<string, CommandEntry>(Capacity);
                 logEntries_.Add(name, logEntry);
             }
             try
@@ -569,11 +621,11 @@ namespace VSFastBuildCommon
                         {
                             line = line.Substring("#Command: ".Length);
                             CommandLineParser.Command command = commandLineParser_.GetCommand(line);
-                            if (string.IsNullOrEmpty(command.input_))
+                            if (command.inputs_.Count<=0)
                             {
                                 break;
                             }
-                            string key = command.input_.TrimEnd('"').TrimStart('@').TrimEnd().ToUpperInvariant();
+                            string key = command.inputs_[0].TrimEnd('"').TrimStart('@').TrimEnd().ToUpperInvariant();
                             if (!logEntry.inputs_.TryGetValue(key, out readEntry))
                             {
                                 readEntry = new ReadEntry();
@@ -583,7 +635,7 @@ namespace VSFastBuildCommon
                         }
                         else if(null != readEntry)
                         {
-                            if (readEntry.files_.FindIndex((string x0) => x0 == line) < 0)
+                            if (!line.StartsWith(temp_, StringComparison.OrdinalIgnoreCase) && readEntry.files_.FindIndex((string x0) => x0 == line) < 0)
                             {
                                 readEntry.files_.Add(line);
                             }
@@ -651,6 +703,7 @@ namespace VSFastBuildCommon
                 logEntry.name_ = name;
                 logEntry.inputs_ = new Dictionary<string, ReadEntry>(Capacity);
                 logEntry.outputs_ = new Dictionary<string, WriteEntry>(Capacity);
+                logEntry.commands_ = new Dictionary<string, CommandEntry>(Capacity);
                 logEntries_.Add(name, logEntry);
             }
             try
@@ -670,11 +723,11 @@ namespace VSFastBuildCommon
                         {
                             line = line.Substring("#Command: ".Length);
                             CommandLineParser.Command command = commandLineParser_.GetCommand(line);
-                            if (string.IsNullOrEmpty(command.input_))
+                            if (command.inputs_.Count <= 0)
                             {
                                 continue;
                             }
-                            string key = string.IsNullOrEmpty(command.options_)? command.input_.ToUpperInvariant() : command.options_.ToUpperInvariant();
+                            string key = string.IsNullOrEmpty(command.options_)? command.inputs_[0].ToUpperInvariant() : command.options_.ToUpperInvariant();
 
                             if (!logEntry.outputs_.TryGetValue(key, out writeEntry))
                             {
@@ -682,7 +735,7 @@ namespace VSFastBuildCommon
                                 writeEntry.command_ = command;
                                 logEntry.outputs_.Add(key, writeEntry);
                             }
-                            string input = command.input_.TrimEnd('"').TrimStart('@').TrimEnd();
+                            string input = command.inputs_[0].TrimEnd('"').TrimStart('@').TrimEnd();
                             if (input.EndsWith(".RSP", StringComparison.OrdinalIgnoreCase))
                             {
                             }
@@ -700,7 +753,7 @@ namespace VSFastBuildCommon
                         }
                         else if(null != writeEntry)
                         {
-                            if (writeEntry.outputs_.FindIndex((string x0) => x0 == line) < 0)
+                            if (!line.StartsWith(temp_, StringComparison.OrdinalIgnoreCase) && writeEntry.outputs_.FindIndex((string x0) => x0 == line) < 0)
                             {
                                 writeEntry.outputs_.Add(line);
                             }
@@ -745,5 +798,61 @@ namespace VSFastBuildCommon
             }
         }
 #endif
+
+        private void AddCommand(string name, string path)
+        {
+            TLogEntry logEntry;
+            if (!logEntries_.TryGetValue(name, out logEntry))
+            {
+                logEntry.name_ = name;
+                logEntry.inputs_ = new Dictionary<string, ReadEntry>(Capacity);
+                logEntry.outputs_ = new Dictionary<string, WriteEntry>(Capacity);
+                logEntry.commands_ = new Dictionary<string, CommandEntry>(Capacity);
+                logEntries_.Add(name, logEntry);
+            }
+            try
+            {
+                using (FileStream stream = new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.None))
+                using (StreamReader streamReader = new StreamReader(stream))
+                {
+                    string line;
+                    while (null != (line = streamReader.ReadLine()))
+                    {
+                        if (string.IsNullOrEmpty(line))
+                        {
+                            continue;
+                        }
+                        if (line.StartsWith("#Command: "))
+                        {
+                            line = line.Substring("#Command: ".Length);
+                            CommandLineParser.Command command = commandLineParser_.GetCommand(line);
+                            for(int i=0; i<command.inputs_.Count;)
+                            {
+                                if (command.inputs_[i].StartsWith(temp_, StringComparison.OrdinalIgnoreCase))
+                                {
+                                    command.inputs_.RemoveAt(i);
+                                }
+                                else
+                                {
+                                    ++i;
+                                }
+                            }
+                            if (command.inputs_.Count <= 0)
+                            {
+                                continue;
+                            }
+                            string key = line.ToUpperInvariant();
+                            if (!logEntry.commands_.ContainsKey(key))
+                            {
+                                logEntry.commands_.Add(key, new CommandEntry(){command_ = command });
+                            }
+                        }
+                    }
+                }
+            }
+            catch (Exception)
+            {
+            }
+        }
     }
 }

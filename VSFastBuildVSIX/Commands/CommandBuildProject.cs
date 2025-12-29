@@ -3,6 +3,7 @@ using EnvDTE;
 using EnvDTE80;
 using Microsoft.Build.Construction;
 using Microsoft.Build.Evaluation;
+using Microsoft.Build.Framework.XamlTypes;
 using Microsoft.Build.Utilities;
 using Microsoft.VisualStudio.Shell.Interop;
 using Microsoft.VisualStudio.Threading;
@@ -138,6 +139,7 @@ namespace VSFastBuildVSIX
             public string tracker_;
             public List<ResultProject> projects_;
             public string lastbuildstate_;
+            public string tempDir_;
         }
 
         public static async Task RunProcessAsync(Result result, VSFastBuildVSIXPackage package, string bffpath)
@@ -150,14 +152,13 @@ namespace VSFastBuildVSIX
             OptionsPage optionPage = VSFastBuildVSIXPackage.Options;
             string fbuildPath = optionPage.Path;
             string fbuldArgs = optionPage.Arguments;
-            bool openMonitor = optionPage.OpenMonitor;
-            string arguments = $"/c \"{fbuildPath}\" -config \"{bffpath}\" {fbuldArgs}";
             if (!fbuldArgs.Contains("-j"))
             {
                 int numProcessors = VSFastBuildCommon.SystemEnvironment.GetPhysicalProcessorCount();
-                arguments += $" -j{numProcessors}";
+                fbuldArgs += $" -j{numProcessors}";
             }
 
+            bool openMonitor = optionPage.OpenMonitor;
             ToolWindowMonitorControl.TruncateLogFile();
             await CommandBuildProject.ResetMonitorAsync(package);
             if (openMonitor)
@@ -165,28 +166,22 @@ namespace VSFastBuildVSIX
                 await CommandBuildProject.StartMonitorAsync(package, true);
             }
 
-            using (CancellationTokenSource cancellationTokenSource = new CancellationTokenSource())
+            for (int i = 0; i < result.projects_.Count; ++i)
             {
-                for (int i = 0; i < result.projects_.Count; ++i)
+                try
                 {
-                    try
+                    string arguments = $"/t /c \"{fbuildPath}\" -config \"{bffpath}\" {result.projects_[i].name_} {fbuldArgs}";
+                    string tlogDir = System.IO.Path.Combine(result.projects_[i].intDir_, result.projects_[i].name_ + ".tlog");
+                    using (TLogTracker tracker = new TLogTracker(tlogDir, result.tempDir_))
                     {
-                        string tlogDir = System.IO.Path.Combine(result.projects_[i].intDir_, result.projects_[i].name_ + ".tlog");
-                        using (TLogTracker tracker = new TLogTracker(tlogDir))
-                        {
-                            tracker.Check();
-                        }
-
-                        System.Diagnostics.Process process = CommandBuildProject.CreateProcess(arguments, i, result, tlogDir);
+                        System.Diagnostics.Process process = CommandBuildProject.CreateProcess(arguments, i, result, tracker.Path);
                         if (process.Start())
                         {
+                            tracker.Start();
                             process.BeginOutputReadLine();
                             process.BeginErrorReadLine();
-                            using (TLogTracker tracker = new TLogTracker(tlogDir))
                             {
-                                tracker.Start();
                                 await process.WaitForExitAsync(package.CancellationToken);
-                                tracker.Save();
                                 string lastbuildstateFile = System.IO.Path.Combine(tlogDir, $"{result.projects_[i].name_}.lastbuildstate");
                                 try
                                 {
@@ -197,12 +192,13 @@ namespace VSFastBuildVSIX
                             }
                             process.CancelErrorRead();
                             process.CancelOutputRead();
+                            tracker.Save();
                         }
                     }
-                    catch (Exception ex)
-                    {
-                        await Log.OutputDebugAsync(ex.Message);
-                    }
+                }
+                catch (Exception ex)
+                {
+                    await Log.OutputDebugAsync(ex.Message);
                 }
             }
             await CommandBuildProject.StopMonitorAsync(package);
@@ -229,24 +225,21 @@ namespace VSFastBuildVSIX
                 await CommandBuildProject.StartMonitorAsync(package, true);
             }
 
-            using (CancellationTokenSource cancellationTokenSource = new CancellationTokenSource())
+            try
             {
-                try
+                System.Diagnostics.Process process = CommandBuildProject.CreateProcess(bffpath, arguments, workingDir);
+                if (process.Start())
                 {
-                    System.Diagnostics.Process process = CommandBuildProject.CreateProcess(bffpath, arguments, workingDir);
-                    if (process.Start())
-                    {
-                        process.BeginOutputReadLine();
-                        process.BeginErrorReadLine();
-                        await process.WaitForExitAsync(package.CancellationToken);
-                        process.CancelErrorRead();
-                        process.CancelOutputRead();
-                    }
+                    process.BeginOutputReadLine();
+                    process.BeginErrorReadLine();
+                    await process.WaitForExitAsync(package.CancellationToken);
+                    process.CancelErrorRead();
+                    process.CancelOutputRead();
                 }
-                catch (Exception ex)
-                {
-                    await Log.OutputDebugAsync(ex.Message);
-                }
+            }
+            catch (Exception ex)
+            {
+                await Log.OutputDebugAsync(ex.Message);
             }
             await CommandBuildProject.StopMonitorAsync(package);
         }
@@ -826,8 +819,23 @@ namespace VSFastBuildVSIX
                     bffName_ = string.Empty,
                     tracker_ = System.IO.Path.Combine(buildContext.vsEnvironment_.ToolsInstall, "MSBuild", "Current", "Bin", "amd64", "Tracker.exe"),
                     projects_ = new List<ResultProject>(vSFastProjects.Count),
-                    lastbuildstate_ = string.Empty
+                    lastbuildstate_ = string.Empty,
+                    tempDir_ = string.Empty,
                 };
+                if (buildContext.environments_.ContainsKey("Temp"))
+                {
+                    result.tempDir_ = buildContext.environments_["Temp"];
+                }else if (buildContext.environments_.ContainsKey("TEMP"))
+                {
+                    result.tempDir_ = buildContext.environments_["TEMP"];
+                }else if (buildContext.environments_.ContainsKey("Tmp"))
+                {
+                    result.tempDir_ = buildContext.environments_["Tmp"];
+                }else if (buildContext.environments_.ContainsKey("TMP"))
+                {
+                    result.tempDir_ = buildContext.environments_["TMP"];
+                }
+
                 result.lastbuildstate_ = $"PlatformToolSet={PlatformToolSet}:VCToolArchitecture={VCToolArchitecture}:VCToolsVersion={VCToolsVersion}:TargetPlatformVersion={WindowsSDKVersion}:";
 
                 foreach (VSFastProject vSFastProject in vSFastProjects)
@@ -2295,7 +2303,7 @@ namespace VSFastBuildVSIX
                         stringBuilder.AppendLine("    {");
                         addStringList(stringBuilder, objTargets, "      ");
                         stringBuilder.AppendLine("    }");
-                        stringBuilder.AppendLine("    .LinkerType = 'auto'");
+                        stringBuilder.AppendLine("    .LinkerType = 'msvc'");
                         stringBuilder.AppendLine("    .LinkerLinkObjects = false");
                         stringBuilder.AppendLine("  }");
                         buildContext.targets_.Add(outputFile);
@@ -2349,7 +2357,8 @@ namespace VSFastBuildVSIX
                         stringBuilder.AppendLine("    {");
                         addStringList(stringBuilder, objTargets, "      ");
                         stringBuilder.AppendLine("    }");
-                        stringBuilder.AppendLine("    .LinkerType = 'auto'");
+                        stringBuilder.AppendLine("    .LibrarianType = 'msvc'");
+                        stringBuilder.AppendLine("    .LibrarianAllowResponseFile = false");
                         stringBuilder.AppendLine("  }");
                         buildContext.targets_.Add(outputFile);
                     }
