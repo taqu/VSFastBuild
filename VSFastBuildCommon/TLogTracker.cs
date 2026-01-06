@@ -31,7 +31,6 @@ namespace VSFastBuildCommon
                 PowerShell,
                 Cl,
                 Link,
-                Lib_Link,
                 Lib,
                 Unknown,
             }
@@ -799,6 +798,15 @@ namespace VSFastBuildCommon
         }
 #endif
 
+        private void ParseLibCommand(CommandEntry libCommand, string line)
+        {
+            line = line.Trim();
+            for(int i=0; i<line.Length; ++i)
+            {
+
+            }
+        }
+
         private void AddCommand(string name, string path)
         {
             TLogEntry logEntry;
@@ -816,6 +824,7 @@ namespace VSFastBuildCommon
                 using (StreamReader streamReader = new StreamReader(stream))
                 {
                     string line;
+                    CommandEntry lastLibCommand = null;
                     while (null != (line = streamReader.ReadLine()))
                     {
                         if (string.IsNullOrEmpty(line))
@@ -828,13 +837,14 @@ namespace VSFastBuildCommon
                             CommandLineParser.Command command = commandLineParser_.GetCommand(line);
                             for(int i=0; i<command.inputs_.Count;)
                             {
-                                if (command.inputs_[i].StartsWith(temp_, StringComparison.OrdinalIgnoreCase))
+                                string input = command.inputs_[i].Trim(' ', '\"');
+                                if (command.inputs_[i].EndsWith(".rsp", StringComparison.OrdinalIgnoreCase))
                                 {
-                                    command.inputs_.RemoveAt(i);
-                                }
-                                else
-                                {
-                                    ++i;
+                                    if(command.type_ == CommandLineParser.CommandType.Link)
+                                    {
+                                        return;
+                                    }
+                                    break;
                                 }
                             }
                             if (command.inputs_.Count <= 0)
@@ -844,8 +854,15 @@ namespace VSFastBuildCommon
                             string key = line.ToUpperInvariant();
                             if (!logEntry.commands_.ContainsKey(key))
                             {
-                                logEntry.commands_.Add(key, new CommandEntry(){command_ = command });
+                                CommandEntry commandEntry = new CommandEntry() { command_ = command };
+                                logEntry.commands_.Add(key, commandEntry);
+                                if(command.type_ == CommandLineParser.CommandType.Lib)
+                                {
+                                    lastLibCommand = commandEntry;
+                                }
                             }
+                        }else if (null != lastLibCommand)
+                        {
                         }
                     }
                 }

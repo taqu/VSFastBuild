@@ -1360,7 +1360,7 @@ namespace VSFastBuildVSIX
             {
                 stringBuilder.Append($" {additionalOptions}");
             }
-            stringBuilder.Append(" -x cu -c \"%1\" -o \"%2\" -Xcompiler=-Fd$CompilerPDB$,-FS");
+            stringBuilder.Append(" -x cu -c \"%1\" -o \"%2\" -Xcompiler=-Fd\"$CompilerPDB$\",-FS");
             return stringBuilder.ToString();
         }
 
@@ -1600,7 +1600,7 @@ namespace VSFastBuildVSIX
                         }
 #endif
                         pchCompilerOptions = pchCompilerOptions.Replace("  ", " ").Replace("\\", "/").Replace("//", "/").Replace("/D ", "/D");
-                        project.precompiledHeaderInfo_.PCHOptions_ = $"\"%1\" /Fo\"%3\" {pchCompilerOptions} /Fd$CompilerPDB$";
+                        project.precompiledHeaderInfo_.PCHOptions_ = $"\"%1\" /Fo\"%3\" {pchCompilerOptions} /Fd\"$CompilerPDB$\"";
                     }
                 }
             }
@@ -1646,7 +1646,7 @@ namespace VSFastBuildVSIX
                     StringBuilder optionBuilder = buildContext.optionBuilder_.Clear();
                     optionBuilder.Append("\"%1\" /Fo\"%2\" ");
                     optionBuilder.Append(tempCompilerOptions);
-                    optionBuilder.Append(" /Fd$CompilerPDB$");
+                    optionBuilder.Append(" /Fd\"$CompilerPDB$\"");
                     optionBuilder = optionBuilder.Replace("\\", "/").Replace("//", "/").Replace("/D ", "/D").Replace("/JMC", "/Zi").Replace("/TP", string.Empty).Replace("/TC", string.Empty);
                     if (item.EvaluatedInclude.EndsWith(".c"))
                     {
