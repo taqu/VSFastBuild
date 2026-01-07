@@ -17,6 +17,17 @@ namespace VSFastBuildCommon
 {
     public class TLogTracker : IDisposable
     {
+        public static bool IsAlpha(char c)
+        {
+
+            return (c >= 'A' && c <= 'Z') || (c >= 'a' && c <= 'z');
+        }
+
+        public static bool IsSeparator(char c)
+        {
+            return c == '\\' || c == '/';
+        }
+
         public class CommandLineParser
         {
             [DllImport("shell32.dll", CharSet = CharSet.Unicode)]
@@ -95,7 +106,7 @@ namespace VSFastBuildCommon
                             if ((i + 1) < args.Length)
                             {
                                 command.output_ = args[i + 1];
-                                i+=2;
+                                i += 2;
                             }
                             else
                             {
@@ -136,7 +147,7 @@ namespace VSFastBuildCommon
                         }
                         optionBuilder_.Append(args[i]);
 
-                        if(args[i].ToUpperInvariant() == "/IFCOUTPUT")
+                        if (args[i].ToUpperInvariant() == "/IFCOUTPUT")
                         {
                             if ((i + 1) < args.Length)
                             {
@@ -361,11 +372,11 @@ namespace VSFastBuildCommon
 
         private static bool NeedSaveRead(KeyValuePair<string, TLogEntry> logEntry)
         {
-            if(0<=logEntry.Key.IndexOf("Link-cvtres", StringComparison.OrdinalIgnoreCase))
+            if (0 <= logEntry.Key.IndexOf("Link-cvtres", StringComparison.OrdinalIgnoreCase))
             {
                 return false;
             }
-            if(0<=logEntry.Key.IndexOf("CMD", StringComparison.OrdinalIgnoreCase))
+            if (0 <= logEntry.Key.IndexOf("CMD", StringComparison.OrdinalIgnoreCase))
             {
                 return false;
             }
@@ -382,7 +393,7 @@ namespace VSFastBuildCommon
 
         private static bool NeedSaveWrite(KeyValuePair<string, TLogEntry> logEntry)
         {
-            if(0<=logEntry.Key.IndexOf("Link-cvtres", StringComparison.OrdinalIgnoreCase))
+            if (0 <= logEntry.Key.IndexOf("Link-cvtres", StringComparison.OrdinalIgnoreCase))
             {
                 return false;
             }
@@ -472,8 +483,9 @@ namespace VSFastBuildCommon
                     if (input.EndsWith(".RSP", StringComparison.OrdinalIgnoreCase))
                     {
                         ReadEntry readEntry;
-                        if (logEntry.Value.inputs_.TryGetValue(input, out readEntry)){
-                            for(int i=0; i<readEntry.files_.Count;)
+                        if (logEntry.Value.inputs_.TryGetValue(input, out readEntry))
+                        {
+                            for (int i = 0; i < readEntry.files_.Count;)
                             {
                                 if (readEntry.files_[i].EndsWith("RSP", StringComparison.OrdinalIgnoreCase))
                                 {
@@ -507,12 +519,12 @@ namespace VSFastBuildCommon
                             {
                                 streamWriter.Write('^');
                                 string input = entry.Key.TrimEnd('"').TrimStart('@').TrimEnd();
-                                if(input.EndsWith(".RSP", StringComparison.OrdinalIgnoreCase))
+                                if (input.EndsWith(".RSP", StringComparison.OrdinalIgnoreCase))
                                 {
                                     inputList.Clear();
-                                    for(int i=0; i< entry.Value.files_.Count; ++i)
+                                    for (int i = 0; i < entry.Value.files_.Count; ++i)
                                     {
-                                        if(entry.Value.files_[i].EndsWith(".RSP", StringComparison.OrdinalIgnoreCase))
+                                        if (entry.Value.files_[i].EndsWith(".RSP", StringComparison.OrdinalIgnoreCase))
                                         {
                                             continue;
                                         }
@@ -563,7 +575,8 @@ namespace VSFastBuildCommon
                         }
                     }
 
-                    if(NeedSaveCommand(logEntry)){
+                    if (NeedSaveCommand(logEntry))
+                    {
                         path = System.IO.Path.Combine(path_, $"{logEntry.Key}.command.1.tlog");
                         using (FileStream fileStream = new FileStream(path, FileMode.Append, FileAccess.Write, FileShare.None))
                         using (StreamWriter streamWriter = new StreamWriter(fileStream, Encoding.Unicode))
@@ -620,7 +633,7 @@ namespace VSFastBuildCommon
                         {
                             line = line.Substring("#Command: ".Length);
                             CommandLineParser.Command command = commandLineParser_.GetCommand(line);
-                            if (command.inputs_.Count<=0)
+                            if (command.inputs_.Count <= 0)
                             {
                                 break;
                             }
@@ -632,7 +645,7 @@ namespace VSFastBuildCommon
                                 logEntry.inputs_.Add(key, readEntry);
                             }
                         }
-                        else if(null != readEntry)
+                        else if (null != readEntry)
                         {
                             if (!line.StartsWith(temp_, StringComparison.OrdinalIgnoreCase) && readEntry.files_.FindIndex((string x0) => x0 == line) < 0)
                             {
@@ -726,7 +739,7 @@ namespace VSFastBuildCommon
                             {
                                 continue;
                             }
-                            string key = string.IsNullOrEmpty(command.options_)? command.inputs_[0].ToUpperInvariant() : command.options_.ToUpperInvariant();
+                            string key = string.IsNullOrEmpty(command.options_) ? command.inputs_[0].ToUpperInvariant() : command.options_.ToUpperInvariant();
 
                             if (!logEntry.outputs_.TryGetValue(key, out writeEntry))
                             {
@@ -750,7 +763,7 @@ namespace VSFastBuildCommon
                                 }
                             }
                         }
-                        else if(null != writeEntry)
+                        else if (null != writeEntry)
                         {
                             if (!line.StartsWith(temp_, StringComparison.OrdinalIgnoreCase) && writeEntry.outputs_.FindIndex((string x0) => x0 == line) < 0)
                             {
@@ -798,12 +811,165 @@ namespace VSFastBuildCommon
         }
 #endif
 
-        private void ParseLibCommand(CommandEntry libCommand, string line)
+        private static bool IsDrive(int index, string line)
+        {
+            System.Diagnostics.Debug.Assert(index < line.Length);
+            if (IsAlpha(line[index]))
+            {
+                if ((index + 3) <= line.Length && line[index + 1] == ':' && (line[index + 2] == '\\' || line[index + 2] == '/'))
+                {
+                    return true;
+                }
+            }
+            return false;
+        }
+
+        private static bool IsUNC(int index, string line)
+        {
+            System.Diagnostics.Debug.Assert(index < line.Length);
+            if ('\\' == line[index])
+            {
+                if ((index + 1) < line.Length && '\\' == line[index + 1])
+                {
+                    return true;
+                }
+            }
+            else if ('/' == line[index])
+            {
+                if ((index + 1) < line.Length && '/' == line[index + 1])
+                {
+                    return true;
+                }
+            }
+            return false;
+        }
+
+        private static bool IsOption(int index, string line)
+        {
+            System.Diagnostics.Debug.Assert(index < line.Length);
+            if ('/' == line[index])
+            {
+                if ((index + 1) < line.Length && IsAlpha(line[index+1]))
+                {
+                    return true;
+                }
+            }
+            return false;
+        }
+
+        private static int FindEnd(int index, string line)
+        {
+            for (int i = index; i < line.Length;)
+            {
+                for (int i = 0; i < line.Length;)
+            {
+                if (IsDrive(i, line))
+                {
+                    int end = FindEnd(i + 3, line);
+                    if (end < 0)
+                    {
+                        break;
+                    }
+                    if (first)
+                    {
+                        first = false;
+                        libCommand.command_.name_ = line.Substring(i, end - i+1);
+                    }
+                    else
+                    {
+                        libCommand.command_.inputs_.Add(line.Substring(i, end - i+1));
+                    }
+                    i = end;
+                }
+                else if (IsUNC(i, line))
+                {
+                    int end = FindEnd(i + 2, line);
+                    if (end < 0)
+                    {
+                        break;
+                    }
+                    if (first)
+                    {
+                        first = false;
+                        libCommand.command_.name_ = line.Substring(i, end - i + 1);
+                    }
+                    else
+                    {
+                        libCommand.command_.inputs_.Add(line.Substring(i, end - i + 1));
+                    }
+                    i = end;
+                }else if(IsOption(i, line))
+                {
+                    int end = FindEnd(i + 1, line);
+                    if (end < 0)
+                    {
+                        break;
+                    }
+                    libCommand.command_.options_ += $" {line.Substring(i, end - i+1)}";
+                    i = end;
+                }
+                else
+                {
+                    ++i;
+                }
+            }
+        }
+
+        private static void ParseLibCommand(CommandEntry libCommand, string line)
         {
             line = line.Trim();
-            for(int i=0; i<line.Length; ++i)
+            bool first = true;
+            for (int i = 0; i < line.Length;)
             {
-
+                if (IsDrive(i, line))
+                {
+                    int end = FindEnd(i + 3, line);
+                    if (end < 0)
+                    {
+                        break;
+                    }
+                    if (first)
+                    {
+                        first = false;
+                        libCommand.command_.name_ = line.Substring(i, end - i+1);
+                    }
+                    else
+                    {
+                        libCommand.command_.inputs_.Add(line.Substring(i, end - i+1));
+                    }
+                    i = end;
+                }
+                else if (IsUNC(i, line))
+                {
+                    int end = FindEnd(i + 2, line);
+                    if (end < 0)
+                    {
+                        break;
+                    }
+                    if (first)
+                    {
+                        first = false;
+                        libCommand.command_.name_ = line.Substring(i, end - i + 1);
+                    }
+                    else
+                    {
+                        libCommand.command_.inputs_.Add(line.Substring(i, end - i + 1));
+                    }
+                    i = end;
+                }else if(IsOption(i, line))
+                {
+                    int end = FindEnd(i + 1, line);
+                    if (end < 0)
+                    {
+                        break;
+                    }
+                    libCommand.command_.options_ += $" {line.Substring(i, end - i+1)}";
+                    i = end;
+                }
+                else
+                {
+                    ++i;
+                }
             }
         }
 
@@ -835,12 +1001,12 @@ namespace VSFastBuildCommon
                         {
                             line = line.Substring("#Command: ".Length);
                             CommandLineParser.Command command = commandLineParser_.GetCommand(line);
-                            for(int i=0; i<command.inputs_.Count;)
+                            for (int i = 0; i < command.inputs_.Count;)
                             {
                                 string input = command.inputs_[i].Trim(' ', '\"');
                                 if (command.inputs_[i].EndsWith(".rsp", StringComparison.OrdinalIgnoreCase))
                                 {
-                                    if(command.type_ == CommandLineParser.CommandType.Link)
+                                    if (command.type_ == CommandLineParser.CommandType.Link)
                                     {
                                         return;
                                     }
@@ -856,12 +1022,13 @@ namespace VSFastBuildCommon
                             {
                                 CommandEntry commandEntry = new CommandEntry() { command_ = command };
                                 logEntry.commands_.Add(key, commandEntry);
-                                if(command.type_ == CommandLineParser.CommandType.Lib)
+                                if (command.type_ == CommandLineParser.CommandType.Lib)
                                 {
                                     lastLibCommand = commandEntry;
                                 }
                             }
-                        }else if (null != lastLibCommand)
+                        }
+                        else if (null != lastLibCommand)
                         {
                         }
                     }
