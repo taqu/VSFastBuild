@@ -502,7 +502,6 @@ namespace VSFastBuildCommon
                 }
             }
             List<string> inputList = new List<string>(64);
-            StringBuilder stringBuilder = new StringBuilder(1024);
             foreach (KeyValuePair<string, TLogEntry> logEntry in logEntries_)
             {
                 try
@@ -581,10 +580,32 @@ namespace VSFastBuildCommon
                         using (FileStream fileStream = new FileStream(path, FileMode.Append, FileAccess.Write, FileShare.None))
                         using (StreamWriter streamWriter = new StreamWriter(fileStream, Encoding.Unicode))
                         {
-                            foreach (KeyValuePair<string, CommandEntry> entry in logEntry.Value.commands_)
+                            if (string.Equals(logEntry.Key, "lib", StringComparison.OrdinalIgnoreCase))
                             {
-                                streamWriter.Write('^');
-                                streamWriter.WriteLine(entry.Key);
+                                foreach (KeyValuePair<string, CommandEntry> entry in logEntry.Value.commands_)
+                                {
+                                    string inputs = string.Join("|", entry.Value.command_.inputs_);
+                                    streamWriter.Write('^');
+                                    streamWriter.WriteLine(inputs);
+                                    streamWriter.WriteLine(entry.Value.command_.output_);
+                                    foreach(string input in entry.Value.command_.inputs_)
+                                    {
+                                        streamWriter.WriteLine($"\"{input}\"");
+                                    }
+                                }
+                            }
+                            else
+                            {
+                                foreach (KeyValuePair<string, CommandEntry> entry in logEntry.Value.commands_)
+                                {
+                                    foreach(string input in entry.Value.command_.inputs_)
+                                    {
+                                        streamWriter.Write('^');
+                                        streamWriter.WriteLine(input.Trim('\"'));
+                                        streamWriter.Write($"{entry.Value.command_.name_} ");
+                                        streamWriter.WriteLine(entry.Value.command_.options_);
+                                    }
+                                }
                             }
                         }
                     }
@@ -861,58 +882,24 @@ namespace VSFastBuildCommon
         {
             for (int i = index; i < line.Length;)
             {
-                for (int i = 0; i < line.Length;)
-            {
                 if (IsDrive(i, line))
                 {
-                    int end = FindEnd(i + 3, line);
-                    if (end < 0)
-                    {
-                        break;
-                    }
-                    if (first)
-                    {
-                        first = false;
-                        libCommand.command_.name_ = line.Substring(i, end - i+1);
-                    }
-                    else
-                    {
-                        libCommand.command_.inputs_.Add(line.Substring(i, end - i+1));
-                    }
-                    i = end;
+                    return i-1;
                 }
                 else if (IsUNC(i, line))
                 {
-                    int end = FindEnd(i + 2, line);
-                    if (end < 0)
-                    {
-                        break;
-                    }
-                    if (first)
-                    {
-                        first = false;
-                        libCommand.command_.name_ = line.Substring(i, end - i + 1);
-                    }
-                    else
-                    {
-                        libCommand.command_.inputs_.Add(line.Substring(i, end - i + 1));
-                    }
-                    i = end;
-                }else if(IsOption(i, line))
+                    return i-1;
+                }
+                else if (IsOption(i, line))
                 {
-                    int end = FindEnd(i + 1, line);
-                    if (end < 0)
-                    {
-                        break;
-                    }
-                    libCommand.command_.options_ += $" {line.Substring(i, end - i+1)}";
-                    i = end;
+                    return i-1;
                 }
                 else
                 {
                     ++i;
                 }
             }
+            return line.Length;
         }
 
         private static void ParseLibCommand(CommandEntry libCommand, string line)
@@ -928,14 +915,15 @@ namespace VSFastBuildCommon
                     {
                         break;
                     }
+                    string elemnt = line.Substring(i, end - i).TrimEnd();
                     if (first)
                     {
                         first = false;
-                        libCommand.command_.name_ = line.Substring(i, end - i+1);
+                        libCommand.command_.name_ = elemnt;
                     }
                     else
                     {
-                        libCommand.command_.inputs_.Add(line.Substring(i, end - i+1));
+                        libCommand.command_.inputs_.Add(elemnt);
                     }
                     i = end;
                 }
@@ -949,21 +937,24 @@ namespace VSFastBuildCommon
                     if (first)
                     {
                         first = false;
-                        libCommand.command_.name_ = line.Substring(i, end - i + 1);
+                        string elemnt = line.Substring(i, end - i).TrimEnd();
+                        libCommand.command_.name_ = elemnt;
                     }
                     else
                     {
-                        libCommand.command_.inputs_.Add(line.Substring(i, end - i + 1));
+                        libCommand.command_.inputs_.Add(line.Substring(i, end - i).TrimEnd());
                     }
                     i = end;
                 }else if(IsOption(i, line))
                 {
+                    string option = line.Substring(i+1);
                     int end = FindEnd(i + 1, line);
                     if (end < 0)
                     {
                         break;
                     }
-                    libCommand.command_.options_ += $" {line.Substring(i, end - i+1)}";
+                    string elemnt = line.Substring(i, end - i).TrimEnd();
+                    libCommand.command_.options_ += $" {elemnt}";
                     i = end;
                 }
                 else
@@ -997,11 +988,12 @@ namespace VSFastBuildCommon
                         {
                             continue;
                         }
+                        line = line.Trim();
                         if (line.StartsWith("#Command: "))
                         {
                             line = line.Substring("#Command: ".Length);
                             CommandLineParser.Command command = commandLineParser_.GetCommand(line);
-                            for (int i = 0; i < command.inputs_.Count;)
+                            for (int i = 0; i < command.inputs_.Count; ++i)
                             {
                                 string input = command.inputs_[i].Trim(' ', '\"');
                                 if (command.inputs_[i].EndsWith(".rsp", StringComparison.OrdinalIgnoreCase))
@@ -1030,6 +1022,7 @@ namespace VSFastBuildCommon
                         }
                         else if (null != lastLibCommand)
                         {
+                            ParseLibCommand(lastLibCommand,line);
                         }
                     }
                 }

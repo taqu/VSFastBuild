@@ -101,17 +101,27 @@ namespace VSFastBuildVSIX
                 return;
             }
             await Log.AddOutputPaneAsync(Log.PaneBuild);
-            Result result;
             try
             {
+                List<Result> results = new List<Result>();
+                List<EnvDTE.Project> tempTargets = new List<EnvDTE.Project>(1);
                 await Log.OutputBuildAsync($"--- VSFastBuild begin building ---");
-                result = await CommandBuildProject.BuildForSolutionAsync(package, targets, false);
+                foreach (EnvDTE.Project project in targets)
+                {
+                    tempTargets.Clear();
+                    tempTargets.Add(project);
+                    Result result = await CommandBuildProject.BuildForSolutionAsync(package, tempTargets, false);
+                    results.Add(result);
+                }
 
                 if (!VSFastBuildVSIXPackage.Options.GenOnly)
                 {
-                    await Log.OutputBuildAsync($"--- VSFastBuild begin running {result.bffName_}---");
-                    await RunProcessAsync(result, package, result.bffPath_);
-                    await Log.OutputBuildAsync($"--- VSFastBuild end running {result.bffName_}---");
+                    foreach (Result result in results)
+                    {
+                        await Log.OutputBuildAsync($"--- VSFastBuild begin running {result.bffName_}---");
+                        await RunProcessAsync(result, package, result.bffPath_);
+                        await Log.OutputBuildAsync($"--- VSFastBuild end running {result.bffName_}---");
+                    }
                 }
                 await Log.OutputBuildAsync($"--- VSFastBuild end ---");
             }
@@ -878,14 +888,8 @@ namespace VSFastBuildVSIX
                 else
                 {
                     StringBuilder bffBuilder = buildContext.stringBuilder_.Clear();
-                    foreach (VSFastProject p in vSFastProjects)
-                    {
-                        bffBuilder.Append(p.targetName_);
-                    }
-                    byte[] bytes = Encoding.UTF8.GetBytes(bffBuilder.ToString());
-                    string strinHash = ByteArrayToHexStringHalf(MurmurHash.MurmurHash3.ComputeHash(bytes));
-                    string rootDirectory = System.IO.Path.GetDirectoryName(package.DTE.Solution.FullName);
-                    result.bffName_ = string.Format("fbuild_{0}_{1}_{2}.bff", strinHash, solutionConfiguration.Name, solutionConfiguration.PlatformName);
+                    string rootDirectory = System.IO.Path.GetDirectoryName(projects[0].FullName);
+                    result.bffName_ = string.Format("fbuild_{0}_{1}_{2}.bff", projects[0].UniqueName, solutionConfiguration.Name, solutionConfiguration.PlatformName);
                     result.bffPath_ = bffpath = System.IO.Path.Combine(rootDirectory, result.bffName_);
                 }
             }
