@@ -63,7 +63,6 @@
     <Compile Include="ToolWindows\BuildEvent.cs" />
     <Compile Include="ToolWindows\BuildHost.cs" />
     <Compile Include="ToolWindows\CPUCore.cs" />
-    <Compile Include="ToolWindows\GIFImage.cs" />
     <Compile Include="ToolWindows\HitTest.cs" />
     <Compile Include="ToolWindows\OutputFilterItem.cs" />
     <Compile Include="ToolWindows\SystemPerformanceGraphsCanvas.cs" />

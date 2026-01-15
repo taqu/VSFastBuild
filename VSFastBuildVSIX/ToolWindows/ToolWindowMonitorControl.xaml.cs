@@ -1,4 +1,4 @@
-using EnvDTE;
+﻿using EnvDTE;
 using EnvDTE80;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
@@ -384,6 +384,7 @@ namespace VSFastBuildVSIX
 
         private void ToolWindowMonitorControl_Loaded(object sender, RoutedEventArgs e)
         {
+            StatusBarRunning.Source = ToolImages.IconRunning.ImageSource;
 #if false
             Image image = new Image();
             image.Source = GetBitmapImage(VSFastBuildVSIX.Resources.Images.TimeLineTabIcon);
@@ -1089,10 +1090,12 @@ namespace VSFastBuildVSIX
                         StatusBarProgressBar.Foreground = ToolImages.StatusInitialBrush;
                         break;
                 }
-
+                ToolImages.StatusProgressBrush.Viewbox = new Rect(0.0f, 0.0f, 1.0f, 1.0f);
             }
             else
             {
+                float rate = currentProgressPCT_/100.0f;
+                ToolImages.StatusProgressBrush.Viewbox = new Rect(0.0f, 0.0f, rate, 1.0f);
                 StatusBarProgressBar.Foreground = ToolImages.StatusProgressBrush;
             }
 
@@ -1517,11 +1520,9 @@ namespace VSFastBuildVSIX
                 buildRunningState_ = BuildRunningState.Running;
 
                 // start the gif "building" animation
-                StatusBarRunningGif.StartAnimation();
-                ToolImages.StatusProgress.StartAnimation();
 
                 ToolTip newToolTip = new ToolTip();
-                StatusBarRunningGif.ToolTip = newToolTip;
+                StatusBarRunning.ToolTip = newToolTip;
                 newToolTip.Content = "Build in Progress...";
                 if (preparingBuildsteps_)
                 {
@@ -1553,10 +1554,7 @@ namespace VSFastBuildVSIX
 
             buildRunningState_ = BuildRunningState.Ready;
 
-            StatusBarRunningGif.StopAnimation();
-            StatusBarRunningGif.ToolTip = null;
-
-            ToolImages.StatusProgress.StopAnimation();
+            StatusBarRunning.ToolTip = null;
 
             UpdateBuildProgress(100.0f, true);
 

@@ -1,4 +1,4 @@
-using Microsoft.Build.Framework;
+﻿using Microsoft.Build.Framework;
 using Microsoft.Build.Utilities;
 using SharpCompress.Common.Rar;
 using System;
@@ -414,7 +414,7 @@ namespace VSFastBuildCommon
 
         private static bool NeedSaveCommand(KeyValuePair<string, TLogEntry> logEntry)
         {
-            return true;
+            return 0<logEntry.Value.commands_.Count;
         }
 
         public void Save()
@@ -447,7 +447,7 @@ namespace VSFastBuildCommon
                 {
                     string subroot = match.Groups[1].Value;
                     AddCommand(subroot, path);
-                    TryDelete(path);
+                    //TryDelete(path);
                     continue;
                 }
 
@@ -580,6 +580,23 @@ namespace VSFastBuildCommon
                         using (FileStream fileStream = new FileStream(path, FileMode.Append, FileAccess.Write, FileShare.None))
                         using (StreamWriter streamWriter = new StreamWriter(fileStream, Encoding.Unicode))
                         {
+                            #if true
+                            streamWriter.WriteLine($"key: {logEntry.Key}");
+                            streamWriter.WriteLine($"name: {logEntry.Value.name_}");
+                            streamWriter.WriteLine($"commands: {logEntry.Value.commands_.Count}");
+                            foreach (KeyValuePair<string, CommandEntry> entry in logEntry.Value.commands_)
+                            {
+                                streamWriter.WriteLine($"  {entry.Key}");
+                                streamWriter.WriteLine($"    name: {entry.Value.command_.name_}");
+                                streamWriter.WriteLine($"    output: {entry.Value.command_.output_}");
+                                streamWriter.WriteLine($"    inputs:");
+                                foreach (string input in entry.Value.command_.inputs_)
+                                {
+                                    streamWriter.WriteLine($"      {input}");
+                                }
+                                streamWriter.WriteLine($"    options: {entry.Value.command_.options_}");
+                            }
+                            #else
                             if (string.Equals(logEntry.Key, "lib", StringComparison.OrdinalIgnoreCase))
                             {
                                 foreach (KeyValuePair<string, CommandEntry> entry in logEntry.Value.commands_)
@@ -607,6 +624,7 @@ namespace VSFastBuildCommon
                                     }
                                 }
                             }
+                            #endif
                         }
                     }
                 }
@@ -619,7 +637,7 @@ namespace VSFastBuildCommon
         {
             try
             {
-                //System.IO.File.Delete(path);
+                System.IO.File.Delete(path);
             }
             catch (Exception e)
             {
@@ -902,6 +920,69 @@ namespace VSFastBuildCommon
             return line.Length;
         }
 
+        private static Tuple<int,string> FindOptionEnd(int index, string line)
+        {
+            if (line.StartsWith("/OUT", StringComparison.OrdinalIgnoreCase) || line.StartsWith("/Fo", StringComparison.OrdinalIgnoreCase))
+            {
+                if(line.StartsWith("/OUT", StringComparison.OrdinalIgnoreCase))
+                {
+                    index += 4;
+                }
+                else
+                {
+                    index += 3;
+                }
+                int start = index;
+                if (IsDrive(index, line))
+                {
+                    index += 3;
+                }
+                else if (IsUNC(index, line))
+                {
+                    index += 2;
+                }
+                else
+                {
+                    return new Tuple<int, string>(line.Length, string.Empty);
+                }
+
+                int end = FindEnd(index, line);
+                if (end < 0)
+                {
+                    return new Tuple<int, string>(line.Length,string.Empty);
+                }
+                else
+                {
+                    string output = line.Substring(start, end - start).Trim();
+                    return new Tuple<int, string>(end,output);
+                }
+            }
+            else
+            {
+                index += 2;
+                for (int i = index; i < line.Length;)
+                {
+                    if (IsDrive(i, line))
+                    {
+                        return new Tuple<int, string>(i - 1,string.Empty);
+                    }
+                    else if (IsUNC(i, line))
+                    {
+                        return new Tuple<int, string>(i - 1,string.Empty);
+                    }
+                    else if (IsOption(i, line))
+                    {
+                        return new Tuple<int, string>(i - 1,string.Empty);
+                    }
+                    else
+                    {
+                        ++i;
+                    }
+                }
+            }
+            return new Tuple<int, string>(line.Length,string.Empty);
+        }
+
         private static void ParseLibCommand(CommandEntry libCommand, string line)
         {
             line = line.Trim();
@@ -948,14 +1029,18 @@ namespace VSFastBuildCommon
                 }else if(IsOption(i, line))
                 {
                     string option = line.Substring(i+1);
-                    int end = FindEnd(i + 1, line);
-                    if (end < 0)
+                    Tuple<int, string> end = FindOptionEnd(i, line);
+                    if (end.Item1 < 0)
                     {
                         break;
                     }
-                    string elemnt = line.Substring(i, end - i).TrimEnd();
+                    if (!string.IsNullOrEmpty(end.Item2))
+                    {
+                        libCommand.command_.output_ = end.Item2;
+                    }
+                    string elemnt = line.Substring(i, end.Item1 - i).TrimEnd();
                     libCommand.command_.options_ += $" {elemnt}";
-                    i = end;
+                    i = end.Item1;
                 }
                 else
                 {
