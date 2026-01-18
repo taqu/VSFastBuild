@@ -45,7 +45,7 @@ namespace VSFastBuildVSIX.ToolWindows
             }
             using (MemoryStream memory = new MemoryStream())
             {
-                IconRunning.ImageSource = GetBitmapImage(VSFastBuildVSIX.Resources.Images.Icon_animated, memory);
+                IconRunning.ImageSource = GetBitmapImage(VSFastBuildVSIX.Resources.Images.icon, memory);
                 SuccessCodeBrush.ImageSource = GetBitmapImage(VSFastBuildVSIX.Resources.Images.success_code, memory);
                 SuccessNonCodeBrush.ImageSource = GetBitmapImage(VSFastBuildVSIX.Resources.Images.success_noncode, memory);
                 SuccessPreprocessedBrush.ImageSource = GetBitmapImage(VSFastBuildVSIX.Resources.Images.success_preprocess, memory);

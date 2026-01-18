@@ -1,6 +1,5 @@
 ﻿using Microsoft.Build.Framework;
 using Microsoft.Build.Utilities;
-using SharpCompress.Common.Rar;
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
@@ -414,7 +413,7 @@ namespace VSFastBuildCommon
 
         private static bool NeedSaveCommand(KeyValuePair<string, TLogEntry> logEntry)
         {
-            return 0<logEntry.Value.commands_.Count;
+            return 0 < logEntry.Value.commands_.Count;
         }
 
         public void Save()
@@ -500,6 +499,21 @@ namespace VSFastBuildCommon
                         }
                     }
                 }
+
+                foreach (CommandEntry commandEntry in logEntry.Value.commands_.Values)
+                {
+                    for(int i=0; i < commandEntry.command_.inputs_.Count;){
+                        string input = commandEntry.command_.inputs_[i];
+                        if (input.EndsWith(".RSP", StringComparison.OrdinalIgnoreCase))
+                        {
+                            commandEntry.command_.inputs_.RemoveAt(i);
+                        }
+                        else
+                        {
+                            ++i;
+                        }
+                    }
+                }
             }
             List<string> inputList = new List<string>(64);
             foreach (KeyValuePair<string, TLogEntry> logEntry in logEntries_)
@@ -576,28 +590,11 @@ namespace VSFastBuildCommon
 
                     if (NeedSaveCommand(logEntry))
                     {
-                        path = System.IO.Path.Combine(path_, $"{logEntry.Key}.command.1.tlog");
-                        using (FileStream fileStream = new FileStream(path, FileMode.Append, FileAccess.Write, FileShare.None))
-                        using (StreamWriter streamWriter = new StreamWriter(fileStream, Encoding.Unicode))
+                        if (string.Equals(logEntry.Key, "lib", StringComparison.OrdinalIgnoreCase))
                         {
-                            #if true
-                            streamWriter.WriteLine($"key: {logEntry.Key}");
-                            streamWriter.WriteLine($"name: {logEntry.Value.name_}");
-                            streamWriter.WriteLine($"commands: {logEntry.Value.commands_.Count}");
-                            foreach (KeyValuePair<string, CommandEntry> entry in logEntry.Value.commands_)
-                            {
-                                streamWriter.WriteLine($"  {entry.Key}");
-                                streamWriter.WriteLine($"    name: {entry.Value.command_.name_}");
-                                streamWriter.WriteLine($"    output: {entry.Value.command_.output_}");
-                                streamWriter.WriteLine($"    inputs:");
-                                foreach (string input in entry.Value.command_.inputs_)
-                                {
-                                    streamWriter.WriteLine($"      {input}");
-                                }
-                                streamWriter.WriteLine($"    options: {entry.Value.command_.options_}");
-                            }
-                            #else
-                            if (string.Equals(logEntry.Key, "lib", StringComparison.OrdinalIgnoreCase))
+                            path = System.IO.Path.Combine(path_, $"{logEntry.Key}.command.1.tlog");
+                            using (FileStream fileStream = new FileStream(path, FileMode.Append, FileAccess.Write, FileShare.None))
+                            using (StreamWriter streamWriter = new StreamWriter(fileStream, Encoding.Unicode))
                             {
                                 foreach (KeyValuePair<string, CommandEntry> entry in logEntry.Value.commands_)
                                 {
@@ -605,26 +602,53 @@ namespace VSFastBuildCommon
                                     streamWriter.Write('^');
                                     streamWriter.WriteLine(inputs);
                                     streamWriter.WriteLine(entry.Value.command_.output_);
-                                    foreach(string input in entry.Value.command_.inputs_)
+                                    foreach (string input in entry.Value.command_.inputs_)
                                     {
                                         streamWriter.WriteLine($"\"{input}\"");
                                     }
                                 }
                             }
-                            else
+                        }
+                        else
+                        if (string.Equals(logEntry.Key, "cl", StringComparison.OrdinalIgnoreCase))
+                        {
+                            path = System.IO.Path.Combine(path_, $"{logEntry.Key}.command.1.tlog");
+                            using (FileStream fileStream = new FileStream(path, FileMode.Append, FileAccess.Write, FileShare.None))
+                            using (StreamWriter streamWriter = new StreamWriter(fileStream, Encoding.Unicode))
                             {
                                 foreach (KeyValuePair<string, CommandEntry> entry in logEntry.Value.commands_)
                                 {
-                                    foreach(string input in entry.Value.command_.inputs_)
+                                    foreach (string input in entry.Value.command_.inputs_)
                                     {
                                         streamWriter.Write('^');
-                                        streamWriter.WriteLine(input.Trim('\"'));
-                                        streamWriter.Write($"{entry.Value.command_.name_} ");
+                                        streamWriter.WriteLine(input.Trim('\"').ToUpperInvariant());
                                         streamWriter.WriteLine(entry.Value.command_.options_);
                                     }
                                 }
                             }
-                            #endif
+                        }
+                        else
+                        {
+                            path = System.IO.Path.Combine(path_, $"{logEntry.Key}.command.1.tlog");
+                            using (FileStream fileStream = new FileStream(path, FileMode.Append, FileAccess.Write, FileShare.None))
+                            using (StreamWriter streamWriter = new StreamWriter(fileStream, Encoding.Unicode))
+                            {
+                                streamWriter.WriteLine($"key: {logEntry.Key}");
+                                streamWriter.WriteLine($"name: {logEntry.Value.name_}");
+                                streamWriter.WriteLine($"commands: {logEntry.Value.commands_.Count}");
+                                foreach (KeyValuePair<string, CommandEntry> entry in logEntry.Value.commands_)
+                                {
+                                    streamWriter.WriteLine($"  {entry.Key}");
+                                    streamWriter.WriteLine($"    name: {entry.Value.command_.name_}");
+                                    streamWriter.WriteLine($"    output: {entry.Value.command_.output_}");
+                                    streamWriter.WriteLine($"    inputs:");
+                                    foreach (string input in entry.Value.command_.inputs_)
+                                    {
+                                        streamWriter.WriteLine($"      {input}");
+                                    }
+                                    streamWriter.WriteLine($"    options: {entry.Value.command_.options_}");
+                                }
+                            }
                         }
                     }
                 }
@@ -888,7 +912,7 @@ namespace VSFastBuildCommon
             System.Diagnostics.Debug.Assert(index < line.Length);
             if ('/' == line[index])
             {
-                if ((index + 1) < line.Length && IsAlpha(line[index+1]))
+                if ((index + 1) < line.Length && IsAlpha(line[index + 1]))
                 {
                     return true;
                 }
@@ -902,15 +926,15 @@ namespace VSFastBuildCommon
             {
                 if (IsDrive(i, line))
                 {
-                    return i-1;
+                    return i - 1;
                 }
                 else if (IsUNC(i, line))
                 {
-                    return i-1;
+                    return i - 1;
                 }
                 else if (IsOption(i, line))
                 {
-                    return i-1;
+                    return i - 1;
                 }
                 else
                 {
@@ -920,17 +944,54 @@ namespace VSFastBuildCommon
             return line.Length;
         }
 
-        private static Tuple<int,string> FindOptionEnd(int index, string line)
+        private static bool StartWithIgnoreCase(ReadOnlySpan<char> line, ReadOnlySpan<char> start)
         {
-            if (line.StartsWith("/OUT", StringComparison.OrdinalIgnoreCase) || line.StartsWith("/Fo", StringComparison.OrdinalIgnoreCase))
+            if(line.Length < start.Length)
             {
-                if(line.StartsWith("/OUT", StringComparison.OrdinalIgnoreCase))
+                return false;
+            }
+            for(int i = 0; i < start.Length; ++i)
+            {
+                if (char.ToUpperInvariant(line[i]) != char.ToUpperInvariant(start[i]))
                 {
-                    index += 4;
+                    return false;
+                }
+            }
+            return true;
+        }
+
+        private static bool StartWithIgnoreCase(ReadOnlySpan<char> line, string start)
+        {
+            if(line.Length < start.Length)
+            {
+                return false;
+            }
+            for(int i = 0; i < start.Length; ++i)
+            {
+                if (char.ToUpperInvariant(line[i]) != char.ToUpperInvariant(start[i]))
+                {
+                    return false;
+                }
+            }
+            return true;
+        }
+
+        private static Tuple<int, string> FindOptionEnd(int index, string line)
+        {
+            ReadOnlySpan<char> lineSpan = line.AsSpan(index);
+            if (StartWithIgnoreCase(lineSpan, "/OUT") || StartWithIgnoreCase(lineSpan, "/Fo"))
+            {
+                if (StartWithIgnoreCase(lineSpan, "/OUT"))
+                {
+                    index += 5;
                 }
                 else
                 {
                     index += 3;
+                }
+                if (index < line.Length && line[index] == '\"')
+                {
+                    index += 1;
                 }
                 int start = index;
                 if (IsDrive(index, line))
@@ -949,12 +1010,12 @@ namespace VSFastBuildCommon
                 int end = FindEnd(index, line);
                 if (end < 0)
                 {
-                    return new Tuple<int, string>(line.Length,string.Empty);
+                    return new Tuple<int, string>(line.Length, string.Empty);
                 }
                 else
                 {
                     string output = line.Substring(start, end - start).Trim();
-                    return new Tuple<int, string>(end,output);
+                    return new Tuple<int, string>(end, output);
                 }
             }
             else
@@ -964,15 +1025,15 @@ namespace VSFastBuildCommon
                 {
                     if (IsDrive(i, line))
                     {
-                        return new Tuple<int, string>(i - 1,string.Empty);
+                        return new Tuple<int, string>(i - 1, string.Empty);
                     }
                     else if (IsUNC(i, line))
                     {
-                        return new Tuple<int, string>(i - 1,string.Empty);
+                        return new Tuple<int, string>(i - 1, string.Empty);
                     }
                     else if (IsOption(i, line))
                     {
-                        return new Tuple<int, string>(i - 1,string.Empty);
+                        return new Tuple<int, string>(i - 1, string.Empty);
                     }
                     else
                     {
@@ -980,7 +1041,7 @@ namespace VSFastBuildCommon
                     }
                 }
             }
-            return new Tuple<int, string>(line.Length,string.Empty);
+            return new Tuple<int, string>(line.Length, string.Empty);
         }
 
         private static void ParseLibCommand(CommandEntry libCommand, string line)
@@ -1002,7 +1063,7 @@ namespace VSFastBuildCommon
                         first = false;
                         libCommand.command_.name_ = elemnt;
                     }
-                    else
+                    else if (!elemnt.StartsWith("@"))
                     {
                         libCommand.command_.inputs_.Add(elemnt);
                     }
@@ -1015,20 +1076,21 @@ namespace VSFastBuildCommon
                     {
                         break;
                     }
+                    string elemnt = line.Substring(i, end - i).TrimEnd();
                     if (first)
                     {
                         first = false;
-                        string elemnt = line.Substring(i, end - i).TrimEnd();
                         libCommand.command_.name_ = elemnt;
                     }
-                    else
+                    else if (!elemnt.StartsWith("@"))
                     {
-                        libCommand.command_.inputs_.Add(line.Substring(i, end - i).TrimEnd());
+                        libCommand.command_.inputs_.Add(elemnt);
                     }
                     i = end;
-                }else if(IsOption(i, line))
+                }
+                else if (IsOption(i, line))
                 {
-                    string option = line.Substring(i+1);
+                    string option = line.Substring(i + 1);
                     Tuple<int, string> end = FindOptionEnd(i, line);
                     if (end.Item1 < 0)
                     {
@@ -1081,6 +1143,11 @@ namespace VSFastBuildCommon
                             for (int i = 0; i < command.inputs_.Count; ++i)
                             {
                                 string input = command.inputs_[i].Trim(' ', '\"');
+                                if (input.StartsWith(temp_, StringComparison.OrdinalIgnoreCase))
+                                {
+                                    return;
+                                }
+
                                 if (command.inputs_[i].EndsWith(".rsp", StringComparison.OrdinalIgnoreCase))
                                 {
                                     if (command.type_ == CommandLineParser.CommandType.Link)
@@ -1107,7 +1174,7 @@ namespace VSFastBuildCommon
                         }
                         else if (null != lastLibCommand)
                         {
-                            ParseLibCommand(lastLibCommand,line);
+                            ParseLibCommand(lastLibCommand, line);
                         }
                     }
                 }
