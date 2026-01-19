@@ -599,9 +599,8 @@ namespace VSFastBuildCommon
                                 foreach (KeyValuePair<string, CommandEntry> entry in logEntry.Value.commands_)
                                 {
                                     string inputs = string.Join("|", entry.Value.command_.inputs_);
-                                    streamWriter.Write('^');
-                                    streamWriter.WriteLine(inputs);
-                                    streamWriter.WriteLine(entry.Value.command_.output_);
+                                    streamWriter.WriteLine($"^{(inputs)}");
+                                    streamWriter.WriteLine(entry.Value.command_.output_.ToUpperInvariant());
                                     foreach (string input in entry.Value.command_.inputs_)
                                     {
                                         streamWriter.WriteLine($"\"{input}\"");
@@ -629,6 +628,19 @@ namespace VSFastBuildCommon
                         }
                         else
                         {
+                            #if true
+                            path = System.IO.Path.Combine(path_, $"CustomBuild.command.1.tlog");
+                            using (FileStream fileStream = new FileStream(path, FileMode.Append, FileAccess.Write, FileShare.None))
+                            using (StreamWriter streamWriter = new StreamWriter(fileStream, Encoding.Unicode))
+                            {
+                                foreach (KeyValuePair<string, CommandEntry> entry in logEntry.Value.commands_)
+                                {
+                                    string inputs = string.Join("|", entry.Value.command_.inputs_);
+                                    streamWriter.WriteLine($"^{inputs}");
+                                    streamWriter.WriteLine($"{entry.Key}");
+                                }
+                            }
+                            #else
                             path = System.IO.Path.Combine(path_, $"{logEntry.Key}.command.1.tlog");
                             using (FileStream fileStream = new FileStream(path, FileMode.Append, FileAccess.Write, FileShare.None))
                             using (StreamWriter streamWriter = new StreamWriter(fileStream, Encoding.Unicode))
@@ -649,6 +661,7 @@ namespace VSFastBuildCommon
                                     streamWriter.WriteLine($"    options: {entry.Value.command_.options_}");
                                 }
                             }
+                            #endif
                         }
                     }
                 }
