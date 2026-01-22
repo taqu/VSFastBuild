@@ -146,10 +146,8 @@ namespace VSFastBuildVSIX
             public bool success_;
             public string bffPath_;
             public string bffName_;
-            public string tracker_;
-            public List<ResultProject> projects_;
+            public ResultProject project_;
             public string lastbuildstate_;
-            public string tempDir_;
         }
 
         public static async Task RunProcessAsync(Result result, VSFastBuildVSIXPackage package, string bffpath)
@@ -180,14 +178,16 @@ namespace VSFastBuildVSIX
             {
                 try
                 {
-                    string arguments = $"/t /c \"{fbuildPath}\" -config \"{bffpath}\" {result.projects_[i].name_} {fbuldArgs}";
+                    //string arguments = $"/t /c \"{fbuildPath}\" -config \"{bffpath}\" {result.projects_[i].name_} {fbuldArgs}";
                     string tlogDir = System.IO.Path.Combine(result.projects_[i].intDir_, result.projects_[i].name_ + ".tlog");
-                    using (TLogTracker tracker = new TLogTracker(tlogDir, result.tempDir_))
+                    string arguments = $"-config \"{bffpath}\" {result.projects_[i].name_} {fbuldArgs}";
+                    //using (TLogTracker tracker = new TLogTracker(tlogDir, result.tempDir_))
                     {
-                        System.Diagnostics.Process process = CommandBuildProject.CreateProcess(arguments, i, result, tracker.Path);
+                        //System.Diagnostics.Process process = CommandBuildProject.CreateProcess(arguments, i, result, tracker.Path);
+                        System.Diagnostics.Process process = CommandBuildProject.CreateProcess(fbuildPath, arguments, result.projects_[i].intDir_);
                         if (process.Start())
                         {
-                            tracker.Start();
+                            //tracker.Start();
                             process.BeginOutputReadLine();
                             process.BeginErrorReadLine();
                             {
@@ -195,14 +195,15 @@ namespace VSFastBuildVSIX
                                 string lastbuildstateFile = System.IO.Path.Combine(tlogDir, $"{result.projects_[i].name_}.lastbuildstate");
                                 try
                                 {
-                                    string lastbuildstate = $"{result.lastbuildstate_}\r\n{result.projects_[i].configuration_}|{result.projects_[i].platform_}|{result.projects_[i].projectDir_}|";
-                                    System.IO.File.WriteAllText(lastbuildstateFile, lastbuildstate, Encoding.UTF8);
+                                    string lastbuildstate = $"{result.lastbuildstate_}\r\n{result.projects_[i].configuration_}|{result.projects_[i].platform_}|{result.projects_[i].projectDir_}|\r\n";
+                                    UTF8Encoding encoding = new UTF8Encoding(false);
+                                    System.IO.File.WriteAllText(lastbuildstateFile, lastbuildstate, encoding);
                                 }
                                 catch { }
                             }
                             process.CancelErrorRead();
                             process.CancelOutputRead();
-                            tracker.Save();
+                            //tracker.Save();
                         }
                     }
                 }
@@ -253,7 +254,7 @@ namespace VSFastBuildVSIX
             }
             await CommandBuildProject.StopMonitorAsync(package);
         }
-
+#if false
         public static System.Diagnostics.Process CreateProcess(string arguments, int index, Result result, string tlogDir)
         {
             try
@@ -279,6 +280,7 @@ namespace VSFastBuildVSIX
                 return null;
             }
         }
+#endif
 
         public static System.Diagnostics.Process CreateProcess(string fbuildPath, string arguments, string workingDir)
         {
@@ -389,7 +391,7 @@ namespace VSFastBuildVSIX
             }
         }
 
-        private enum ItemType
+        public enum ItemType
         {
             CXX,
             Resource,
@@ -400,7 +402,7 @@ namespace VSFastBuildVSIX
             Num,
         }
 
-        private struct CustomBuildItem
+        public struct CustomBuildItem
         {
             public List<string> inputs_;
             public string output_;
@@ -410,7 +412,7 @@ namespace VSFastBuildVSIX
             public bool outputAsContent_;
         }
 
-        private class FBCompileItem
+        public class FBCompileItem
         {
             public const string Empty = "";
 
@@ -459,7 +461,7 @@ namespace VSFastBuildVSIX
             }
         }
 
-        private struct PrecompiledHeaderInfo
+        public struct PrecompiledHeaderInfo
         {
             public PrecompiledHeaderInfo()
             {
@@ -473,7 +475,7 @@ namespace VSFastBuildVSIX
             public string PCHOptions_ = string.Empty;
         }
 
-        private class VSFastProject
+        public class VSFastProject
         {
             public List<FBCompileItem> CompileItems => compileItems_;
             public BitArray ExistsFlags => existsFlags_;
@@ -713,11 +715,88 @@ namespace VSFastBuildVSIX
             }
         }
 
-        public static async Task<Result> BuildForSolutionAsync(VSFastBuildVSIXPackage package, List<EnvDTE.Project> projects, bool buildAsSolution)
+        public static List<VSFastProject> GetDependencies(VSFastBuildVSIXPackage package, List<EnvDTE.Project> projects, bool buildAsSolution)
+        {
+            SolutionBuild2 solutionBuild = package.DTE.Solution.SolutionBuild as SolutionBuild2;
+            SolutionConfiguration2 solutionConfiguration = solutionBuild.ActiveConfiguration as SolutionConfiguration2;
+            Dictionary<string, string> globalProperties = new Dictionary<string, string>()
+            {
+                { "Configuration", solutionConfiguration.Name },
+                { "Platform", solutionConfiguration.PlatformName }
+            };
+            List<VSFastProject> vSFastProjects = new List<VSFastProject>(projects.Capacity);
+            ProjectCollection projectCollection = new ProjectCollection();
+            for (int i = 0; i < projects.Count; ++i)
+            {
+                BuildDependency buildDependency = solutionBuild.BuildDependencies.Item(projects[i].UniqueName);
+                if (null == buildDependency)
+                {
+                    continue;
+                }
+                VSFastProject vSFastProject = new() { targetName_ = projects[i].Name, project_ = projects[i], dependNames_ = new List<string>(), dependencies_ = new List<VSFastProject>(), uniqueName_ = projects[i].UniqueName, postDepend_ = projects[i].Name };
+
+                object[] requiredProjects = buildDependency.RequiredProjects as object[];
+                foreach (object item in requiredProjects)
+                {
+                    EnvDTE.Project dependentProject = item as EnvDTE.Project;
+                    if (null == dependentProject)
+                    {
+                        continue;
+                    }
+                    bool found = false;
+                    string uniqueName = dependentProject.UniqueName;
+                    foreach (string name in vSFastProject.dependNames_)
+                    {
+                        if (name == uniqueName)
+                        {
+                            found = true;
+                            break;
+                        }
+                    }
+                    if (!found)
+                    {
+                        foreach (string exclude in ExcludeProjects)
+                        {
+                            if (uniqueName.EndsWith(exclude))
+                            {
+                                found = true;
+                                break;
+                            }
+                        }
+                    }
+                    if (!found)
+                    {
+                        vSFastProject.dependNames_.Add(uniqueName);
+                        if (!projects.Any(x => x.UniqueName == uniqueName))
+                        {
+                            projects.Add(dependentProject);
+                        }
+                    }
+                }
+                vSFastProject.buildProject_ = new Microsoft.Build.Evaluation.Project(vSFastProject.project_.FullName, globalProperties, null, projectCollection);
+                vSFastProjects.Add(vSFastProject);
+            }
+            vSFastProjects.Sort((x0, x1) =>
+            {
+                return string.Compare(x0.targetName_, x1.targetName_);
+            });
+            TopologicalSort(vSFastProjects);
+            return vSFastProjects;
+        }
+
+        public static async Task<Result> CreateSolutionBFF(VSFastBuildVSIXPackage package, List<Result> results)
+        {
+
+        }
+
+        public static async Task<Result> BuildForProjectsAsync(VSFastBuildVSIXPackage package, VSFastProject vSFastProject)
         {
             await ThreadHelper.JoinableTaskFactory.SwitchToMainThreadAsync();
             System.Diagnostics.Debug.Assert(null != package);
-            System.Diagnostics.Debug.Assert(null != projects);
+            System.Diagnostics.Debug.Assert(null != vSFastProject);
+
+            SolutionBuild2 solutionBuild = package.DTE.Solution.SolutionBuild as SolutionBuild2;
+            SolutionConfiguration2 solutionConfiguration = solutionBuild.ActiveConfiguration as SolutionConfiguration2;
 
             BuildContext buildContext = new BuildContext();
             buildContext.stringBuilder_ = new StringBuilder(1024);
@@ -763,7 +842,6 @@ namespace VSFastBuildVSIX
                 { "Platform", solutionConfiguration.PlatformName }
             };
 
-            List<VSFastProject> vSFastProjects = new List<VSFastProject>(projects.Capacity);
             string bffpath = string.Empty;
             Result result;
             {
@@ -846,13 +924,13 @@ namespace VSFastBuildVSIX
                     result.tempDir_ = buildContext.environments_["TMP"];
                 }
 
-                result.lastbuildstate_ = $"PlatformToolSet={PlatformToolSet}:VCToolArchitecture={VCToolArchitecture}:VCToolsVersion={VCToolsVersion}:TargetPlatformVersion={WindowsSDKVersion}:";
+                result.lastbuildstate_ = $"PlatformToolSet={PlatformToolSet}:VCToolArchitecture={VCToolArchitecture}:VCToolsVersion={VCToolsVersion}:TargetPlatformVersion={buildContext.vsEnvironment_.SdkVersion}:";
 
                 foreach (VSFastProject vSFastProject in vSFastProjects)
                 {
                     Microsoft.Build.Evaluation.Project buildProject = vSFastProject.buildProject_;
                     vSFastProject.configType_ = buildProject.GetProperty("ConfigurationType").EvaluatedValue;
-                    vSFastProject.rootDir_ = System.IO.Path.GetDirectoryName(buildProject.FullPath);
+                    vSFastProject.rootDir_ = System.IO.Path.GetDirectoryName(buildProject.FullPath).TrimEnd('\\', '/');
                     vSFastProject.intDir_ = buildProject.GetProperty("IntDirFullPath").EvaluatedValue.Replace("\\", "/");
                     vSFastProject.compilerPDB_ = ChopLastFileSeparator(buildProject.GetProperty("IntDirFullPath").EvaluatedValue);
                     vSFastProject.linkerPDB_ = System.IO.Path.Combine(buildProject.GetProperty("OutDirFullPath").EvaluatedValue, $"{vSFastProject.targetName_}.pdb");
