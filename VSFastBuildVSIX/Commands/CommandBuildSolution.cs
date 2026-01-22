@@ -1,4 +1,4 @@
-using EnvDTE;
+﻿using EnvDTE;
 using EnvDTE80;
 using Microsoft.Build.Construction;
 using Microsoft.VisualStudio.Threading;
@@ -84,25 +84,8 @@ namespace VSFastBuildVSIX.Commands
                 CommandBuildProject.LeaveProcess(package, Command, commandText_);
                 return;
             }
-            Result result;
-            try
-            {
-                await Log.OutputBuildAsync($"--- VSFastBuild begin building ---");
-                result = await CommandBuildProject.BuildForSolutionAsync(package, targets, true);
-
-                if (!VSFastBuildVSIXPackage.Options.GenOnly)
-                {
-                    await Log.OutputBuildAsync($"--- VSFastBuild begin running {result.bffName_}---");
-                    await RunProcessAsync(result, package, result.bffPath_);
-                    await Log.OutputBuildAsync($"--- VSFastBuild end running {result.bffName_}---");
-                }
-                await Log.OutputBuildAsync($"--- VSFastBuild end ---");
-            }
-            catch (Exception ex)
-            {
-                await Log.OutputDebugLineAsync(ex.Message);
-            }
-            CommandBuildProject.LeaveProcess(package, Command, commandText_);
+            await BuildProjectsAsync(package, targets);
+             LeaveProcess(package, Command, commandText_);
         }
     }
 }

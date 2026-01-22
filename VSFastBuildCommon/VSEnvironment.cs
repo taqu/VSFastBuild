@@ -1,4 +1,4 @@
-using Microsoft.VisualStudio.Setup.Configuration;
+﻿using Microsoft.VisualStudio.Setup.Configuration;
 using Microsoft.Win32;
 using System;
 using System.IO;
@@ -15,7 +15,6 @@ namespace VSFastBuildCommon
         public string ToolsBinPath => toolsBinPath_;
         public string ToolsLibPath => toolsLibPath_;
         public string ToolsIncludePath => toolsIncludePath_;
-        public string SdkVersion => sdkVersion_;
         public string SdkBasePath => sdkBasePath_;
         public string SdkBinPath => sdkBinPath_;
         public string SdkLibPath => sdkLibPath_;
@@ -26,7 +25,6 @@ namespace VSFastBuildCommon
         private string toolsBinPath_ = string.Empty;
         private string toolsLibPath_ = string.Empty;
         private string toolsIncludePath_ = string.Empty;
-        private string sdkVersion_ = string.Empty;
         private string sdkBasePath_ = string.Empty;
         private string sdkBinPath_ = string.Empty;
         private string sdkLibPath_ = string.Empty;
@@ -110,18 +108,6 @@ namespace VSFastBuildCommon
                 environment.sdkIncludePath_ = Path.Combine(sdkRoot, "include", winSDKVersion);// "ucrt");
                 environment.sdkLibPath_ = Path.Combine(sdkRoot, "lib", winSDKVersion);// "ucrt", "x64");
                 environment.sdkBinPath_ = Path.Combine(sdkRoot, "bin", winSDKVersion, "x64");
-
-                string sdkVersion = Registry.GetValue("HKEY_LOCAL_MACHINE\\SOFTWARE\\WOW6432Node\\Microsoft\\Microsoft SDKs\\Windows\\v10.0", "ProductVersion", null) as string;
-                if (string.IsNullOrEmpty(sdkVersion))
-                {
-                    sdkVersion = Registry.GetValue("HKEY_CURRENT_USER\\SOFTWARE\\WOW6432Node\\Microsoft\\Microsoft SDKs\\Windows\\v10.0", "ProductVersion", null) as string;
-                    if (string.IsNullOrEmpty(sdkVersion))
-                    {
-                        return null;
-                    }
-                }
-                environment.sdkVersion_ = sdkVersion;
-
                 return environment;
             }
             catch (COMException ex) when (ex.HResult == REGDB_E_CLASSNOTREG)

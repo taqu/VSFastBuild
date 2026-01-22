@@ -247,13 +247,14 @@ namespace VSFastBuildCommon
         public string Path { get { return work_; } }
         private string path_ = string.Empty;
         private string work_ = string.Empty;
+        private Dictionary<string, string> fileToFullpath_ = null;
         private string temp_ = string.Empty;
         private CommandLineParser commandLineParser_ = new CommandLineParser();
         private Dictionary<string, TLogEntry> logEntries_ = new Dictionary<string, TLogEntry>();
         private const int Capacity = 16;
         private bool disposed_ = false;
 
-        public TLogTracker(string path, string temp)
+        public TLogTracker(string path, Dictionary<string, string> fileToFullpath, string temp)
         {
             System.Diagnostics.Debug.Assert(!string.IsNullOrEmpty(path));
             path_ = path;
@@ -714,6 +715,10 @@ namespace VSFastBuildCommon
                                 break;
                             }
                             string key = command.inputs_[0].TrimEnd('"').TrimStart('@').TrimEnd().ToUpperInvariant();
+                            if(key.StartsWith(temp_, StringComparison.OrdinalIgnoreCase))
+                            {
+                                continue;
+                            }
                             if (!logEntry.inputs_.TryGetValue(key, out readEntry))
                             {
                                 readEntry = new ReadEntry();
