@@ -84,7 +84,7 @@ namespace VSFastBuildVSIX.Commands
                 CommandBuildProject.LeaveProcess(package, Command, commandText_);
                 return;
             }
-            await BuildProjectsAsync(package, targets);
+            await BuildProjectsAsync(package, targets, true);
              LeaveProcess(package, Command, commandText_);
         }
     }
