@@ -270,12 +270,12 @@ namespace VSFastBuildVSIX
                 try
                 {
                     //string arguments = $"/t /c \"{fbuildPath}\" -config \"{bffpath}\" {result.projects_[i].name_} {fbuldArgs}";
-                    if (!System.IO.Directory.Exists(result.project_.intDir_))
-                    {
-                        System.IO.Directory.CreateDirectory(result.project_.intDir_);
-                    }
                     string tlogDir = System.IO.Path.Combine(result.project_.intDir_, result.project_.name_ + ".tlog");
                     string arguments = $"-config \"{result.bffPath_}\" {result.project_.name_} {fbuildArgs}";
+                    if (!System.IO.Directory.Exists(tlogDir))
+                    {
+                        System.IO.Directory.CreateDirectory(tlogDir);
+                    }
                     //using (TLogTracker tracker = new TLogTracker(tlogDir, result.tempDir_))
                     {
                         //System.Diagnostics.Process process = CommandBuildProject.CreateProcess(arguments, i, result, tracker.Path);
@@ -762,19 +762,6 @@ namespace VSFastBuildVSIX
             return period < 0 ? version : version.Substring(0, period);
         }
 
-        private static void AddPathList(List<string> paths, string arg)
-        {
-            string[] pathList = arg.Split(new char[] { ';' }, StringSplitOptions.RemoveEmptyEntries);
-            foreach (string path in pathList)
-            {
-                if (paths.Contains(path))
-                {
-                    continue;
-                }
-                paths.Add(path);
-            }
-        }
-
         private static void AddPathList(List<string> paths, string rootDir, string arg)
         {
             string[] pathList = arg.Split(new char[] { ';' }, StringSplitOptions.RemoveEmptyEntries);
@@ -786,6 +773,18 @@ namespace VSFastBuildVSIX
                     continue;
                 }
                 paths.Add(fullpath);
+            }
+        }
+
+        private static void AddPathList(List<string> paths, List<string> add)
+        {
+            foreach (string path in add)
+            {
+                if (paths.Contains(path))
+                {
+                    continue;
+                }
+                paths.Add(path);
             }
         }
 
@@ -982,8 +981,6 @@ namespace VSFastBuildVSIX
 
             buildContext.vsEnvironment_ = VSFastBuildCommon.VSEnvironment.Create(GetVSMainVersion(VisualStudioVersion), WindowsSDKVersion);
 
-            buildContext.environments_ = await GetVCEnvironmentsAsync(buildContext.vsEnvironment_.ToolsInstall);
-
             buildContext.VCTargetsPath_ = activeConfig.Evaluate("$(VCTargetsPath)");
             buildContext.VCTargetsPathEffective_ = activeConfig.Evaluate("$(VCTargetsPathEffective)");
             buildContext.VC_IncludePath_ = activeConfig.Evaluate("$(VC_IncludePath)");
@@ -1007,7 +1004,7 @@ namespace VSFastBuildVSIX
 
             vsFastProject.configType_ = buildProject.GetProperty("ConfigurationType").EvaluatedValue;
             vsFastProject.rootDir_ = System.IO.Path.GetDirectoryName(buildProject.FullPath).TrimEnd('\\', '/');
-            vsFastProject.intDir_ = buildProject.GetProperty("IntDirFullPath").EvaluatedValue.Replace("\\", "/");
+            vsFastProject.intDir_ = buildProject.GetProperty("IntDirFullPath").EvaluatedValue.Replace("/", "\\");
 
             result.project_ = new ResultProject()
             {
@@ -1036,95 +1033,86 @@ namespace VSFastBuildVSIX
             }
             {
                 ProjectItemDefinition clDefinitions = buildProject.ItemDefinitions["ClCompile"];
-                vsFastProject.compilerPDB_ = System.IO.Path.GetFullPath(clDefinitions.GetMetadata("ProgramDataBaseFileName").EvaluatedValue);
+                vsFastProject.compilerPDB_ = System.IO.Path.GetFullPath(System.IO.Path.Combine(vsFastProject.rootDir_, clDefinitions.GetMetadata("ProgramDataBaseFileName").EvaluatedValue));
 
                 ProjectItemDefinition linkDefinitions = buildProject.ItemDefinitions["Link"];
-                vsFastProject.linkerPDB_ = System.IO.Path.GetFullPath(linkDefinitions.GetMetadata("ProgramDatabaseFile").EvaluatedValue);
-            }
-
-            if (buildContext.environments_.ContainsKey("CUDA_PATH"))
-            {
-                buildContext.CUDAPath_ = buildContext.environments_["CUDA_PATH"];
+                vsFastProject.linkerPDB_ = System.IO.Path.GetFullPath(System.IO.Path.Combine(vsFastProject.rootDir_, linkDefinitions.GetMetadata("ProgramDatabaseFile").EvaluatedValue));
             }
 
             {
+                Dictionary<string, List<string>> systemEnv = await GetVCEnvironmentsAsync(buildContext.vsEnvironment_.ToolsInstall);
                 Dictionary<string, List<string>> paths = new Dictionary<string, List<string>>() {
                     { "PATH", new List<string>() },
                     { "LIB", new List<string>() },
                     { "LIBPATH", new List<string>() },
                     { "INCLUDE", new List<string>() },
                 };
-                foreach (KeyValuePair<string, string> environment in buildContext.environments_)
+                string rootDir = System.IO.Path.GetDirectoryName(vsFastProject.buildProject_.FullPath);
+                AddPathList(paths["PATH"], rootDir, vsFastProject.buildProject_.GetProperty("Path").EvaluatedValue);
+                AddPathList(paths["LIB"], rootDir, vsFastProject.buildProject_.GetProperty("LibraryPath").EvaluatedValue);
+                AddPathList(paths["LIBPATH"], rootDir, vsFastProject.buildProject_.GetProperty("ReferencePath").EvaluatedValue);
+                AddPathList(paths["INCLUDE"], rootDir, vsFastProject.buildProject_.GetProperty("IncludePath").EvaluatedValue);
+                List<string> pathList = null;
+                foreach (KeyValuePair<string, List<string>> environment in systemEnv)
                 {
                     if (string.Compare(environment.Key, "PATH", true) == 0)
                     {
-                        AddPathList(paths["PATH"], environment.Value);
-
+                        AddPathList(environment.Value, paths["PATH"]);
+                        pathList = environment.Value;
                     }
                     else if (string.Compare(environment.Key, "LIB", true) == 0)
                     {
-                        AddPathList(paths["LIB"], environment.Value);
-
+                        AddPathList(environment.Value, paths["LIB"]);
                     }
                     else if (string.Compare(environment.Key, "LIBPATH", true) == 0)
                     {
-                        AddPathList(paths["LIBPATH"], environment.Value);
+                        AddPathList(environment.Value, paths["LIBPATH"]);
 
                     }
                     else if (string.Compare(environment.Key, "INCLUDE", true) == 0)
                     {
-                        AddPathList(paths["INCLUDE"], environment.Value);
-
-                    }
-                    else if (string.Compare(environment.Key, "CUDA_PATH", true) == 0)
-                    {
-                        buildContext.CUDAPath_ = environment.Value.Replace("\\", "/");
+                        AddPathList(environment.Value, paths["INCLUDE"]);
                     }
                 }
-                {
-                    string rootDir = System.IO.Path.GetDirectoryName(vsFastProject.buildProject_.FullPath);
-                    AddPathList(paths["PATH"], rootDir, vsFastProject.buildProject_.GetProperty("Path").EvaluatedValue);
-                    AddPathList(paths["LIB"], rootDir, vsFastProject.buildProject_.GetProperty("LibraryPath").EvaluatedValue);
-                    AddPathList(paths["LIBPATH"], rootDir, vsFastProject.buildProject_.GetProperty("ReferencePath").EvaluatedValue);
-                    AddPathList(paths["INCLUDE"], rootDir, vsFastProject.buildProject_.GetProperty("IncludePath").EvaluatedValue);
-                }
-                Dictionary<string, string> dictionary = new Dictionary<string, string>(buildContext.environments_.Count);
-                string pathKey = string.Empty;
-                foreach (KeyValuePair<string, string> environment in buildContext.environments_)
+                foreach (KeyValuePair<string, List<string>> environment in systemEnv)
                 {
                     if (string.Compare(environment.Key, "PATH", true) == 0)
                     {
-                        pathKey = environment.Key;
-                        dictionary.Add(environment.Key, string.Join(";", paths["PATH"]));
-
+                        AddPathList(environment.Value, paths["PATH"]);
+                        pathList = environment.Value;
                     }
                     else if (string.Compare(environment.Key, "LIB", true) == 0)
                     {
-                        dictionary.Add(environment.Key, string.Join(";", paths["LIB"]));
-
+                        AddPathList(environment.Value, paths["LIB"]);
                     }
                     else if (string.Compare(environment.Key, "LIBPATH", true) == 0)
                     {
-                        dictionary.Add(environment.Key, string.Join(";", paths["LIBPATH"]));
+                        AddPathList(environment.Value, paths["LIBPATH"]);
 
                     }
                     else if (string.Compare(environment.Key, "INCLUDE", true) == 0)
                     {
-                        dictionary.Add(environment.Key, string.Join(";", paths["INCLUDE"]));
-                    }
-                    else
-                    {
-                        dictionary.Add(environment.Key, environment.Value);
+                        AddPathList(environment.Value, paths["INCLUDE"]);
                     }
                 }
-                buildContext.environments_ = dictionary;
-                if (!string.IsNullOrEmpty(pathKey) && buildContext.environments_.ContainsKey(pathKey))
+                if (null != pathList)
                 {
-                    buildContext.pathes_ = buildContext.environments_[pathKey].Split(new char[] { ';' }, StringSplitOptions.RemoveEmptyEntries).ToList();
+                    buildContext.pathes_ = pathList;
                 }
                 else
                 {
                     buildContext.pathes_ = new List<string>();
+                }
+                buildContext.environments_ = new Dictionary<string, string>(systemEnv.Count);
+                foreach (KeyValuePair<string, List<string>> environment in systemEnv)
+                {
+                    string value = string.Join(";", environment.Value);
+                    buildContext.environments_.Add(environment.Key, value);
+                }
+
+                if (buildContext.environments_.ContainsKey("CUDA_PATH"))
+                {
+                    buildContext.CUDAPath_ = buildContext.environments_["CUDA_PATH"];
                 }
             }
             // Gather items
@@ -1768,7 +1756,7 @@ namespace VSFastBuildVSIX
                                 break;
                         }
 #endif
-                        pchCompilerOptions = pchCompilerOptions.Replace("  ", " ").Replace("\\", "/").Replace("//", "/").Replace("/D ", "/D");
+                        pchCompilerOptions = pchCompilerOptions.Replace("  ", " ").Replace("\\\\", "\\").Replace("/D ", "/D");
                         project.precompiledHeaderInfo_.PCHOptions_ = $"\"%1\" /Fo\"%3\" {pchCompilerOptions} /Fd\"$CompilerPDB$\"";
                     }
                 }
@@ -1785,9 +1773,9 @@ namespace VSFastBuildVSIX
                     ToolTask task = (ToolTask)Activator.CreateInstance(buildContext.CppTaskAssembly_.GetType("Microsoft.Build.CPPTasks.RC"));
                     string dummyPDB = string.Empty;
                     string resourceCompilerOptions = GenerateTaskCommandLine(task, new string[] { "ResourceOutputFileName", "DesigntimePreprocessorDefinitions", "ProgramDataBaseFileName", "XMLDocumentationFileName", "DiagnosticsFormat" }, ref dummyPDB, item.Metadata);
-                    resourceCompilerOptions = resourceCompilerOptions.Replace("\\", "/").Replace("//", "/").Replace("/TP", string.Empty).Replace("/TC", string.Empty).Replace("/D ", "/D");
+                    resourceCompilerOptions = resourceCompilerOptions.Replace("  ", " ").Replace("\\\\", "\\").Replace("/TP", string.Empty).Replace("/TC", string.Empty).Replace("/D ", "/D");
                     string formattedCompilerOptions = $"{resourceCompilerOptions} /fo\"%2\" \"%1\"";
-                    string evaluatedInclude = System.IO.Path.GetFullPath(System.IO.Path.Combine(project.rootDir_, item.EvaluatedInclude)).Replace("\\", "/").Replace("//", "/");
+                    string evaluatedInclude = System.IO.Path.GetFullPath(System.IO.Path.Combine(project.rootDir_, item.EvaluatedInclude)).Replace("/", "\\").Replace("\\\\", "\\");
                     IEnumerable<FBCompileItem> matchingNodes = project.CompileItems.Where(el => el.AddIfMatches(ItemType.Resource, evaluatedInclude, formattedCompilerOptions, "res"));
                     if (!matchingNodes.Any())
                     {
@@ -1817,7 +1805,7 @@ namespace VSFastBuildVSIX
                     optionBuilder.Append("\"%1\" /Fo\"%2\" ");
                     optionBuilder.Append(tempCompilerOptions);
                     optionBuilder.Append(" /Fd\"$CompilerPDB$\"");
-                    optionBuilder = optionBuilder.Replace("\\", "/").Replace("//", "/").Replace("/D ", "/D").Replace("/JMC", "/Zi").Replace("/TP", string.Empty).Replace("/TC", string.Empty);
+                    optionBuilder = optionBuilder.Replace("\\\\","\\").Replace("/D ", "/D").Replace("/JMC", "/Zi").Replace("/TP", string.Empty).Replace("/TC", string.Empty);
                     if (item.EvaluatedInclude.EndsWith(".c"))
                     {
                         optionBuilder.Append(" /TC");
@@ -1899,10 +1887,10 @@ namespace VSFastBuildVSIX
                     StringBuilder optionBuilder = buildContext.optionBuilder_.Clear();
                     optionBuilder.Append(tempCompilerOptions);
                     optionBuilder.Append(" \"%1\" /Fo\"%2\" ");
-                    optionBuilder = optionBuilder.Replace("\\", "/").Replace("//", "/");
+                    optionBuilder = optionBuilder.Replace("\\\\", "\\");
                     optionBuilder = optionBuilder.Replace("   ", " ").Replace("  ", " ");
                     string formattedCompilerOptions = optionBuilder.ToString();
-                    string evaluatedInclude = System.IO.Path.GetFullPath(System.IO.Path.Combine(project.rootDir_, item.EvaluatedInclude)).Replace("\\", "/").Replace("//", "/");
+                    string evaluatedInclude = System.IO.Path.GetFullPath(System.IO.Path.Combine(project.rootDir_, item.EvaluatedInclude)).Replace("\\\\", "\\");
                     IEnumerable<FBCompileItem> matchingNodes = project.CompileItems.Where(el => el.AddIfMatches(ItemType.HLSL, evaluatedInclude, formattedCompilerOptions, "cso"));
                     if (!matchingNodes.Any())
                     {
@@ -2665,7 +2653,7 @@ namespace VSFastBuildVSIX
             stringBuilder.AppendLine("}");
         }
 
-        private static async Task<Dictionary<string, string>> GetVCEnvironmentsAsync(string toolsInstall)
+        private static async Task<Dictionary<string, List<string>>> GetVCEnvironmentsAsync(string toolsInstall)
         {
             string vcvarsall = System.IO.Path.Combine(toolsInstall, "VC", "Auxiliary", "Build", "vcvarsall.bat");
             string cmd = "call \"" + vcvarsall + "\" x64 && set";
@@ -2687,7 +2675,7 @@ namespace VSFastBuildVSIX
 
                 int exitCode = process.ExitCode;
 
-                Dictionary<string, string> environments = new Dictionary<string, string>(16);
+                Dictionary<string, List<string>> environments = new Dictionary<string, List<string>>(16);
                 if (exitCode != 0)
                 {
                     return environments;
@@ -2714,6 +2702,7 @@ namespace VSFastBuildVSIX
                         {
                             break;
                         }
+                        line = line.Trim();
                         string[] splits = line.Split('=');
                         if (null == splits || splits.Length < 2)
                         {
@@ -2740,7 +2729,9 @@ namespace VSFastBuildVSIX
                             continue;
                         }
                         splits[1] = splits[1].Replace("$", "^$");
-                        environments.Add(splits[0], splits[1]);
+                        string[] list = splits[1].Split(';');
+                        //environments.Add(splits[0], splits[1]);
+                        environments.Add(splits[0], new List<string>(list));
                     }
                 }
                 return environments;

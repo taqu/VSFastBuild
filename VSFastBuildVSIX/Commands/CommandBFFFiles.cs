@@ -1,4 +1,4 @@
-using Microsoft.VisualStudio;
+﻿using Microsoft.VisualStudio;
 using Microsoft.VisualStudio.Shell.Interop;
 using System;
 using System.Collections.Generic;
@@ -12,7 +12,7 @@ using static VSFastBuildVSIX.Commands.CommandBFFFiles;
 
 namespace VSFastBuildVSIX.Commands
 {
-    [Command(PackageGuids.VSFastBuildVSIXString, PackageIds.CommandFBuildBFF)]
+    [Command(PackageGuids.VSFastBuildVSIXString, PackageIds.CommandFBuildBFFFiles)]
     internal sealed class CommandBFFFiles : BaseDynamicCommand<CommandBFFFiles, BFFFile>
     {
         public class BFFFile

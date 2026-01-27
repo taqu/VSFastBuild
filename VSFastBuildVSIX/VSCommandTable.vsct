@@ -1,4 +1,4 @@
-<?xml version="1.0" encoding="utf-8"?>
+﻿<?xml version="1.0" encoding="utf-8"?>
 <CommandTable xmlns="http://schemas.microsoft.com/VisualStudio/2005-10-18/CommandTable" xmlns:xs="http://www.w3.org/2001/XMLSchema">
 
 	<Extern href="stdidcmd.h" />
@@ -11,6 +11,7 @@
 			<Group guid="VSFastBuildVSIX" id="VSFastBuildMenuGroup" priority="0x100" />
 			<Group guid="VSFastBuildVSIX" id="VSFastBuildMenuSolutionGroup" priority="0x100" />
 			<Group guid="VSFastBuildVSIX" id="VSFastBuildMenuProjectGroup" priority="0x100" />
+			<Group guid="VSFastBuildVSIX" id="VSFastBuildMenuCleanGroup" priority="0x100" />
 			<Group guid="VSFastBuildVSIX" id="VSFastBuildMenuToolGroup" priority="0x100" />
 		</Groups>
 		<Menus>
@@ -54,6 +55,13 @@
 				</Strings>
 			</Button>
 			<Button guid="VSFastBuildVSIX" id="CommandFBuildBFF" priority="0x100" >
+				<CommandFlag>DefaultDisabled</CommandFlag>
+				<CommandFlag>TextOnly</CommandFlag>
+				<Strings>
+					<ButtonText>BFF Files</ButtonText>
+				</Strings>
+			</Button>
+			<Button guid="VSFastBuildVSIX" id="CommandFBuildBFFFiles" priority="0x100" >
 				<CommandFlag>DynamicItemStart</CommandFlag>
 				<CommandFlag>DynamicVisibility</CommandFlag>
 				<CommandFlag>DefaultInvisible</CommandFlag>
@@ -81,7 +89,10 @@
 		<CommandPlacement guid="VSFastBuildVSIX" id="VSFastBuildMenuProjectGroup" priority="0x101">
 			<Parent guid="VSFastBuildVSIX" id="VSFastBuildMenu" />
 		</CommandPlacement>
-		<CommandPlacement guid="VSFastBuildVSIX" id="VSFastBuildMenuToolGroup" priority="0x102">
+		<CommandPlacement guid="VSFastBuildVSIX" id="VSFastBuildMenuCleanGroup" priority="0x103">
+			<Parent guid="VSFastBuildVSIX" id="VSFastBuildMenu" />
+		</CommandPlacement>
+		<CommandPlacement guid="VSFastBuildVSIX" id="VSFastBuildMenuToolGroup" priority="0x103">
 			<Parent guid="VSFastBuildVSIX" id="VSFastBuildMenu" />
 		</CommandPlacement>
 
@@ -92,12 +103,15 @@
 			<Parent guid="VSFastBuildVSIX" id="VSFastBuildMenuProjectGroup" />
 		</CommandPlacement>
 		<CommandPlacement guid="VSFastBuildVSIX" id="CommandFBuildClean" priority="0x100">
-			<Parent guid="VSFastBuildVSIX" id="VSFastBuildMenuToolGroup" />
+			<Parent guid="VSFastBuildVSIX" id="VSFastBuildMenuCleanGroup" />
 		</CommandPlacement>
 		<CommandPlacement guid="VSFastBuildVSIX" id="CommandFBuildMonitor" priority="0x101">
 			<Parent guid="VSFastBuildVSIX" id="VSFastBuildMenuToolGroup" />
 		</CommandPlacement>
 		<CommandPlacement guid="VSFastBuildVSIX" id="CommandFBuildBFF" priority="0x102">
+			<Parent guid="VSFastBuildVSIX" id="VSFastBuildMenuToolGroup" />
+		</CommandPlacement>
+		<CommandPlacement guid="VSFastBuildVSIX" id="CommandFBuildBFFFiles" priority="0x103">
 			<Parent guid="VSFastBuildVSIX" id="VSFastBuildMenuToolGroup" />
 		</CommandPlacement>
 
@@ -117,13 +131,15 @@
 			<IDSymbol name="VSFastBuildMenuGroup" value="0x1000" />
 			<IDSymbol name="VSFastBuildMenuSolutionGroup" value="0x1001" />
 			<IDSymbol name="VSFastBuildMenuProjectGroup" value="0x1002" />
-			<IDSymbol name="VSFastBuildMenuToolGroup" value="0x1003" />
+			<IDSymbol name="VSFastBuildMenuCleanGroup" value="0x1003" />
+			<IDSymbol name="VSFastBuildMenuToolGroup" value="0x1004" />
 			<IDSymbol name="VSFastBuildMenu" value="0x2000" />
 			<IDSymbol name="CommandFBuildSolution" value="0x3000" />
 			<IDSymbol name="CommandFBuildProject" value="0x3001" />
 			<IDSymbol name="CommandFBuildMonitor" value="0x3002" />
 			<IDSymbol name="CommandFBuildClean" value="0x3003" />
 			<IDSymbol name="CommandFBuildBFF" value="0x3004" />
+			<IDSymbol name="CommandFBuildBFFFiles" value="0x3005" />
 		</GuidSymbol>
 		<GuidSymbol name="VSFastBuildImages" value="{334E00CC-D085-4475-A258-7B02C3133597}">
 			<IDSymbol name="icon_menu" value="1" />

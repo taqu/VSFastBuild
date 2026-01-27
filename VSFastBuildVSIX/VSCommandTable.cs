@@ -31,13 +31,15 @@ namespace VSFastBuildVSIX
         public const int VSFastBuildMenuGroup = 0x1000;
         public const int VSFastBuildMenuSolutionGroup = 0x1001;
         public const int VSFastBuildMenuProjectGroup = 0x1002;
-        public const int VSFastBuildMenuToolGroup = 0x1003;
+        public const int VSFastBuildMenuCleanGroup = 0x1003;
+        public const int VSFastBuildMenuToolGroup = 0x1004;
         public const int VSFastBuildMenu = 0x2000;
         public const int CommandFBuildSolution = 0x3000;
         public const int CommandFBuildProject = 0x3001;
         public const int CommandFBuildMonitor = 0x3002;
         public const int CommandFBuildClean = 0x3003;
         public const int CommandFBuildBFF = 0x3004;
+        public const int CommandFBuildBFFFiles = 0x3005;
         public const int icon_menu = 0x0001;
         public const int bmpPic1 = 0x0001;
         public const int bmpPic2 = 0x0002;
