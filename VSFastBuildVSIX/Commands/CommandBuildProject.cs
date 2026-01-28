@@ -1,4 +1,4 @@
-﻿using Blake2Fast;
+using Blake2Fast;
 using Community.VisualStudio.Toolkit;
 using EnvDTE;
 using EnvDTE80;
@@ -1306,7 +1306,7 @@ namespace VSFastBuildVSIX
             {
                 string fbuildname = result.project_.name_;
                 string fbuilddir = System.IO.Path.GetDirectoryName(result.bffPath_);
-                string cleanname = $"fbuild_{vsFastProject.targetName_}_clean_{vsFastProject.configuration_}_{vsFastProject.platform_}";
+                string cleanname = $"fbuild_{vsFastProject.targetName_}_clean_{vsFastProject.configuration_}_{vsFastProject.platform_}.bat";
                 stringBuilder.AppendLine($"Exec('clean_{fbuildname}')");
                 stringBuilder.AppendLine("{");
                 stringBuilder.AppendLine("  .ExecExecutable = 'C:/Windows/System32/cmd.exe'");
@@ -2430,7 +2430,7 @@ namespace VSFastBuildVSIX
                         string linkerOptions = GenerateTaskCommandLine(task, new string[] { "OutputFile", "ProfileGuidedDatabase", "ProgramDatabaseFile", "XMLDocumentationFileName", "DiagnosticsFormat", "LinkTimeCodeGenerationObjectFile", "IncrementalLinkDatabaseFile" }, ref project.linkerPDB_, linkDefinitions.Metadata);
                         linkerOptions = linkerOptions.Replace("'", "^'");
                         StringBuilder optionBuilder = buildContext.optionBuilder_.Clear();
-                        optionBuilder.Append("\"%1[0]\" /OUT:\"%2\" /PDB:$LinkerPDB$");
+                        optionBuilder.Append("\"%1[0]\" /OUT:\"%2\" /PDB:\"$LinkerPDB$\"");
                         if (linkIncremental)
                         {
                             optionBuilder.Append($" /INCREMENTAL /ILK:\"{ilkDBFile}\"");
@@ -2557,7 +2557,7 @@ namespace VSFastBuildVSIX
                         string linkerOptions = GenerateTaskCommandLine(task, new string[] { "OutputFile", "ProfileGuidedDatabase", "ProgramDatabaseFile", "XMLDocumentationFileName", "DiagnosticsFormat", "LinkTimeCodeGenerationObjectFile", "IncrementalLinkDatabaseFile" }, ref project.linkerPDB_, linkDefinitions.Metadata);
                         linkerOptions = linkerOptions.Replace("'", "^'");
                         StringBuilder optionBuilder = buildContext.optionBuilder_.Clear();
-                        optionBuilder.Append("\"%1[0]\" /OUT:\"%2\" /PDB:$LinkerPDB$");
+                        optionBuilder.Append("\"%1[0]\" /OUT:\"%2\" /PDB:\"$LinkerPDB$\"");
                         bool ltcg = false;
                         if (!string.IsNullOrEmpty(ltcgOptim))
                         {
