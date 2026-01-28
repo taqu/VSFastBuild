@@ -1,4 +1,4 @@
-using Blake2Fast;
+﻿using Blake2Fast;
 using Community.VisualStudio.Toolkit;
 using EnvDTE;
 using EnvDTE80;
@@ -1757,7 +1757,7 @@ namespace VSFastBuildVSIX
                         }
 #endif
                         pchCompilerOptions = pchCompilerOptions.Replace("  ", " ").Replace("\\\\", "\\").Replace("/D ", "/D");
-                        project.precompiledHeaderInfo_.PCHOptions_ = $"\"%1\" /Fo\"%3\" {pchCompilerOptions} /Fd\"$CompilerPDB$\"";
+                        project.precompiledHeaderInfo_.PCHOptions_ = $"\"%1\" /Fo\"%3\" /Fd\"$CompilerPDB$\" /FS {pchCompilerOptions}";
                     }
                 }
             }
@@ -1803,8 +1803,8 @@ namespace VSFastBuildVSIX
                     string tempCompilerOptions = GenerateTaskCommandLine(task, propertiesToSkip, ref project.compilerPDB_, item.Metadata) + " /FS";
                     StringBuilder optionBuilder = buildContext.optionBuilder_.Clear();
                     optionBuilder.Append("\"%1\" /Fo\"%2\" ");
+                    optionBuilder.Append(" /Fd\"$CompilerPDB$\" ");
                     optionBuilder.Append(tempCompilerOptions);
-                    optionBuilder.Append(" /Fd\"$CompilerPDB$\"");
                     optionBuilder = optionBuilder.Replace("\\\\","\\").Replace("/D ", "/D").Replace("/JMC", "/Zi").Replace("/TP", string.Empty).Replace("/TC", string.Empty);
                     if (item.EvaluatedInclude.EndsWith(".c"))
                     {
@@ -2102,7 +2102,7 @@ namespace VSFastBuildVSIX
                 stringBuilder.AppendLine("  {");
                 stringBuilder.AppendLine("    .Targets =");
                 stringBuilder.AppendLine("    {");
-                addStringList(stringBuilder, dependencies, "    ");
+                addStringList(stringBuilder, dependencies, "      ");
                 stringBuilder.AppendLine("    }");
                 stringBuilder.AppendLine("    .Hidden = true");
                 stringBuilder.AppendLine("  }");
@@ -2366,7 +2366,6 @@ namespace VSFastBuildVSIX
                             buildContext.targets_.Add($"{targetPath}.{item.OutputExtension}");
                         }
                     }
-                    stringBuilder.AppendLine($"    .CompilerOutputExtension = '.{item.OutputExtension}'");
                     stringBuilder.AppendLine("    .Hidden = true");
                     stringBuilder.AppendLine("  }");
                     ++count;
@@ -2489,9 +2488,12 @@ namespace VSFastBuildVSIX
                             stringBuilder.AppendLine("    }");
                         }
                         stringBuilder.AppendLine($"    .Compiler = .{buildContext.compilerDummyName_}");
-                        if (!string.IsNullOrEmpty(compilerOptions))
+                        if (string.IsNullOrEmpty(compilerOptions))
                         {
-                            stringBuilder.AppendLine($"    .CompilerOptions = '\"%1\" /Fo\"%2\" /c {compilerOptions}'");
+                            stringBuilder.AppendLine($"    .CompilerOptions = '\"%1\" /Fo\"%2\" /c /Fd\"$CompilerPDB$\"'");
+                        }else
+                        {
+                            stringBuilder.AppendLine($"    .CompilerOptions = '{compilerOptions}'");
                         }
                         stringBuilder.AppendLine($"    .CompilerOutputPath = '{project.intDir_}'");
                         stringBuilder.AppendLine($"    .Environment = .{buildContext.envName_}");
