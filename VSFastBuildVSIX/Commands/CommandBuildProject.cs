@@ -1,4 +1,4 @@
-﻿using Blake2Fast;
+using Blake2Fast;
 using Community.VisualStudio.Toolkit;
 using EnvDTE;
 using EnvDTE80;
@@ -190,10 +190,12 @@ namespace VSFastBuildVSIX
                     process_ = new System.Diagnostics.Process();
                     process_.StartInfo.FileName = fbuildPath;
                     process_.StartInfo.Arguments = arguments;
-                    process_.StartInfo.RedirectStandardOutput = true;
-                    process_.StartInfo.RedirectStandardError = true;
+                    process_.StartInfo.RedirectStandardOutput = false;
+                    process_.StartInfo.RedirectStandardError = false;
                     process_.StartInfo.CreateNoWindow = true;
-                    process_.StartInfo.UseShellExecute = false;
+                    process_.StartInfo.UseShellExecute = true;
+                    process_.StartInfo.WindowStyle = ProcessWindowStyle.Hidden;
+                    process_.StartInfo.LoadUserProfile = false;
                     process_.StartInfo.WorkingDirectory = workingDir;
                     process_.OutputDataReceived += new DataReceivedEventHandler(OnOutputDataReceived);
                     process_.ErrorDataReceived += new DataReceivedEventHandler(OnErrorDataReceived);
@@ -222,7 +224,7 @@ namespace VSFastBuildVSIX
             public void Stop()
             {
                 process_.CancelErrorRead();
-                            process_.CancelOutputRead();
+                process_.CancelOutputRead();
             }
 
             public async Task WaitForExitAsync(CancellationToken cancellationToken)
@@ -279,7 +281,7 @@ namespace VSFastBuildVSIX
                     //using (TLogTracker tracker = new TLogTracker(tlogDir, result.tempDir_))
                     {
                         //System.Diagnostics.Process process = CommandBuildProject.CreateProcess(arguments, i, result, tracker.Path);
-                        FBProcess process = CommandBuildProject.CreateProcess(fbuildPath, arguments, result.project_.intDir_);
+                        FBProcess process = CommandBuildProject.CreateProcess(fbuildPath, arguments, result.project_.projectDir_);
                         if (process.Start())
                         {
                             //tracker.Start();
@@ -1187,9 +1189,10 @@ namespace VSFastBuildVSIX
                 stringBuilder.AppendLine("    '$Root$/c1xx.dll',");
                 stringBuilder.AppendLine("    '$Root$/c2.dll',");
 
-                if (System.IO.File.Exists(buildContext.VC_ExecutablePath_ + "/1041/clui.dll")) //Check English first...
+                if (System.IO.File.Exists(buildContext.VC_ExecutablePath_ + "/1033/clui.dll")) //Check English first...
                 {
-                    stringBuilder.AppendLine("    '$Root$/1041/clui.dll',");
+                    stringBuilder.AppendLine("    '$Root$/1033/clui.dll',");
+                    stringBuilder.AppendLine("    '$Root$/1033/mspft140ui.dll',");
                 }
                 else
                 {
@@ -1197,19 +1200,33 @@ namespace VSFastBuildVSIX
                     IEnumerable<string> cluiDirectories = numericDirectories.Where(d => System.IO.Directory.GetFiles(d, "clui.dll").Any());
                     if (cluiDirectories.Any())
                     {
-                        stringBuilder.AppendLine($"    '$Root$/{System.IO.Path.GetFileName(cluiDirectories.First())}/clui.dll,'");
+                        string langid = System.IO.Path.GetFileName(cluiDirectories.First());
+                        stringBuilder.AppendLine($"    '$Root$/{langid}/clui.dll,'");
+                        stringBuilder.AppendLine($"    '$Root$/{langid}/mspft140ui.dll,'");
                     }
                 }
 
+#if false
                 AddExtraDlls(stringBuilder, buildContext.VC_ExecutablePath_, "msobj*.dll");
                 AddExtraDlls(stringBuilder, buildContext.VC_ExecutablePath_, "mspdb*.dll");
                 AddExtraDlls(stringBuilder, buildContext.VC_ExecutablePath_, "mspft*.dll");
                 AddExtraDlls(stringBuilder, buildContext.VC_ExecutablePath_, "msvcp*.dll");
                 AddExtraDlls(stringBuilder, buildContext.VC_ExecutablePath_, "tbbmalloc.dll");
-                AddExtraDlls(stringBuilder, buildContext.VC_ExecutablePath_, "vcmeta.dll");
                 AddExtraDlls(stringBuilder, buildContext.VC_ExecutablePath_, "vcruntime*.dll");
-                //stringBuilder.AppendLine("    '$Root$/1033/clui.dll',");
-                //stringBuilder.AppendLine("    '$Root$/1033/mspft140ui.dll'");
+#else
+                stringBuilder.AppendLine("    '$Root$/atlprov.dll',");
+                stringBuilder.AppendLine("    '$Root$/msobj140.dll',");
+                stringBuilder.AppendLine("    '$Root$/mspdb140.dll',");
+                stringBuilder.AppendLine("    '$Root$/mspdbcore.dll',");
+                stringBuilder.AppendLine("    '$Root$/mspft140.dll',");
+
+                stringBuilder.AppendLine("    '$Root$/msvcp140.dll',");
+                stringBuilder.AppendLine("    '$Root$/msvcp140_atomic_wait.dll',");
+                stringBuilder.AppendLine("    '$Root$/tbbmalloc.dll',");
+                stringBuilder.AppendLine("    '$Root$/vcruntime140.dll',");
+                stringBuilder.AppendLine("    '$Root$/vcruntime140_1.dll',");
+#endif
+                stringBuilder.AppendLine("    '$Root$/mspdbsrv.exe'");
 
                 stringBuilder.AppendLine("  }");
                 stringBuilder.AppendLine("}");
@@ -1800,20 +1817,20 @@ namespace VSFastBuildVSIX
                     }
 
                     ToolTask task = (ToolTask)Activator.CreateInstance(buildContext.CppTaskAssembly_.GetType("Microsoft.Build.CPPTasks.CL"));
-                    string tempCompilerOptions = GenerateTaskCommandLine(task, propertiesToSkip, ref project.compilerPDB_, item.Metadata) + " /FS";
+                    string tempCompilerOptions = GenerateTaskCommandLine(task, propertiesToSkip, ref project.compilerPDB_, item.Metadata);
                     StringBuilder optionBuilder = buildContext.optionBuilder_.Clear();
                     optionBuilder.Append("\"%1\" /Fo\"%2\" ");
-                    optionBuilder.Append(" /Fd\"$CompilerPDB$\" ");
+                    optionBuilder.Append(" /Fd\"$CompilerPDB$\" /FS ");
                     optionBuilder.Append(tempCompilerOptions);
                     optionBuilder = optionBuilder.Replace("\\\\","\\").Replace("/D ", "/D").Replace("/JMC", "/Zi").Replace("/TP", string.Empty).Replace("/TC", string.Empty);
-                    if (item.EvaluatedInclude.EndsWith(".c"))
-                    {
-                        optionBuilder.Append(" /TC");
-                    }
-                    else
-                    {
-                        optionBuilder.Append(" /TP");
-                    }
+                    //if (item.EvaluatedInclude.EndsWith(".c"))
+                    //{
+                    //    optionBuilder.Append(" /TC");
+                    //}
+                    //else
+                    //{
+                    //    optionBuilder.Append(" /TP");
+                    //}
 #if false
                     switch (buildContext.platform_)
                     {
@@ -2490,7 +2507,7 @@ namespace VSFastBuildVSIX
                         stringBuilder.AppendLine($"    .Compiler = .{buildContext.compilerDummyName_}");
                         if (string.IsNullOrEmpty(compilerOptions))
                         {
-                            stringBuilder.AppendLine($"    .CompilerOptions = '\"%1\" /Fo\"%2\" /c /Fd\"$CompilerPDB$\"'");
+                            stringBuilder.AppendLine($"    .CompilerOptions = '\"%1\" /Fo\"%2\" /c /Fd\"$CompilerPDB$\" /FS'");
                         }else
                         {
                             stringBuilder.AppendLine($"    .CompilerOptions = '{compilerOptions}'");
@@ -2663,6 +2680,8 @@ namespace VSFastBuildVSIX
             ProcessStartInfo processInfo;
             processInfo = new ProcessStartInfo("cmd.exe", "/c " + cmd);
             processInfo.CreateNoWindow = true;
+            processInfo.LoadUserProfile = false;
+            processInfo.WindowStyle = ProcessWindowStyle.Hidden;
             processInfo.UseShellExecute = false;
             processInfo.RedirectStandardError = false;
             processInfo.RedirectStandardOutput = true;
