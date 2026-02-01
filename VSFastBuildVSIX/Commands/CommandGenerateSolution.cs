@@ -6,11 +6,9 @@ using static VSFastBuildVSIX.CommandBuildProject;
 
 namespace VSFastBuildVSIX.Commands
 {
-    [Command(PackageGuids.VSFastBuildVSIXString, PackageIds.CommandFBuildSolution)]
-    internal sealed class CommandBuildSolution : BaseCommand<CommandBuildSolution>
+    [Command(PackageGuids.VSFastBuildVSIXString, PackageIds.CommandFBuildGenerateSolution)]
+    internal sealed class CommandGenerateSolution : BaseCommand<CommandGenerateSolution>
     {
-        private string commandText_ = string.Empty;
-
         protected override async Task ExecuteAsync(OleMenuCmdEventArgs e)
         {
             VSFastBuildVSIXPackage package = await VSFastBuildVSIXPackage.GetPackageAsync();
@@ -18,19 +16,10 @@ namespace VSFastBuildVSIX.Commands
             {
                 return;
             }
-            if (package.IsBuildProcessRunning())
-            {
-                package.CancelBuildProcess();
-                await CommandBuildProject.StopMonitorAsync(package);
-                return;
-            }
-            commandText_ = Command.Text;
-            Command.Text = "Cancel " + commandText_;
             await ThreadHelper.JoinableTaskFactory.SwitchToMainThreadAsync();
             EnvDTE80.DTE2 dte = package.DTE;
             if (null == dte.Solution)
             {
-                CommandBuildProject.LeaveProcess(package, Command, commandText_);
                 return;
             }
             EnvDTE.Solution solution = dte.Solution;
@@ -74,11 +63,9 @@ namespace VSFastBuildVSIX.Commands
 
             if (targets.Count <= 0)
             {
-                CommandBuildProject.LeaveProcess(package, Command, commandText_);
                 return;
             }
-            await BuildProjectsAsync(package, targets, true);
-            LeaveProcess(package, Command, commandText_);
+            await BuildProjectsAsync(package, targets, true, false);
         }
     }
 }

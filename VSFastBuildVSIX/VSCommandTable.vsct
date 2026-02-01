@@ -30,6 +30,14 @@
 					<CommandName>FBuildSolution</CommandName>
 				</Strings>
 			</Button>
+			<Button guid="VSFastBuildVSIX" id="CommandFBuildGenerateSolution" priority="0x100" type="Button">
+				<Icon guid="VSFastBuildImages" id="icon_menu" />
+				<CommandFlag>TextChanges</CommandFlag>
+				<Strings>
+					<ButtonText>FastBuild Generate Solution</ButtonText>
+					<CommandName>FBuildGenerateSolution</CommandName>
+				</Strings>
+			</Button>
 			<Button guid="VSFastBuildVSIX" id="CommandFBuildProject" priority="0x100" type="Button">
 				<Icon guid="VSFastBuildImages" id="icon_menu" />
 				<CommandFlag>TextChanges</CommandFlag>
@@ -99,6 +107,9 @@
 		<CommandPlacement guid="VSFastBuildVSIX" id="CommandFBuildSolution" priority="0x100">
 			<Parent guid="VSFastBuildVSIX" id="VSFastBuildMenuSolutionGroup" />
 		</CommandPlacement>
+		<CommandPlacement guid="VSFastBuildVSIX" id="CommandFBuildGenerateSolution" priority="0x100">
+			<Parent guid="VSFastBuildVSIX" id="VSFastBuildMenuSolutionGroup" />
+		</CommandPlacement>
 		<CommandPlacement guid="VSFastBuildVSIX" id="CommandFBuildProject" priority="0x100">
 			<Parent guid="VSFastBuildVSIX" id="VSFastBuildMenuProjectGroup" />
 		</CommandPlacement>
@@ -118,6 +129,9 @@
 		<CommandPlacement guid="VSFastBuildVSIX" id="CommandFBuildSolution" priority="0x3000">
 			<Parent guid="VSMainMenu" id="SolutionNode.BuildGroup" />
 		</CommandPlacement>
+		<CommandPlacement guid="VSFastBuildVSIX" id="CommandFBuildGenerateSolution" priority="0x3001">
+			<Parent guid="VSMainMenu" id="SolutionNode.BuildGroup" />
+		</CommandPlacement>
 		<CommandPlacement guid="VSFastBuildVSIX" id="CommandFBuildProject" priority="0x3000">
 			<Parent guid="VSMainMenu" id="ProjectNode.BuildGroup" />
 		</CommandPlacement>
@@ -135,11 +149,12 @@
 			<IDSymbol name="VSFastBuildMenuToolGroup" value="0x1004" />
 			<IDSymbol name="VSFastBuildMenu" value="0x2000" />
 			<IDSymbol name="CommandFBuildSolution" value="0x3000" />
-			<IDSymbol name="CommandFBuildProject" value="0x3001" />
-			<IDSymbol name="CommandFBuildMonitor" value="0x3002" />
-			<IDSymbol name="CommandFBuildClean" value="0x3003" />
-			<IDSymbol name="CommandFBuildBFF" value="0x3004" />
-			<IDSymbol name="CommandFBuildBFFFiles" value="0x3005" />
+			<IDSymbol name="CommandFBuildGenerateSolution" value="0x3001" />
+			<IDSymbol name="CommandFBuildProject" value="0x3002" />
+			<IDSymbol name="CommandFBuildMonitor" value="0x3003" />
+			<IDSymbol name="CommandFBuildClean" value="0x3004" />
+			<IDSymbol name="CommandFBuildBFF" value="0x3005" />
+			<IDSymbol name="CommandFBuildBFFFiles" value="0x3006" />
 		</GuidSymbol>
 		<GuidSymbol name="VSFastBuildImages" value="{334E00CC-D085-4475-A258-7B02C3133597}">
 			<IDSymbol name="icon_menu" value="1" />

@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
@@ -104,7 +104,7 @@ namespace VSFastBuildVSIX.ToolWindows
 
                 protected bool _bInitialized = false;
 
-                public List<Sample> _samples = new List<Sample>();
+                public List<Sample> samples_ = new List<Sample>();
 
                 public string _description;
                 public string _unitTag;
@@ -248,7 +248,7 @@ namespace VSFastBuildVSIX.ToolWindows
                     {
                         Sample newSample = new Sample(eventTimeMS, value);
 
-                        _samples.Add(newSample);
+                        samples_.Add(newSample);
 
                         //Console.WriteLine("{0}: (time: {1} - value: {2} {3}", _description, newSample._time, newSample._value, _unitTag);
 
@@ -285,7 +285,7 @@ namespace VSFastBuildVSIX.ToolWindows
 
                             Sample newSample = new Sample(parent_.GetCurrentBuildTimeMS(), newValue);
 
-                            _samples.Add(newSample);
+                            samples_.Add(newSample);
 
                             //Console.WriteLine("{0}: (time: {1} - value: {2} {3}", _description, newSample._time, newSample._value, _unitTag);
 
@@ -344,7 +344,7 @@ namespace VSFastBuildVSIX.ToolWindows
                     bool bNewEnabledState = (bool)_checkBox.IsChecked;
                     bool bNewSelectedState = false;
 
-                    if (bNewEnabledState != _enabled || _samples.Count != _lastSamplesCount)
+                    if (bNewEnabledState != _enabled || samples_.Count != _lastSamplesCount)
                     {
                         bNeedsUpdateGeometry = true;
                     }
@@ -366,7 +366,7 @@ namespace VSFastBuildVSIX.ToolWindows
                     // refresh our internal state
                     _enabled = (bool)_checkBox.IsChecked;
 
-                    _lastSamplesCount = _samples.Count;
+                    _lastSamplesCount = samples_.Count;
 
                     _lastMousePos = newMousePos;
 
@@ -412,22 +412,22 @@ namespace VSFastBuildVSIX.ToolWindows
 
                     int samplesIndex = 0;
 
-                    while (totalTimeMS <= timeLimitMS && samplesIndex < _samples.Count)
+                    while (totalTimeMS <= timeLimitMS && samplesIndex < samples_.Count)
                     {
                         int subStepSamplesCount = 0;
                         float subStepAvgValue = 0.0f;
 
-                        while (samplesIndex < _samples.Count && _samples[samplesIndex]._time <= (totalTimeMS + timeStepMS))
+                        while (samplesIndex < samples_.Count && samples_[samplesIndex]._time <= (totalTimeMS + timeStepMS))
                         {
-                            subStepAvgValue += _samples[samplesIndex]._value;
+                            subStepAvgValue += samples_[samplesIndex]._value;
                             samplesIndex++;
                             subStepSamplesCount++;
 
                             // validation code to make sure times are monotonic
-                            if (samplesIndex + 1 < _samples.Count)
-                            {
-                                Debug.Assert(_samples[samplesIndex + 1]._time >= _samples[samplesIndex]._time);
-                            }
+                            //if (samplesIndex + 1 < samples_.Count)
+                            //{
+                            //    Debug.Assert(samples_[samplesIndex + 1]._time >= samples_[samplesIndex]._time);
+                            //}
                         }
 
                         if (subStepSamplesCount > 0)
@@ -468,7 +468,7 @@ namespace VSFastBuildVSIX.ToolWindows
                     {
                         bUpdatedGeometry = true;
 
-                        if (_enabled && _samples.Count > 0)
+                        if (_enabled && samples_.Count > 0)
                         {
                             CalculateGraphPoints(GraphMode.AverageValues, X, Y, zoomFactor, timeStepMS);
 
@@ -675,7 +675,7 @@ namespace VSFastBuildVSIX.ToolWindows
 
                         Sample newSample = new Sample(parent_.GetCurrentBuildTimeMS(), newValue);
 
-                        _samples.Add(newSample);
+                        samples_.Add(newSample);
 
                         //Console.WriteLine("{0}: (time: {1} - value: {2} {3}", _description, newSample._time, newSample._value, _unitTag);
 

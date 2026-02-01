@@ -55,12 +55,15 @@
                         <ScrollViewer x:Name="CoresScrollViewer" ScrollViewer.HorizontalScrollBarVisibility="Hidden" ScrollViewer.VerticalScrollBarVisibility="Hidden" Margin="10,10,5,25" Grid.Row="2" Grid.Column="0" Grid.ColumnSpan="2" >
                             <Canvas x:Name="CoresCanvas" HorizontalAlignment="Left" Height="366" VerticalAlignment="Top" Width="148" Margin="0,0,0,0"/>
                         </ScrollViewer>
-                        <GroupBox x:Name="SettingsGroupBox" Header="Settings" HorizontalAlignment="Left" Margin="0,5,0,0" VerticalAlignment="Top" Height="Auto" Width="220" Grid.Row="3" Grid.Column="3" Background="LightGray">
-                            <StackPanel Orientation="Horizontal">
-                                <CheckBox x:Name="SettingsGraphsCheckBox" Content="System Graphs" Margin="5,0,5,0" VerticalAlignment="Center" Checked="CheckBox_SystemGraph_Checked" Unchecked="CheckBox_SystemGraph_Unchecked" Foreground="Black" />
-                                <Button Content="Auto Scroll" Click="OnClick_SettingsAutoScroll" VerticalAlignment="Center" Margin="5,5,5,5"/>
-                            </StackPanel>
-                        </GroupBox>
+                        <StackPanel Orientation="Horizontal" Grid.Row="3" Grid.Column="3">
+                            <Button x:Name="StartStopButton" Content="Start" Click="OnClick_StartStop" VerticalAlignment="Center" Width="60" Height="25" Margin="5,5,5,10" FontSize="14"/>
+                            <GroupBox x:Name="SettingsGroupBox" Header="Settings" HorizontalAlignment="Left" Margin="0,5,0,0" VerticalAlignment="Top" Height="Auto" Width="220" Background="LightGray">
+                                <StackPanel Orientation="Horizontal">
+                                    <CheckBox x:Name="SettingsGraphsCheckBox" Content="System Graphs" Margin="5,0,5,0" VerticalAlignment="Center" Checked="CheckBox_SystemGraph_Checked" Unchecked="CheckBox_SystemGraph_Unchecked" Foreground="Black" />
+                                    <Button Content="Auto Scroll" Click="OnClick_SettingsAutoScroll" VerticalAlignment="Center" Margin="5,5,5,5"/>
+                                </StackPanel>
+                            </GroupBox>
+                        </StackPanel>
                     </Grid>
                 </TabItem>
                 <TabItem x:Name="TabItemOutput">

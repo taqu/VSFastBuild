@@ -312,6 +312,7 @@ namespace VSFastBuildVSIX
             Reset();
             Dispatcher.BeginInvoke(DispatcherPriority.Loaded, new Action(() =>
             {
+                StartStopButton.Content = "Stop";
                 //update timer
                 timer_ = new DispatcherTimer();
                 timer_.Tick += HandleTick;
@@ -323,6 +324,17 @@ namespace VSFastBuildVSIX
 
         public void Stop()
         {
+        }
+
+        private void StopInternal()
+        {
+            if(null == timer_)
+            {
+                return;
+            }
+            timer_.Stop();
+            timer_ = null;
+            StartStopButton.Content = "Start";
         }
 
         public void Reset()
@@ -353,7 +365,7 @@ namespace VSFastBuildVSIX
             preparingBuildsteps_ = true;
 
             // Reset the Output window text
-            OutputTextBox.Text = string.Empty;
+            OutputTextBox.Clear();
 
             // progress status
             UpdateBuildProgress(0.0f);
@@ -1515,7 +1527,7 @@ namespace VSFastBuildVSIX
                 systemPerformanceGraphs_.OpenSession(isLiveSession_, targetPID_);
 
                 // Record the start time
-                //buildStartTimeMS_ = eventLocalTimeMS;
+                buildStartTimeMS_ = eventLocalTimeMS;
 
                 buildRunningState_ = BuildRunningState.Running;
 
@@ -1563,6 +1575,7 @@ namespace VSFastBuildVSIX
                 systemPerformanceGraphs_.CloseSession();
                 isLiveSession_ = false;
             }
+            StopInternal();
         }
 
         private void ExecuteCommandStartJob(string[] tokens, long eventLocalTimeMS)
@@ -1592,7 +1605,6 @@ namespace VSFastBuildVSIX
                 host = new BuildHost(hostName, this);
                 buildHosts_.Add(hostName, host);
             }
-
 
             // Find out if this new Job is local and is racing another remote one
             if (host.bLocalHost)
@@ -1722,13 +1734,28 @@ namespace VSFastBuildVSIX
             }
         }
 
+        private void OnClick_StartStop(object sender, RoutedEventArgs e)
+        {
+            e.Handled = true;
+            if(null == timer_)
+            {
+                Start();
+            }
+            else
+            {
+                StopInternal();
+            }
+        }
+
         private void CheckBox_SystemGraph_Checked(object sender, RoutedEventArgs e)
         {
+            e.Handled = true;
             systemPerformanceGraphs_.SetVisibility((bool)(sender as CheckBox).IsChecked);
         }
 
         private void CheckBox_SystemGraph_Unchecked(object sender, RoutedEventArgs e)
         {
+            e.Handled = true;
             systemPerformanceGraphs_.SetVisibility((bool)(sender as CheckBox).IsChecked);
 
         }
