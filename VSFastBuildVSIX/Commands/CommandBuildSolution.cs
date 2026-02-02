@@ -11,6 +11,30 @@ namespace VSFastBuildVSIX.Commands
     {
         private string commandText_ = string.Empty;
 
+        private static async Task TraverseProjectItemsAsync(List<EnvDTE.Project> targets, ProjectItems projectItems)
+        {
+            await ThreadHelper.JoinableTaskFactory.SwitchToMainThreadAsync();
+            foreach (ProjectItem projectItem in projectItems)
+            {
+                if (ProjectTypes.WindowsCPlusPlus == projectItem.SubProject.Kind)
+                {
+                    EnvDTE.Project project = projectItem.Object as EnvDTE.Project;
+                    targets.Add(project);
+                    continue;
+                }
+                if (ProjectTypes.ProjectFolders == projectItem.SubProject.Kind)
+                {
+                    EnvDTE.Project project = projectItem.Object as EnvDTE.Project;
+                    if(null == project)
+                    {
+                        continue;
+                    }
+                    await TraverseProjectItemsAsync(targets, project.ProjectItems);
+                    continue;
+                }
+            }
+        }
+
         protected override async Task ExecuteAsync(OleMenuCmdEventArgs e)
         {
             VSFastBuildVSIXPackage package = await VSFastBuildVSIXPackage.GetPackageAsync();
@@ -36,8 +60,9 @@ namespace VSFastBuildVSIX.Commands
             EnvDTE.Solution solution = dte.Solution;
             SolutionBuild solutionBuild = solution.SolutionBuild;
             SolutionConfiguration2 solutionConfiguration = solutionBuild.ActiveConfiguration as SolutionConfiguration2;
+            SolutionContexts solutionContexts = solutionConfiguration.SolutionContexts;
             List<EnvDTE.Project> targets = new List<EnvDTE.Project>();
-            foreach (EnvDTE.Project project in dte.Solution.Projects)
+            foreach (EnvDTE.Project project in solution.Projects)
             {
                 if(ProjectTypes.WindowsCPlusPlus != project.Kind)
                 {

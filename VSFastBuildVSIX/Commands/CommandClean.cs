@@ -13,28 +13,9 @@ namespace VSFastBuildVSIX.Commands
     [Command(PackageGuids.VSFastBuildVSIXString, PackageIds.CommandFBuildClean)]
     internal sealed class CommandClean : BaseCommand<CommandClean>
     {
-        protected override async Task ExecuteAsync(OleMenuCmdEventArgs e)
+        private static async Task CleanAsync(string fullName)
         {
-            VSFastBuildVSIXPackage package = await VSFastBuildVSIXPackage.GetPackageAsync();
-            if (null == package)
-            {
-                return;
-            }
-            if (package.IsBuildProcessRunning())
-            {
-                return;
-            }
-            await ThreadHelper.JoinableTaskFactory.SwitchToMainThreadAsync();
-            EnvDTE80.DTE2 dte = package.DTE;
-            if (null == dte.Solution)
-            {
-                return;
-            }
-            await Log.AddOutputPaneAsync(Log.PaneBuild);
-            await Log.OutputBuildLineAsync("--- VSFastBuild begin cleaning ---");
-
-            // Clean solution directory
-            string rootDirectory = System.IO.Path.GetDirectoryName(dte.Solution.FullName);
+            string rootDirectory = System.IO.Path.GetDirectoryName(fullName);
             foreach(string path in System.IO.Directory.GetFiles(rootDirectory, "fbuild_*.bff"))
             {
                 try
@@ -63,41 +44,69 @@ namespace VSFastBuildVSIX.Commands
                 }
                 catch { }
             }
+        }
 
-            //Traverse projects
-            foreach (EnvDTE.Project project in dte.Solution.Projects)
+        private static async Task TraverseProjectItemsAsync(ProjectItems projectItems)
+        {
+            await ThreadHelper.JoinableTaskFactory.SwitchToMainThreadAsync();
+            foreach (ProjectItem projectItem in projectItems)
             {
-                if (ProjectTypes.WindowsCPlusPlus != project.Kind)
+                if (ProjectTypes.WindowsCPlusPlus == projectItem.SubProject.Kind)
                 {
+                    EnvDTE.Project project = projectItem.Object as EnvDTE.Project;
+                    await CleanAsync(project.FileName);
                     continue;
                 }
-                string projectDirectory = System.IO.Path.GetDirectoryName(project.FullName);
-                foreach (string path in System.IO.Directory.GetFiles(projectDirectory, "fbuild_*.bff"))
+                if (ProjectTypes.ProjectFolders == projectItem.SubProject.Kind)
                 {
-                    try
+                    EnvDTE.Project project = projectItem.Object as EnvDTE.Project;
+                    if(null == project)
                     {
-                        System.IO.File.Delete(path);
-                        await Log.OutputBuildLineAsync($"delete {path}");
+                        continue;
                     }
-                    catch { }
+                    await TraverseProjectItemsAsync(project.ProjectItems);
+                    continue;
                 }
-                foreach (string path in System.IO.Directory.GetFiles(projectDirectory, "fbuild_*.fdb"))
+            }
+        }
+
+        protected override async Task ExecuteAsync(OleMenuCmdEventArgs e)
+        {
+            VSFastBuildVSIXPackage package = await VSFastBuildVSIXPackage.GetPackageAsync();
+            if (null == package)
+            {
+                return;
+            }
+            if (package.IsBuildProcessRunning())
+            {
+                return;
+            }
+            await ThreadHelper.JoinableTaskFactory.SwitchToMainThreadAsync();
+            EnvDTE80.DTE2 dte = package.DTE;
+            EnvDTE.Solution solution = dte.Solution;
+            if (null == solution)
+            {
+                return;
+            }
+            await Log.AddOutputPaneAsync(Log.PaneBuild);
+            await Log.OutputBuildLineAsync("--- VSFastBuild begin cleaning ---");
+
+            // Clean solution directory
+            await CleanAsync(System.IO.Path.GetDirectoryName(solution.FullName));
+
+            //Traverse projects
+            int Count = solution.Projects.Count;
+            foreach (EnvDTE.Project project in solution.Projects)
+            {
+                if (ProjectTypes.WindowsCPlusPlus == project.Kind)
                 {
-                    try
-                    {
-                        System.IO.File.Delete(path);
-                        await Log.OutputBuildLineAsync($"delete {path}");
-                    }
-                    catch { }
+                    await CleanAsync(System.IO.Path.GetDirectoryName(project.FullName));
+                    continue;
                 }
-                foreach (string path in System.IO.Directory.GetFiles(projectDirectory, "fbuild_*.bat"))
+                if (ProjectTypes.ProjectFolders == project.Kind)
                 {
-                    try
-                    {
-                        System.IO.File.Delete(path);
-                        await Log.OutputBuildLineAsync($"delete {path}");
-                    }
-                    catch { }
+                    await TraverseProjectItemsAsync(project.ProjectItems);
+                    continue;
                 }
             }
             await Log.OutputBuildLineAsync("--- VSFastBuild end cleaning ---");

@@ -641,6 +641,11 @@ namespace VSFastBuildVSIX
             "INSTALL.vcxproj",
             "ALL_BUILD.vcxproj",
             "RUN_TESTS.vcxproj",
+            "PACKAGE.vcxproj",
+            "Continuous.vcxproj",
+            "Experimental.vcxproj",
+            "Nightly.vcxproj",
+            "NightlyMemoryCheck.vcxproj",
         };
 
         private static Assembly GetCPPTaskAssembly(string VCTargetsPath)
@@ -1445,6 +1450,7 @@ namespace VSFastBuildVSIX
 
         private static string GenerateTaskCommandLine(ToolTask task, string[] propertiesToSkip, ref string compilerPDB, IEnumerable<ProjectMetadata> metaDataList)
         {
+            List<string> additionalIncludeDirectories = new List<string>(8);
             foreach (ProjectMetadata metaData in metaDataList)
             {
                 Log.OutputDebugLine($"  {metaData.Name} = {metaData.EvaluatedValue}");
@@ -1463,6 +1469,12 @@ namespace VSFastBuildVSIX
                     if (metaData.Name == "AdditionalIncludeDirectories")
                     {
                         evaluatedValue = evaluatedValue.Replace("\\\\", "\\");
+                        string[] directories = evaluatedValue.Split(new char[] { ';' }, StringSplitOptions.RemoveEmptyEntries);
+                        foreach (string directory in directories)
+                        {
+                            additionalIncludeDirectories.Add(directory);
+                        }
+                        continue;
                     }
 
                     PropertyInfo propInfo = matchingProps.First();
@@ -1480,54 +1492,63 @@ namespace VSFastBuildVSIX
                             //  OldStyle
                             evaluatedValue = "OldStyle";
                         }
+                        if("DisableAnalyzeExternal" == metaData.Name && evaluatedValue != "false")
+                        {
+                            evaluatedValue = "true";
+                        }
                         #endif
+                        if("AdditionalOptions" == metaData.Name)
+                        {
+                            StringBuilder stringBuilder = new StringBuilder(evaluatedValue.Length);
+                            List<string> list = new List<string>(8);
+                            string[] options = evaluatedValue.Split(new char[] { ' ' }, StringSplitOptions.RemoveEmptyEntries);
+                            for(int i=0; i<options.Length; ++i)
+                            {
+                                string directory = string.Empty;
+                                if (options[i] == "/external:I" && (i + 1) < options.Length)
+                                {
+                                    directory = options[i + 1];
+                                    ++i;
+                                }
+                                else if (options[i].StartsWith("/external:I", StringComparison.OrdinalIgnoreCase))
+                                {
+                                    directory = options[i].Replace("/external:I", string.Empty);
+                                }
+                                if(!string.IsNullOrEmpty(directory))
+                                {
+                                    directory = directory.Trim(' ', '\"').Replace('/', '\\');
+                                    if (!additionalIncludeDirectories.Contains(directory))
+                                    {
+                                        additionalIncludeDirectories.Add(directory);
+                                    }
+                                    continue;
+                                }
+                                list.Add(options[i]);
+                            }
+                            if (list.Count <= 0)
+                            {
+                                continue;
+                            }
+                            evaluatedValue = string.Join(" ", list);
+                        }
                         propInfo.SetValue(task, Convert.ChangeType(evaluatedValue, propInfo.PropertyType));
                     }
                 }
             }
-            MethodInfo methodInfo = task.GetType().GetRuntimeMethods().Where(method => method.Name == "GenerateCommandLine").First();
-            return methodInfo.Invoke(task, new object[] { Type.Missing, Type.Missing }) as string;
-        }
 
-        private static string GenerateTaskCommandLine(IEnumerable<ProjectMetadata> metaDataList)
-        {
-            foreach (ProjectMetadata metaData in metaDataList)
+            if (0<additionalIncludeDirectories.Count)
             {
-                Log.OutputDebugLine($"  {metaData.Name} = {metaData.EvaluatedValue}");
-                if("ProgramDatabaseFile" == metaData.Name && string.IsNullOrEmpty(compilerPDB))
+                IEnumerable<PropertyInfo> matchingProps = task.GetType().GetProperties().Where(prop => prop.Name == "AdditionalIncludeDirectories");
+                if (matchingProps.Any())
                 {
-                    compilerPDB = metaData.EvaluatedValue;
-                }
-                if (propertiesToSkip.Contains(metaData.Name))
-                {
-                    continue;
-                }
-                IEnumerable<PropertyInfo> matchingProps = task.GetType().GetProperties().Where(prop => prop.Name == metaData.Name);
-                if (matchingProps.Any() && !string.IsNullOrEmpty(metaData.EvaluatedValue))
-                {
-                    string evaluatedValue = metaData.EvaluatedValue.Trim();
-                    if (metaData.Name == "AdditionalIncludeDirectories")
-                    {
-                        evaluatedValue = evaluatedValue.Replace("\\\\", "\\");
-                    }
-
                     PropertyInfo propInfo = matchingProps.First();
                     if (propInfo.PropertyType.IsArray && propInfo.PropertyType.GetElementType() == typeof(string))
                     {
-                        propInfo.SetValue(task, Convert.ChangeType(evaluatedValue.Split(';'), propInfo.PropertyType));
+                        propInfo.SetValue(task, Convert.ChangeType(additionalIncludeDirectories.ToArray(), propInfo.PropertyType));
                     }
                     else
                     {
-                        #if false
-                        if("DebugInformationFormat" == metaData.Name && evaluatedValue != "OldStyle")
-                        {
-                            //DebugInformationFormat
-                            //  ProgramDatabase
-                            //  OldStyle
-                            evaluatedValue = "OldStyle";
-                        }
-                        #endif
-                        propInfo.SetValue(task, Convert.ChangeType(evaluatedValue, propInfo.PropertyType));
+                        propInfo.SetValue(task, Convert.ChangeType(string.Join(";", additionalIncludeDirectories), propInfo.PropertyType));
                     }
                 }
             }
@@ -1845,7 +1866,7 @@ namespace VSFastBuildVSIX
                     {
                         ToolTask task = (ToolTask)Activator.CreateInstance(buildContext.CppTaskAssembly_.GetType("Microsoft.Build.CPPTasks.CL"));
                         string compilerPDB = string.Empty;
-                        string pchCompilerOptions = GenerateTaskCommandLine(task, new string[] { "ObjectFileName", "AdditionalIncludeDirectories", "AssemblerListingLocation", "ProgramDataBaseFileName", "XMLDocumentationFileName", "DiagnosticsFormat" }, ref project.compilerPDB_, item.Metadata) + " /FS";
+                        string pchCompilerOptions = GenerateTaskCommandLine(task, new string[] { "ObjectFileName", "AssemblerListingLocation", "ProgramDataBaseFileName", "XMLDocumentationFileName", "DiagnosticsFormat" }, ref project.compilerPDB_, item.Metadata);
 #if false
                         switch (buildContext.platform_)
                         {
@@ -1883,7 +1904,7 @@ namespace VSFastBuildVSIX
                     }
                     ToolTask task = (ToolTask)Activator.CreateInstance(buildContext.CppTaskAssembly_.GetType("Microsoft.Build.CPPTasks.RC"));
                     string dummyPDB = string.Empty;
-                    string resourceCompilerOptions = GenerateTaskCommandLine(task, new string[] { "ResourceOutputFileName", "AdditionalIncludeDirectories", "DesigntimePreprocessorDefinitions", "ProgramDataBaseFileName", "XMLDocumentationFileName", "DiagnosticsFormat" }, ref dummyPDB, item.Metadata);
+                    string resourceCompilerOptions = GenerateTaskCommandLine(task, new string[] { "ResourceOutputFileName", "DesigntimePreprocessorDefinitions", "ProgramDataBaseFileName", "XMLDocumentationFileName", "DiagnosticsFormat" }, ref dummyPDB, item.Metadata);
                     resourceCompilerOptions = resourceCompilerOptions.Replace("  ", " ").Replace("\\\\", "\\").Replace("/TP", string.Empty).Replace("/TC", string.Empty).Replace("/D ", "/D");
                     string formattedCompilerOptions = $"{resourceCompilerOptions} /fo\"%2\" \"%1\"";
                     string evaluatedInclude = System.IO.Path.GetFullPath(System.IO.Path.Combine(project.rootDir_, item.EvaluatedInclude)).Replace("/", "\\").Replace("\\\\", "\\");
@@ -1897,7 +1918,7 @@ namespace VSFastBuildVSIX
             }
 
             { // Compile items
-                string[] propertiesToSkip = new string[] { "ObjectFileName", "AdditionalIncludeDirectories", "AssemblerListingLocation", "ProgramDataBaseFileName", "XMLDocumentationFileName", "DiagnosticsFormat" };
+                string[] propertiesToSkip = new string[] { "ObjectFileName", "AssemblerListingLocation", "ProgramDataBaseFileName", "XMLDocumentationFileName", "DiagnosticsFormat" };
                 foreach (Microsoft.Build.Evaluation.ProjectItem item in compileItems)
                 {
                     if (!IsBuildTarget(item))
@@ -2748,6 +2769,10 @@ namespace VSFastBuildVSIX
                         if (!System.IO.Directory.Exists(outputDirectory))
                         {
                             System.IO.Directory.CreateDirectory(outputDirectory);
+                        }
+                        if(project.targetName_ == "cmsysTestDynloadUse")
+                        {
+                            Log.OutputDebugLine("cmsysTestDynloadUse");
                         }
                         ToolTask task = (ToolTask)Activator.CreateInstance(buildContext.CppTaskAssembly_.GetType("Microsoft.Build.CPPTasks.Link"));
                         string linkerOptions = GenerateTaskCommandLine(task, new string[] { "OutputFile", "ProfileGuidedDatabase", "ProgramDatabaseFile", "XMLDocumentationFileName", "DiagnosticsFormat", "LinkTimeCodeGenerationObjectFile", "IncrementalLinkDatabaseFile" }, ref project.linkerPDB_, linkDefinitions.Metadata);
