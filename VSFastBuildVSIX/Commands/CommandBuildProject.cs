@@ -1475,6 +1475,9 @@ namespace VSFastBuildVSIX
                             additionalIncludeDirectories.Add(directory);
                         }
                         continue;
+                    }else if(metaData.Name == "AdditionalDependencies")
+                    {
+
                     }
 
                     PropertyInfo propInfo = matchingProps.First();
@@ -2775,7 +2778,7 @@ namespace VSFastBuildVSIX
                             Log.OutputDebugLine("cmsysTestDynloadUse");
                         }
                         ToolTask task = (ToolTask)Activator.CreateInstance(buildContext.CppTaskAssembly_.GetType("Microsoft.Build.CPPTasks.Link"));
-                        string linkerOptions = GenerateTaskCommandLine(task, new string[] { "OutputFile", "ProfileGuidedDatabase", "ProgramDatabaseFile", "XMLDocumentationFileName", "DiagnosticsFormat", "LinkTimeCodeGenerationObjectFile", "IncrementalLinkDatabaseFile" }, ref project.linkerPDB_, linkDefinitions.Metadata);
+                        string linkerOptions = GenerateTaskCommandLine(task, new string[] { "OutputFile", "ProfileGuidedDatabase", "XMLDocumentationFileName", "DiagnosticsFormat", "LinkTimeCodeGenerationObjectFile", "IncrementalLinkDatabaseFile" }, ref project.linkerPDB_, linkDefinitions.Metadata);
                         linkerOptions = linkerOptions.Replace("'", "^'");
                         StringBuilder optionBuilder = buildContext.optionBuilder_.Clear();
                         optionBuilder.Append("\"%1[0]\" /OUT:\"%2\" /PDB:\"$LinkerPDB$\"");
