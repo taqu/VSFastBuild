@@ -65,7 +65,7 @@ namespace VSFastBuildVSIX.Commands
             {
                 return;
             }
-            await BuildProjectsAsync(package, targets, true, false);
+            await BuildProjectsAsync(package, targets, true, true);
         }
     }
 }

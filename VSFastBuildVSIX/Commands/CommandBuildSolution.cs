@@ -2,6 +2,7 @@
 using EnvDTE80;
 using Microsoft.VisualStudio.Threading;
 using System.Collections.Generic;
+using System.Runtime.Remoting.Contexts;
 using static VSFastBuildVSIX.CommandBuildProject;
 
 namespace VSFastBuildVSIX.Commands
@@ -11,28 +12,45 @@ namespace VSFastBuildVSIX.Commands
     {
         private string commandText_ = string.Empty;
 
-        private static async Task TraverseProjectItemsAsync(List<EnvDTE.Project> targets, ProjectItems projectItems)
+        private static void TraverseProjectItems(List<EnvDTE.Project> targets, EnvDTE.ProjectItems projectItems, SolutionConfiguration2 solutionConfiguration, SolutionContexts solutionContexts)
         {
-            await ThreadHelper.JoinableTaskFactory.SwitchToMainThreadAsync();
-            foreach (ProjectItem projectItem in projectItems)
+            foreach (EnvDTE.ProjectItem projectItem in projectItems)
             {
-                if (ProjectTypes.WindowsCPlusPlus == projectItem.SubProject.Kind)
+                EnvDTE.Project project = projectItem.Object as EnvDTE.Project;
+                if(null == project)
                 {
-                    EnvDTE.Project project = projectItem.Object as EnvDTE.Project;
-                    targets.Add(project);
                     continue;
                 }
-                if (ProjectTypes.ProjectFolders == projectItem.SubProject.Kind)
+                
+                if(ProjectTypes.WindowsCPlusPlus == project.Kind)
                 {
-                    EnvDTE.Project project = projectItem.Object as EnvDTE.Project;
-                    if(null == project)
+                    if(ShouldBuild(project, solutionConfiguration, solutionContexts))
                     {
-                        continue;
+                        targets.Add(project);
                     }
-                    await TraverseProjectItemsAsync(targets, project.ProjectItems);
+                    continue;
+                }
+                if(ProjectTypes.ProjectFolders == project.Kind)
+                {
+                    TraverseProjectItems(targets, project.ProjectItems, solutionConfiguration, solutionContexts);
                     continue;
                 }
             }
+        }
+
+        private static bool ShouldBuild(EnvDTE.Project project, SolutionConfiguration2 solutionConfiguration, SolutionContexts solutionContexts)
+        {
+            foreach (SolutionContext context in solutionContexts)
+            {
+                if (System.IO.Path.GetFileName(context.ProjectName) == System.IO.Path.GetFileName(project.FileName)
+                            && context.ConfigurationName == solutionConfiguration.Name
+                            && context.PlatformName == solutionConfiguration.PlatformName
+                            && context.ShouldBuild)
+                {
+                    return true;
+                }
+            }
+            return false;
         }
 
         protected override async Task ExecuteAsync(OleMenuCmdEventArgs e)
@@ -64,20 +82,18 @@ namespace VSFastBuildVSIX.Commands
             List<EnvDTE.Project> targets = new List<EnvDTE.Project>();
             foreach (EnvDTE.Project project in solution.Projects)
             {
-                if(ProjectTypes.WindowsCPlusPlus != project.Kind)
+                if(ProjectTypes.WindowsCPlusPlus == project.Kind)
                 {
-                    continue;
-                }
-
-                foreach (SolutionContext context in solutionConfiguration.SolutionContexts)
-                {
-                    if (System.IO.Path.GetFileName(context.ProjectName) == System.IO.Path.GetFileName(project.FileName)
-                        && context.ConfigurationName == solutionConfiguration.Name
-                        && context.PlatformName == solutionConfiguration.PlatformName
-                        && context.ShouldBuild)
+                    if(ShouldBuild(project, solutionConfiguration, solutionContexts))
                     {
                         targets.Add(project);
                     }
+                    continue;
+                }
+                if(ProjectTypes.ProjectFolders == project.Kind)
+                {
+                    TraverseProjectItems(targets, project.ProjectItems, solutionConfiguration, solutionContexts);
+                    continue;
                 }
             }
 

@@ -1,4 +1,4 @@
-using EnvDTE;
+﻿using EnvDTE;
 using EnvDTE80;
 using Microsoft.VisualStudio.Threading;
 using System.Diagnostics;
@@ -36,6 +36,24 @@ namespace VSFastBuildVSIX
                 }
             }
             outputWindow.OutputWindowPanes.Add(name);
+        }
+
+        public static async Task ClearPanelAsync(string name)
+        {
+            await Microsoft.VisualStudio.Shell.ThreadHelper.JoinableTaskFactory.SwitchToMainThreadAsync();
+            DTE2 dte2 = Microsoft.VisualStudio.Shell.Package.GetGlobalService(typeof(DTE)) as DTE2;
+            EnvDTE.OutputWindow outputWindow = dte2.ToolWindows.OutputWindow;
+            if (null == outputWindow)
+            {
+                return;
+            }
+            foreach (EnvDTE.OutputWindowPane window in outputWindow.OutputWindowPanes)
+            {
+                if (window.Name == name)
+                {
+                    window.Clear();
+                }
+            }
         }
 
         /// <summary>

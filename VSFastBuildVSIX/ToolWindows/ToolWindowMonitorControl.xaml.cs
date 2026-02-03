@@ -828,7 +828,10 @@ namespace VSFastBuildVSIX
             }
             else if (e.KeyboardDevice.Modifiers == ModifierKeys.Control && e.Key == Key.C)
             {
+                try {
                 Clipboard.SetText(OutputTextBox.SelectedText);
+                }
+                catch { }
             }
         }
 

@@ -1,12 +1,6 @@
-﻿using EnvDTE;
-using EnvDTE80;
-using Microsoft.VisualStudio.Shell;
-using Microsoft.VisualStudio.Shell.Interop;
-using System;
-using System.ComponentModel.Design;
-using System.Globalization;
-using System.Threading;
-using System.Threading.Tasks;
+using EnvDTE;
+using System.Collections.Generic;
+using static VSFastBuildVSIX.CommandBuildProject;
 
 namespace VSFastBuildVSIX.Commands
 {
@@ -44,27 +38,34 @@ namespace VSFastBuildVSIX.Commands
                 }
                 catch { }
             }
+            foreach (string path in System.IO.Directory.GetFiles(rootDirectory, "fbuild_*.out"))
+            {
+                try
+                {
+                    System.IO.File.Delete(path);
+                    await Log.OutputBuildLineAsync($"delete {path}");
+                }
+                catch { }
+            }
         }
 
-        private static async Task TraverseProjectItemsAsync(ProjectItems projectItems)
+        private static void TraverseProjectItems(List<string> targets, ProjectItems projectItems)
         {
-            await ThreadHelper.JoinableTaskFactory.SwitchToMainThreadAsync();
             foreach (ProjectItem projectItem in projectItems)
             {
-                if (ProjectTypes.WindowsCPlusPlus == projectItem.SubProject.Kind)
-                {
-                    EnvDTE.Project project = projectItem.Object as EnvDTE.Project;
-                    await CleanAsync(project.FileName);
-                    continue;
-                }
-                if (ProjectTypes.ProjectFolders == projectItem.SubProject.Kind)
-                {
-                    EnvDTE.Project project = projectItem.Object as EnvDTE.Project;
-                    if(null == project)
+                EnvDTE.Project project = projectItem.Object as EnvDTE.Project;
+                    if(null ==project)
                     {
                         continue;
-                    }
-                    await TraverseProjectItemsAsync(project.ProjectItems);
+                }
+                if (ProjectTypes.WindowsCPlusPlus == project.Kind)
+                {
+                    targets.Add(project.FileName);
+                    continue;
+                }
+                if (ProjectTypes.ProjectFolders == project.Kind)
+                {
+                    TraverseProjectItems(targets, project.ProjectItems);
                     continue;
                 }
             }
@@ -89,10 +90,13 @@ namespace VSFastBuildVSIX.Commands
                 return;
             }
             await Log.AddOutputPaneAsync(Log.PaneBuild);
+            await Log.ClearPanelAsync(Log.PaneBuild);
             await Log.OutputBuildLineAsync("--- VSFastBuild begin cleaning ---");
 
+            RunSolutionClear(solution);
+            List<string> targets = new List<string>();
             // Clean solution directory
-            await CleanAsync(System.IO.Path.GetDirectoryName(solution.FullName));
+            targets.Add(solution.FullName);
 
             //Traverse projects
             int Count = solution.Projects.Count;
@@ -100,14 +104,18 @@ namespace VSFastBuildVSIX.Commands
             {
                 if (ProjectTypes.WindowsCPlusPlus == project.Kind)
                 {
-                    await CleanAsync(System.IO.Path.GetDirectoryName(project.FullName));
+                    targets.Add(project.FullName);
                     continue;
                 }
                 if (ProjectTypes.ProjectFolders == project.Kind)
                 {
-                    await TraverseProjectItemsAsync(project.ProjectItems);
+                    TraverseProjectItems(targets, project.ProjectItems);
                     continue;
                 }
+            }
+            foreach(string path in targets)
+            {
+                await CleanAsync(path);
             }
             await Log.OutputBuildLineAsync("--- VSFastBuild end cleaning ---");
         }
