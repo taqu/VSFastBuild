@@ -29,7 +29,7 @@
                             <TextBlock Text="TimeLine" />
                         </StackPanel>
                     </TabItem.Header>
-                    <Grid Background="#FFEDEDED">
+                    <Grid Background="#FFE0E0E0">
                         <Grid.RowDefinitions>
                             <RowDefinition Height="auto" MaxHeight="150"/>
                             <RowDefinition Height="30"/>
