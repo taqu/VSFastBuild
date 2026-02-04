@@ -1,4 +1,4 @@
-﻿using Microsoft.VisualStudio;
+using Microsoft.VisualStudio;
 using Microsoft.VisualStudio.Shell.Interop;
 using System;
 using System.Collections.Generic;
@@ -7,6 +7,7 @@ using System.Linq;
 using System.Runtime.InteropServices;
 using System.Text;
 using System.Threading.Tasks;
+using VSFastBuildVSIX.Options;
 using static VSFastBuildVSIX.CommandBuildProject;
 using static VSFastBuildVSIX.Commands.CommandBFFFiles;
 
@@ -100,6 +101,13 @@ namespace VSFastBuildVSIX.Commands
                 return;
             }
             await Log.AddOutputPaneAsync(Log.PaneBuild);
+            await Log.ClearPanelAsync(Log.PaneBuild);
+            OptionsPage optionPage = VSFastBuildVSIXPackage.Options;
+            bool openMonitor = optionPage.OpenMonitor;
+            if (openMonitor)
+                {
+                    await CommandBuildProject.StartMonitorAsync(package, true);
+                }
             try
             {
                 Result result = new Result();
@@ -110,6 +118,10 @@ namespace VSFastBuildVSIX.Commands
             catch (Exception ex)
             {
                 await Log.OutputDebugAsync(ex.Message);
+            }
+            if (openMonitor)
+            {
+                await CommandBuildProject.StopMonitorAsync(package);
             }
             package.LeaveBuildProcess();
         }

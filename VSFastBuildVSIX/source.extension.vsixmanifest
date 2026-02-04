@@ -6,6 +6,8 @@
         <Description xml:space="preserve">Integration of FASTBuild for Visual Studio.</Description>
         <MoreInfo>https://github.com/taqu/VSFastBuild</MoreInfo>
         <License>LICENSE.txt</License>
+        <GettingStartedGuide>GettingStartedGuide.txt</GettingStartedGuide>
+        <ReleaseNotes>ReleaseNotes.txt</ReleaseNotes>
         <Icon>Resources\Icon.png</Icon>
         <PreviewImage>Resources\Icon.png</PreviewImage>
         <Tags>Build,FASTBuild</Tags>
