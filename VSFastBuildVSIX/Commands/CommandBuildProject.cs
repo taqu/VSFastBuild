@@ -1,5 +1,4 @@
 using Blake2Fast;
-using Community.VisualStudio.Toolkit;
 using EnvDTE;
 using EnvDTE80;
 using Microsoft.Build.Construction;
@@ -18,10 +17,6 @@ using System.Reflection;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
-using System.Windows.Shapes;
-using VSFastBuildVSIX.Options;
-using static System.Net.Mime.MediaTypeNames;
-using static VSFastBuildVSIX.CommandBuildProject;
 
 namespace VSFastBuildVSIX
 {
@@ -42,6 +37,16 @@ namespace VSFastBuildVSIX
             System.Diagnostics.Debug.Assert(null != command);
             command.Text = originalText;
             package.LeaveBuildProcess();
+        }
+
+        protected override void BeforeQueryStatus(EventArgs e)
+        {
+            OptionsPage options = VSFastBuildVSIXPackage.Options;
+            if(null == options)
+            {
+                return;
+            }
+            Command.Enabled = options.EnableGeneration;
         }
 
         protected override async Task ExecuteAsync(OleMenuCmdEventArgs e)
@@ -525,40 +530,44 @@ namespace VSFastBuildVSIX
             public string Options => options_;
             public CustomBuildItem CustomBuildItem => customBuild_;
             public string OutputExtension => outputExtension_;
+            public string OutputPath => outputPath_;
             public List<string> InputFiles => inputFiles_;
 
             private ItemType type_;
             private string options_;
             private CustomBuildItem customBuild_;
             private string outputExtension_;
+            private string outputPath_;
             private List<string> inputFiles_;
             private List<string> includeDirectories_;
 
             public FBCompileItem(CustomBuildItem customBuild)
             {
                 type_ = ItemType.Custom;
+                outputPath_ = string.Empty;
                 inputFiles_ = null;
                 options_ = string.Empty;
                 customBuild_ = customBuild;
                 outputExtension_ = string.Empty;
             }
 
-            public FBCompileItem(ItemType type, string inputFile, string options, string outputExtension = Empty)
+            public FBCompileItem(ItemType type, string outputPath, string inputFile, string options, string outputExtension)
             {
                 type_ = type;
+                outputPath_ = outputPath;
                 inputFiles_ = new List<string>(16) { inputFile };
                 options_ = options;
                 customBuild_ = new CustomBuildItem();
                 outputExtension_ = outputExtension;
             }
 
-            public bool AddIfMatches(ItemType type, string inputFile, string options, string outputExtension = Empty)
+            public bool AddIfMatches(ItemType type, string outputPath, string inputFile, string options, string outputExtension)
             {
                 if (type_ == ItemType.Custom)
                 {
                     return false;
                 }
-                if (type_ == type && options_ == options && outputExtension_ == outputExtension)
+                if (type_ == type && outputPath_ == outputPath && options_ == options && outputExtension_ == outputExtension)
                 {
                     inputFiles_.Add(inputFile);
                     return true;
@@ -579,6 +588,7 @@ namespace VSFastBuildVSIX
             public string PCHOutputFile_ = string.Empty;
             public string PCHInputFile_ = string.Empty;
             public string PCHOptions_ = string.Empty;
+            public string compilerOptions_ = string.Empty;
         }
 
         public class VSFastProject
@@ -1501,16 +1511,43 @@ namespace VSFastBuildVSIX
             return false;
         }
 
-        private static void GetPrecompiledHeader(string rootDir, Microsoft.Build.Evaluation.ProjectItem item, ref PrecompiledHeaderInfo precompiledHeaderInfo)
+        private static void GetPrecompiledHeader(BuildContext buildContext, VSFastProject project, Microsoft.Build.Evaluation.ProjectItem item)
         {
             if (item.Metadata.Where(x => x.Name == "PrecompiledHeader" && x.EvaluatedValue == "Create").Any())
             {
-                precompiledHeaderInfo.PCHInputFile_ = item.EvaluatedInclude.Trim();
-                if (!precompiledHeaderInfo.PCHInputFile_.Contains('/') && !precompiledHeaderInfo.PCHInputFile_.Contains('\\'))
+                project.precompiledHeaderInfo_.PCHInputFile_ = item.EvaluatedInclude.Trim();
+                if (!project.precompiledHeaderInfo_.PCHInputFile_.Contains('/') && !project.precompiledHeaderInfo_.PCHInputFile_.Contains('\\'))
                 {
-                    precompiledHeaderInfo.PCHInputFile_ = System.IO.Path.GetFullPath(System.IO.Path.Combine(rootDir, precompiledHeaderInfo.PCHInputFile_));
+                    project.precompiledHeaderInfo_.PCHInputFile_ = System.IO.Path.GetFullPath(System.IO.Path.Combine(project.rootDir_, project.precompiledHeaderInfo_.PCHInputFile_));
                 }
-                precompiledHeaderInfo.PCHOutputFile_ = item.GetMetadataValue("PrecompiledHeaderOutputFile").Trim().Replace("/", "\\").Replace("\\\\", "\\");
+                project.precompiledHeaderInfo_.PCHOutputFile_ = item.GetMetadataValue("PrecompiledHeaderOutputFile").Trim().Replace("/", "\\").Replace("\\\\", "\\");
+                ToolTask task = (ToolTask)Activator.CreateInstance(buildContext.CppTaskAssembly_.GetType("Microsoft.Build.CPPTasks.CL"));
+                string compilerPDB = string.Empty;
+                string pchCompilerOptions = GenerateTaskCommandLine(task, new string[] { "ObjectFileName", "AssemblerListingLocation", "ProgramDataBaseFileName", "ModuleOutputFile", "XMLDocumentationFileName", "DiagnosticsFormat" }, ref project.compilerPDB_, item.Metadata, null);
+#if false
+                        switch (buildContext.platform_)
+                        {
+                            case "x86":
+                                pchCompilerOptions += " /D_M_IX86=600";
+                                break;
+                            case "x64":
+                                pchCompilerOptions += " /D_M_X64=100";
+                                break;
+                            case "arm":
+                                pchCompilerOptions += " /D_M_ARM=7";
+                                break;
+                            case "arm64":
+                                pchCompilerOptions += " /D_M_ARM64=1";
+                                break;
+                        }
+#endif
+                pchCompilerOptions = pchCompilerOptions.Replace("  ", " ").Replace("\\\\", "\\").Replace("/TP", string.Empty).Replace("/TC", string.Empty).Replace("/D ", "/D");
+                if (!project.precompiledHeaderInfo_.PCHInputFile_.EndsWith(".c"))
+                {
+                    pchCompilerOptions += " /TP ";
+                }
+                project.precompiledHeaderInfo_.PCHOptions_ = $"\"%1\" /Fo\"%3\" /FS {pchCompilerOptions}";
+                project.precompiledHeaderInfo_.compilerOptions_ = $"/FS {pchCompilerOptions}";
             }
         }
 
@@ -1924,6 +1961,27 @@ namespace VSFastBuildVSIX
             return bool.TryParse(value, out result) ? result : false;
         }
 
+        private static string GetOutput(Microsoft.Build.Evaluation.ProjectItem item, VSFastProject project)
+        {
+            string outputPath = item.GetMetadataValue("ObjectFileName");
+            if(null == outputPath)
+            {
+                return project.intDir_;
+            }
+            outputPath = outputPath.Replace("/", "\\").Replace("\\\\", "\\");
+            if (System.IO.Path.HasExtension(outputPath))
+            {
+                //foreach (var metadata in item.Metadata)
+                //{
+                //    Log.OutputDebugLine($"{metadata.Name}={metadata.EvaluatedValue}");
+                //}
+                //Log.OutputDebugLine($"{outputPath}");
+                outputPath = System.IO.Path.GetDirectoryName(outputPath);
+            }
+            outputPath = System.IO.Path.Combine(project.rootDir_, outputPath);
+            return outputPath;
+        }
+
         private static void GatherItems(BuildContext buildContext, VSFastProject project)
         {
             Microsoft.Build.Evaluation.Project buildProject = project.buildProject_;
@@ -1938,50 +1996,10 @@ namespace VSFastBuildVSIX
                 {
                     continue;
                 }
-                GetPrecompiledHeader(project.rootDir_, item, ref project.precompiledHeaderInfo_);
+                GetPrecompiledHeader(buildContext, project, item);
                 if (project.precompiledHeaderInfo_.IsValid())
                 {
                     break;
-                }
-            }
-            if (project.precompiledHeaderInfo_.IsValid())
-            {
-                foreach (Microsoft.Build.Evaluation.ProjectItem item in compileItems)
-                {
-                    if (!IsBuildTarget(item))
-                    {
-                        continue;
-                    }
-                    string evalInclude = item.EvaluatedInclude;
-                    if (IsCreatePrecompiledHeader(item))
-                    {
-                        ToolTask task = (ToolTask)Activator.CreateInstance(buildContext.CppTaskAssembly_.GetType("Microsoft.Build.CPPTasks.CL"));
-                        string compilerPDB = string.Empty;
-                        string pchCompilerOptions = GenerateTaskCommandLine(task, new string[] { "ObjectFileName", "AssemblerListingLocation", "ProgramDataBaseFileName", "ModuleOutputFile", "XMLDocumentationFileName", "DiagnosticsFormat" }, ref project.compilerPDB_, item.Metadata, null);
-#if false
-                        switch (buildContext.platform_)
-                        {
-                            case "x86":
-                                pchCompilerOptions += " /D_M_IX86=600";
-                                break;
-                            case "x64":
-                                pchCompilerOptions += " /D_M_X64=100";
-                                break;
-                            case "arm":
-                                pchCompilerOptions += " /D_M_ARM=7";
-                                break;
-                            case "arm64":
-                                pchCompilerOptions += " /D_M_ARM64=1";
-                                break;
-                        }
-#endif
-                        pchCompilerOptions = pchCompilerOptions.Replace("  ", " ").Replace("\\\\", "\\").Replace("/TP", string.Empty).Replace("/TC", string.Empty).Replace("/D ", "/D");
-                        if(!project.precompiledHeaderInfo_.PCHInputFile_.EndsWith(".c"))
-                        {
-                            pchCompilerOptions += " /TP ";
-                        }
-                        project.precompiledHeaderInfo_.PCHOptions_ = $"\"%1\" /Fo\"%3\" /Fd\"$CompilerPDB$\" /FS {pchCompilerOptions}";
-                    }
                 }
             }
 
@@ -1999,10 +2017,11 @@ namespace VSFastBuildVSIX
                     resourceCompilerOptions = resourceCompilerOptions.Replace("  ", " ").Replace("\\\\", "\\").Replace("/TP", string.Empty).Replace("/TC", string.Empty).Replace("/D ", "/D");
                     string formattedCompilerOptions = $"{resourceCompilerOptions} /fo\"%2\" \"%1\"";
                     string evaluatedInclude = System.IO.Path.GetFullPath(System.IO.Path.Combine(project.rootDir_, item.EvaluatedInclude)).Replace("/", "\\").Replace("\\\\", "\\");
-                    IEnumerable<FBCompileItem> matchingNodes = project.CompileItems.Where(el => el.AddIfMatches(ItemType.Resource, evaluatedInclude, formattedCompilerOptions, "res"));
+                    string outputPath = GetOutput(item, project);
+                    IEnumerable<FBCompileItem> matchingNodes = project.CompileItems.Where(el => el.AddIfMatches(ItemType.Resource, outputPath, evaluatedInclude, formattedCompilerOptions, "res"));
                     if (!matchingNodes.Any())
                     {
-                        project.CompileItems.Add(new FBCompileItem(ItemType.Resource, evaluatedInclude, formattedCompilerOptions, "res"));
+                        project.CompileItems.Add(new FBCompileItem(ItemType.Resource, outputPath, evaluatedInclude, formattedCompilerOptions, "res"));
                         project.ExistsFlags.Set((int)ItemType.Resource, true);
                     }
                 }
@@ -2052,11 +2071,12 @@ namespace VSFastBuildVSIX
 #endif
                     optionBuilder = optionBuilder.Replace("   ", " ").Replace("  ", " ");
                     string formattedCompilerOptions = optionBuilder.ToString();
-                    string evaluatedInclude = System.IO.Path.GetFullPath(System.IO.Path.Combine(project.rootDir_, item.EvaluatedInclude)).Replace("\\", "/").Replace("//", "/");
-                    IEnumerable<FBCompileItem> matchingNodes = project.CompileItems.Where(el => el.AddIfMatches(ItemType.CXX, evaluatedInclude, formattedCompilerOptions, "obj"));
+                    string evaluatedInclude = System.IO.Path.GetFullPath(System.IO.Path.Combine(project.rootDir_, item.EvaluatedInclude)).Replace("/", "\\").Replace("\\\\", "\\");
+                    string outputPath = GetOutput(item, project);
+                    IEnumerable<FBCompileItem> matchingNodes = project.CompileItems.Where(el => el.AddIfMatches(ItemType.CXX, outputPath, evaluatedInclude, formattedCompilerOptions, "obj"));
                     if (!matchingNodes.Any())
                     {
-                        project.CompileItems.Add(new FBCompileItem(ItemType.CXX, evaluatedInclude, formattedCompilerOptions, "obj"));
+                        project.CompileItems.Add(new FBCompileItem(ItemType.CXX, outputPath, evaluatedInclude, formattedCompilerOptions, "obj"));
                         project.ExistsFlags.Set((int)ItemType.CXX, true);
                     }
                 }
@@ -2068,11 +2088,12 @@ namespace VSFastBuildVSIX
                 foreach (Microsoft.Build.Evaluation.ProjectItem item in cudaCompileItems)
                 {
                     string tempCompilerOptions = CreateCUDACommandline(buildContext.optionBuilder_, item.Metadata);
-                    string evaluatedInclude = System.IO.Path.GetFullPath(System.IO.Path.Combine(project.rootDir_, item.EvaluatedInclude)).Replace("\\", "/").Replace("//", "/");
-                    IEnumerable<FBCompileItem> matchingNodes = project.CompileItems.Where(el => el.AddIfMatches(ItemType.CUDA, evaluatedInclude, tempCompilerOptions, "obj"));
+                    string evaluatedInclude = System.IO.Path.GetFullPath(System.IO.Path.Combine(project.rootDir_, item.EvaluatedInclude)).Replace("/", "\\").Replace("\\\\", "\\");
+                    string outputPath = GetOutput(item, project);
+                    IEnumerable<FBCompileItem> matchingNodes = project.CompileItems.Where(el => el.AddIfMatches(ItemType.CUDA, outputPath, evaluatedInclude, tempCompilerOptions, "obj"));
                     if (!matchingNodes.Any())
                     {
-                        project.CompileItems.Add(new FBCompileItem(ItemType.CUDA, evaluatedInclude, tempCompilerOptions, "obj"));
+                        project.CompileItems.Add(new FBCompileItem(ItemType.CUDA, outputPath, evaluatedInclude, tempCompilerOptions, "obj"));
                         project.ExistsFlags.Set((int)ItemType.CUDA, true);
                     }
                 }
@@ -2084,11 +2105,12 @@ namespace VSFastBuildVSIX
                 foreach (Microsoft.Build.Evaluation.ProjectItem item in MASMCompileItems)
                 {
                     string tempCompilerOptions = CreateMASMCommandline(buildContext.optionBuilder_, item.Metadata);
-                    string evaluatedInclude = System.IO.Path.GetFullPath(System.IO.Path.Combine(project.rootDir_, item.EvaluatedInclude)).Replace("\\", "/").Replace("//", "/");
-                    IEnumerable<FBCompileItem> matchingNodes = project.CompileItems.Where(el => el.AddIfMatches(ItemType.MASM, evaluatedInclude, tempCompilerOptions, "obj"));
+                    string evaluatedInclude = System.IO.Path.GetFullPath(System.IO.Path.Combine(project.rootDir_, item.EvaluatedInclude)).Replace("/", "\\").Replace("\\\\", "\\");
+                    string outputPath = GetOutput(item, project);
+                    IEnumerable<FBCompileItem> matchingNodes = project.CompileItems.Where(el => el.AddIfMatches(ItemType.MASM, outputPath, evaluatedInclude, tempCompilerOptions, "obj"));
                     if (!matchingNodes.Any())
                     {
-                        project.CompileItems.Add(new FBCompileItem(ItemType.MASM, evaluatedInclude, tempCompilerOptions, "obj"));
+                        project.CompileItems.Add(new FBCompileItem(ItemType.MASM, outputPath, evaluatedInclude, tempCompilerOptions, "obj"));
                         project.ExistsFlags.Set((int)ItemType.MASM, true);
                     }
                 }
@@ -2110,10 +2132,11 @@ namespace VSFastBuildVSIX
                     optionBuilder = optionBuilder.Replace("   ", " ").Replace("  ", " ");
                     string formattedCompilerOptions = optionBuilder.ToString();
                     string evaluatedInclude = System.IO.Path.GetFullPath(System.IO.Path.Combine(project.rootDir_, item.EvaluatedInclude)).Replace("\\\\", "\\");
-                    IEnumerable<FBCompileItem> matchingNodes = project.CompileItems.Where(el => el.AddIfMatches(ItemType.HLSL, evaluatedInclude, formattedCompilerOptions, "cso"));
+                    string outputPath = GetOutput(item, project);
+                    IEnumerable<FBCompileItem> matchingNodes = project.CompileItems.Where(el => el.AddIfMatches(ItemType.HLSL, outputPath, evaluatedInclude, formattedCompilerOptions, "cso"));
                     if (!matchingNodes.Any())
                     {
-                        project.CompileItems.Add(new FBCompileItem(ItemType.HLSL, evaluatedInclude, formattedCompilerOptions, "cso"));
+                        project.CompileItems.Add(new FBCompileItem(ItemType.HLSL, outputPath, evaluatedInclude, formattedCompilerOptions, "cso"));
                         project.ExistsFlags.Set((int)ItemType.HLSL, true);
                     }
                 }
@@ -2370,14 +2393,12 @@ namespace VSFastBuildVSIX
                 stringBuilder.AppendLine($"  ObjectList('{pchTargetName}')");
                 stringBuilder.AppendLine("  {");
                 stringBuilder.AppendLine($"    .Compiler = .{buildContext.compilerName_}");
-                stringBuilder.AppendLine($"    .CompilerOptions = '{project.precompiledHeaderInfo_.PCHOptions_}'");
+                stringBuilder.AppendLine($"    .CompilerOptions = '{project.precompiledHeaderInfo_.compilerOptions_}'");
+                stringBuilder.AppendLine($"    .CompilerOutputPath = '{System.IO.Path.GetDirectoryName(project.precompiledHeaderInfo_.PCHOutputFile_)}'");
 
                 stringBuilder.AppendLine($"    .PCHInputFile = '{project.precompiledHeaderInfo_.PCHInputFile_}'");
                 stringBuilder.AppendLine($"    .PCHOutputFile = '{project.precompiledHeaderInfo_.PCHOutputFile_}'");
-                if (!string.IsNullOrEmpty(project.precompiledHeaderInfo_.PCHOptions_))
-                {
-                    stringBuilder.AppendLine($"    .PCHOptions = '{project.precompiledHeaderInfo_.PCHOptions_}'");
-                }
+                stringBuilder.AppendLine($"    .PCHOptions = '{project.precompiledHeaderInfo_.PCHOptions_}'");
                 stringBuilder.AppendLine("    .Hidden = true");
                 stringBuilder.AppendLine("  }");
             }
@@ -2417,7 +2438,7 @@ namespace VSFastBuildVSIX
                     {
                         stringBuilder.AppendLine($"    .CompilerOptions = ' {item.Options}'");
                     }
-                    stringBuilder.AppendLine($"    .CompilerOutputPath = '{project.intDir_}'");
+                    stringBuilder.AppendLine($"    .CompilerOutputPath = '{item.OutputPath}'");
                     stringBuilder.AppendLine($"    .CompilerOutputExtension = '.{item.OutputExtension}'");
                     stringBuilder.AppendLine("    .CompilerOutputKeepBaseExtension = false");
                     stringBuilder.AppendLine("    .CompilerInputFiles =");
@@ -2464,7 +2485,7 @@ namespace VSFastBuildVSIX
                     {
                         stringBuilder.AppendLine($"    .CompilerOptions = ' {item.Options}'");
                     }
-                    stringBuilder.AppendLine($"    .CompilerOutputPath = '{project.intDir_}'");
+                    stringBuilder.AppendLine($"    .CompilerOutputPath = '{item.OutputPath}'");
                     stringBuilder.AppendLine($"    .CompilerOutputExtension = '.{item.OutputExtension}'");
                     stringBuilder.AppendLine("    .CompilerOutputKeepBaseExtension = false");
                     stringBuilder.AppendLine("    .CompilerInputFiles =");
@@ -2511,7 +2532,7 @@ namespace VSFastBuildVSIX
                     {
                         stringBuilder.AppendLine($"    .CompilerOptions = ' {item.Options}'");
                     }
-                    stringBuilder.AppendLine($"    .CompilerOutputPath = '{project.intDir_}'");
+                    stringBuilder.AppendLine($"    .CompilerOutputPath = '{item.OutputPath}'");
                     stringBuilder.AppendLine($"    .CompilerOutputExtension = '.{item.OutputExtension}'");
                     stringBuilder.AppendLine("    .CompilerOutputKeepBaseExtension = false");
                     stringBuilder.AppendLine("    .CompilerInputFiles =");
@@ -2559,7 +2580,7 @@ namespace VSFastBuildVSIX
                     {
                         stringBuilder.AppendLine($"    .CompilerOptions = ' {item.Options}'");
                     }
-                    stringBuilder.AppendLine($"    .CompilerOutputPath = '{project.intDir_}'");
+                    stringBuilder.AppendLine($"    .CompilerOutputPath = '{item.OutputPath}'");
                     stringBuilder.AppendLine($"    .CompilerOutputExtension = '.{item.OutputExtension}'");
                     stringBuilder.AppendLine("    .CompilerOutputKeepBaseExtension = false");
                     stringBuilder.AppendLine("    .CompilerInputFiles =");
@@ -2637,7 +2658,7 @@ namespace VSFastBuildVSIX
                     //    }
                     //}
                     stringBuilder.AppendLine($"    .CompilerOptions = ' {item.Options}'");
-                    stringBuilder.AppendLine($"    .CompilerOutputPath = '{project.intDir_}'");
+                    stringBuilder.AppendLine($"    .CompilerOutputPath = '{item.OutputPath}'");
                     stringBuilder.AppendLine($"    .CompilerOutputExtension = '.{item.OutputExtension}'");
                     stringBuilder.AppendLine("    .CompilerOutputKeepBaseExtension = false");
                     if (usedUnity)

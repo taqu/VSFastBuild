@@ -2,7 +2,7 @@ using System.CodeDom;
 using System.ComponentModel;
 using System.Runtime.InteropServices;
 
-namespace VSFastBuildVSIX.Options
+namespace VSFastBuildVSIX
 {
     internal partial class OptionsProvider
     {
@@ -17,6 +17,7 @@ namespace VSFastBuildVSIX.Options
         public const string DefaultPath = "FBuild.exe";
         public const bool DefaultDistributed = true;
         public const string DefaultArguments = "-dist -ide -monitor";
+        public const bool DefaultEnableGeneration = true;
         public const bool DefaultGenOnly = false;
         public const bool DefaultUnity = false;
         public const bool DefaultOpenMonitor = true;
@@ -39,6 +40,12 @@ namespace VSFastBuildVSIX.Options
         [Description("Arguments which will be passed to FASTBuild (default \"-dist -cache -ide -monitor\").")]
         [DefaultValue(true)]
         public string Arguments { get; set; } = DefaultArguments;
+
+        [Category("Options")]
+        [DisplayName("Enable Generation")]
+        [Description("Enable bff file generation.")]
+        [DefaultValue(true)]
+        public bool EnableGeneration { get; set; } = DefaultEnableGeneration;
 
         [Category("Options")]
         [DisplayName("Generate Only")]

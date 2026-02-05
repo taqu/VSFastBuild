@@ -1,34 +1,61 @@
-using Microsoft.VisualStudio;
-using Microsoft.VisualStudio.Shell.Interop;
-using System;
+using Microsoft.VisualStudio.PlatformUI;
+using Microsoft.VisualStudio.Shell;
 using System.Collections.Generic;
 using System.ComponentModel.Design;
 using System.Linq;
-using System.Runtime.InteropServices;
-using System.Text;
-using System.Threading.Tasks;
-using VSFastBuildVSIX.Options;
-using static VSFastBuildVSIX.CommandBuildProject;
 using static VSFastBuildVSIX.CommandBFFFiles;
+using static VSFastBuildVSIX.CommandBuildProject;
 
 namespace VSFastBuildVSIX
 {
     [Command(PackageGuids.VSFastBuildVSIXString, PackageIds.CommandFBuildBFFFiles)]
-    internal sealed class CommandBFFFiles : BaseDynamicCommand<CommandBFFFiles, BFFFile>
+    internal sealed class CommandBFFFiles : BaseCommand<CommandBFFFiles>
     {
+        public enum Type
+        {
+            Menu,
+            Button,
+        }
         public class BFFFile
         {
             public string FilePath { get; set; } = string.Empty;
+            public string RelativePath { get; set; } = string.Empty;
             public string FileName { get; set; } = string.Empty;
         }
 
         private List<BFFFile> files_ = new List<BFFFile>();
 
-        protected override void BeforeQueryStatus(OleMenuCommand menuItem, EventArgs e, BFFFile item)
+        private void MenuCommandBeforeQueryStatus(object sender, EventArgs e)
         {
-            menuItem.Text = item.FileName;
+
+        }
+        protected override Task InitializeCompletedAsync()
+        {
+            return base.InitializeCompletedAsync();
         }
 
+        protected override void BeforeQueryStatus(EventArgs e)
+        {
+            VSFastBuildVSIXPackage package;
+            if (!VSFastBuildVSIXPackage.TryGetPackage(out package))
+            {
+                return;
+            }
+            IServiceProvider serviceProvider = package;
+            OleMenuCommandService commandService = serviceProvider.GetService(typeof(IMenuCommandService)) as OleMenuCommandService;
+            if (commandService == null)
+            {
+                return;
+            }
+            CommandID commandID = new CommandID(Command.CommandID.Guid, Command.CommandID.ID + 1);
+            if (null != commandService.FindCommand(commandID))
+            {
+                return;
+            }
+            OleMenuCommand menuCommand = new OleMenuCommand(MenuCommandBeforeQueryStatus, commandID);
+            menuCommand.Text = "MenuCommand_Test";
+            commandService.AddCommand(menuCommand);
+        }
         private void GatherBFFs(string root, string solutionDir)
         {
             foreach (string path in System.IO.Directory.GetFiles(root, "*.bff"))
@@ -37,17 +64,21 @@ namespace VSFastBuildVSIX
                 {
                     continue;
                 }
+                string relativePath;
                 string name;
                 if (path.StartsWith(solutionDir))
                 {
-                    name = path.Substring(solutionDir.Length + 1);
+                    relativePath = path.Substring(solutionDir.Length + 1);
+                    name = System.IO.Path.GetFileName(path);
                 }
                 else
                 {
+                    relativePath = string.Empty;
                     name = System.IO.Path.GetFileName(path);
                 }
                 BFFFile bff = new BFFFile();
                 bff.FilePath = path;
+                bff.RelativePath = relativePath;
                 bff.FileName = name;
                 files_.Add(bff);
             }
@@ -55,10 +86,10 @@ namespace VSFastBuildVSIX
 
         private void TraverseProjectItems(EnvDTE.Project project, string solutionDir)
         {
-            foreach(EnvDTE.ProjectItem projectItem in project.ProjectItems)
+            foreach (EnvDTE.ProjectItem projectItem in project.ProjectItems)
             {
                 EnvDTE.Project subProject = projectItem.Object as EnvDTE.Project;
-                if(null == subProject)
+                if (null == subProject)
                 {
                     continue;
                 }
@@ -76,6 +107,7 @@ namespace VSFastBuildVSIX
             }
         }
 
+#if false
         protected override IReadOnlyList<BFFFile> GetItems()
         {
             ThreadHelper.ThrowIfNotOnUIThread();
@@ -112,9 +144,11 @@ namespace VSFastBuildVSIX
             }
             return files_;
         }
+#endif
 
-        protected override async Task ExecuteAsync(OleMenuCmdEventArgs e, BFFFile bff)
+        protected override async Task ExecuteAsync(OleMenuCmdEventArgs e)
         {
+#if false
             VSFastBuildVSIXPackage package = await VSFastBuildVSIXPackage.GetPackageAsync();
             if (null == package)
             {
@@ -148,6 +182,7 @@ namespace VSFastBuildVSIX
                 await CommandBuildProject.StopMonitorAsync(package);
             }
             package.LeaveBuildProcess();
+#endif
         }
     }
 }

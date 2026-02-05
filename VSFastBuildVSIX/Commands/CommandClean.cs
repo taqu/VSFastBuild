@@ -71,6 +71,16 @@ namespace VSFastBuildVSIX
             }
         }
 
+        protected override void BeforeQueryStatus(EventArgs e)
+        {
+            OptionsPage options = VSFastBuildVSIXPackage.Options;
+            if(null == options)
+            {
+                return;
+            }
+            Command.Enabled = options.EnableGeneration;
+        }
+
         protected override async Task ExecuteAsync(OleMenuCmdEventArgs e)
         {
             VSFastBuildVSIXPackage package = await VSFastBuildVSIXPackage.GetPackageAsync();

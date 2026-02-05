@@ -7,7 +7,6 @@ using Microsoft.VisualStudio.Shell.Interop;
 using System.Runtime.InteropServices;
 using System.Threading;
 using System.Threading.Tasks;
-using VSFastBuildVSIX.Options;
 
 namespace VSFastBuildVSIX
 {
@@ -57,7 +56,7 @@ namespace VSFastBuildVSIX
 		{
 			get
 			{
-                return VSFastBuildVSIX.Options.OptionsPage.Instance;
+                return VSFastBuildVSIX.OptionsPage.Instance;
 			}
 		}
 
