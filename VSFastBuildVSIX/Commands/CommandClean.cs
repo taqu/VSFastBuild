@@ -2,7 +2,7 @@ using EnvDTE;
 using System.Collections.Generic;
 using static VSFastBuildVSIX.CommandBuildProject;
 
-namespace VSFastBuildVSIX.Commands
+namespace VSFastBuildVSIX
 {
     [Command(PackageGuids.VSFastBuildVSIXString, PackageIds.CommandFBuildClean)]
     internal sealed class CommandClean : BaseCommand<CommandClean>

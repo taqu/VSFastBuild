@@ -1,18 +1,18 @@
-﻿using EnvDTE;
+using EnvDTE;
 using EnvDTE80;
 using Microsoft.VisualStudio.Threading;
 using System.Collections.Generic;
 using System.Runtime.Remoting.Contexts;
 using static VSFastBuildVSIX.CommandBuildProject;
 
-namespace VSFastBuildVSIX.Commands
+namespace VSFastBuildVSIX
 {
     [Command(PackageGuids.VSFastBuildVSIXString, PackageIds.CommandFBuildSolution)]
     internal sealed class CommandBuildSolution : BaseCommand<CommandBuildSolution>
     {
         private string commandText_ = string.Empty;
 
-        private static void TraverseProjectItems(List<EnvDTE.Project> targets, EnvDTE.ProjectItems projectItems, SolutionConfiguration2 solutionConfiguration, SolutionContexts solutionContexts)
+        public static void TraverseProjectItems(List<EnvDTE.Project> targets, EnvDTE.ProjectItems projectItems, SolutionConfiguration2 solutionConfiguration, SolutionContexts solutionContexts)
         {
             foreach (EnvDTE.ProjectItem projectItem in projectItems)
             {
@@ -38,7 +38,7 @@ namespace VSFastBuildVSIX.Commands
             }
         }
 
-        private static bool ShouldBuild(EnvDTE.Project project, SolutionConfiguration2 solutionConfiguration, SolutionContexts solutionContexts)
+        public static bool ShouldBuild(EnvDTE.Project project, SolutionConfiguration2 solutionConfiguration, SolutionContexts solutionContexts)
         {
             foreach (SolutionContext context in solutionContexts)
             {

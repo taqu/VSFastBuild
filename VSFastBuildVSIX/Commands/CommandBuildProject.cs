@@ -971,6 +971,17 @@ namespace VSFastBuildVSIX
                 hasher.Update(bytes);
             }
             string hash = ByteArrayToHexString(hasher.Finish());
+            Result result = new Result();
+            result.success_ = true;
+            result.bffPath_ = bffPath;
+            result.bffName_ = bffName;
+            result.project_ = new ResultProject();
+            result.project_.name_ = System.IO.Path.GetFileNameWithoutExtension(package.DTE.Solution.FileName);
+            result.project_.projectDir_ = rootDirectory;
+            result.project_.intDir_ = string.Empty;
+            result.project_.configuration_ = solutionConfiguration.Name;
+            result.project_.platform_ = solutionConfiguration.PlatformName;
+            result.project_.hash_ = hash;
             if (System.IO.File.Exists(bffPath))
             {
                 try
@@ -979,6 +990,7 @@ namespace VSFastBuildVSIX
                     line = line.TrimPrefix("//");
                     if (line == hash)
                     {
+                        results.Add(result);
                         return;
                     }
                 }
@@ -988,6 +1000,7 @@ namespace VSFastBuildVSIX
             }
             stringBuilder.Clear();
             stringBuilder.AppendLine($"//{hash}");
+            stringBuilder.AppendLine("#once");
             foreach (Result project in results)
             {
                 stringBuilder.AppendLine($"#include \"{GetProjectBFFRelativePath(package, project)}\"");
@@ -1017,22 +1030,11 @@ namespace VSFastBuildVSIX
             stringBuilder.AppendLine("    }");
             stringBuilder.AppendLine("  }");
             stringBuilder.AppendLine("}");
+            results.Add(result);
 
             try
             {
                 System.IO.File.WriteAllText(bffPath, stringBuilder.ToString());
-                Result result = new Result();
-                result.success_ = true;
-                result.bffPath_ = bffPath;
-                result.bffName_ = bffName;
-                result.project_ = new ResultProject();
-                result.project_.name_ = System.IO.Path.GetFileNameWithoutExtension(package.DTE.Solution.FileName);
-                result.project_.projectDir_ = rootDirectory;
-                result.project_.intDir_ = string.Empty;
-                result.project_.configuration_ = solutionConfiguration.Name;
-                result.project_.platform_ = solutionConfiguration.PlatformName;
-                result.project_.hash_ = hash;
-                results.Add(result);
             }
             catch
             {
@@ -2360,48 +2362,26 @@ namespace VSFastBuildVSIX
                 }
             }
 
-            #if false
-            // Clean tlog
+            // PCH
+            if (project.precompiledHeaderInfo_.IsValid())
             {
-                string tlogDir = System.IO.Path.Combine(project.intDir_, project.targetName_ + ".tlog");
-                string lastbuildstate = System.IO.Path.Combine(tlogDir, $"{project.targetName_}.lastbuildstate");
-
-                string[] lines = buildContext.lastbuildstate_.Split(new char[]{'\r', '\n' }, StringSplitOptions.RemoveEmptyEntries);
-                string tlogWriteName = $"{project.targetName_}_tlog_write";
-                stringBuilder.AppendLine($"  TextFile('{tlogWriteName}')");
+                string pchTargetName = $"{project.targetName_}_pch";
+                dependencies.Add(pchTargetName);
+                stringBuilder.AppendLine($"  ObjectList('{pchTargetName}')");
                 stringBuilder.AppendLine("  {");
-                stringBuilder.AppendLine($"    .TextFileOutput = '{lastbuildstate}'");
-                stringBuilder.AppendLine("    .TextFileInputStrings =");
-                stringBuilder.AppendLine("    {");
-                for(int j=0; j<lines.Length; ++j)
+                stringBuilder.AppendLine($"    .Compiler = .{buildContext.compilerName_}");
+                stringBuilder.AppendLine($"    .CompilerOptions = '{project.precompiledHeaderInfo_.PCHOptions_}'");
+
+                stringBuilder.AppendLine($"    .PCHInputFile = '{project.precompiledHeaderInfo_.PCHInputFile_}'");
+                stringBuilder.AppendLine($"    .PCHOutputFile = '{project.precompiledHeaderInfo_.PCHOutputFile_}'");
+                if (!string.IsNullOrEmpty(project.precompiledHeaderInfo_.PCHOptions_))
                 {
-                    if(j == (lines.Length - 1))
-                    {
-                        stringBuilder.AppendLine($"      '{lines[j]}'");
-                    }
-                    else
-                    {
-                        stringBuilder.AppendLine($"      '{lines[j]}',");
-                    }
+                    stringBuilder.AppendLine($"    .PCHOptions = '{project.precompiledHeaderInfo_.PCHOptions_}'");
                 }
-                stringBuilder.AppendLine("    }");
-                stringBuilder.AppendLine("    .TextFileAlways = false");
                 stringBuilder.AppendLine("    .Hidden = true");
                 stringBuilder.AppendLine("  }");
-                dependencies.Add(tlogWriteName);
-
-                #if false
-                string tlogCleanName = $"{project.targetName_}_tlog_clean";
-                stringBuilder.AppendLine($"  RemoveDir('{tlogCleanName}')");
-                stringBuilder.AppendLine("  {");
-                stringBuilder.AppendLine($"    .RemovePaths = '{tlogDir}'");
-                stringBuilder.AppendLine("    .RemovePathsRecurse = false");
-                stringBuilder.AppendLine("    .RemovePatterns = 'unsuccessfulbuild'");
-                stringBuilder.AppendLine("  }");
-                dependencies.Add(tlogCleanName);
-                #endif
             }
-            #endif
+
             string dependenciesName = string.Empty;
             if (0 < dependencies.Count)
             {
@@ -2647,15 +2627,15 @@ namespace VSFastBuildVSIX
 
                     stringBuilder.AppendLine($"    .Compiler = .{buildContext.compilerName_}");
 
-                    if (project.precompiledHeaderInfo_.IsValid())
-                    {
-                        stringBuilder.AppendLine($"    .PCHInputFile = '{project.precompiledHeaderInfo_.PCHInputFile_}'");
-                        stringBuilder.AppendLine($"    .PCHOutputFile = '{project.precompiledHeaderInfo_.PCHOutputFile_}'");
-                        if (!string.IsNullOrEmpty(project.precompiledHeaderInfo_.PCHOptions_))
-                        {
-                            stringBuilder.AppendLine($"    .PCHOptions = '{project.precompiledHeaderInfo_.PCHOptions_}'");
-                        }
-                    }
+                    //if (project.precompiledHeaderInfo_.IsValid())
+                    //{
+                    //    stringBuilder.AppendLine($"    .PCHInputFile = '{project.precompiledHeaderInfo_.PCHInputFile_}'");
+                    //    stringBuilder.AppendLine($"    .PCHOutputFile = '{project.precompiledHeaderInfo_.PCHOutputFile_}'");
+                    //    if (!string.IsNullOrEmpty(project.precompiledHeaderInfo_.PCHOptions_))
+                    //    {
+                    //        stringBuilder.AppendLine($"    .PCHOptions = '{project.precompiledHeaderInfo_.PCHOptions_}'");
+                    //    }
+                    //}
                     stringBuilder.AppendLine($"    .CompilerOptions = ' {item.Options}'");
                     stringBuilder.AppendLine($"    .CompilerOutputPath = '{project.intDir_}'");
                     stringBuilder.AppendLine($"    .CompilerOutputExtension = '.{item.OutputExtension}'");

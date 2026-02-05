@@ -1,10 +1,11 @@
-﻿using EnvDTE;
+using EnvDTE;
 using EnvDTE80;
 using Microsoft.VisualStudio.Threading;
 using System.Collections.Generic;
 using static VSFastBuildVSIX.CommandBuildProject;
+using static VSFastBuildVSIX.CommandBuildSolution;
 
-namespace VSFastBuildVSIX.Commands
+namespace VSFastBuildVSIX
 {
     [Command(PackageGuids.VSFastBuildVSIXString, PackageIds.CommandFBuildGenerateSolution)]
     internal sealed class CommandGenerateSolution : BaseCommand<CommandGenerateSolution>
@@ -25,23 +26,22 @@ namespace VSFastBuildVSIX.Commands
             EnvDTE.Solution solution = dte.Solution;
             SolutionBuild solutionBuild = solution.SolutionBuild;
             SolutionConfiguration2 solutionConfiguration = solutionBuild.ActiveConfiguration as SolutionConfiguration2;
+            SolutionContexts solutionContexts = solutionConfiguration.SolutionContexts;
             List<EnvDTE.Project> targets = new List<EnvDTE.Project>();
-            foreach (EnvDTE.Project project in dte.Solution.Projects)
+            foreach (EnvDTE.Project project in solution.Projects)
             {
-                if(ProjectTypes.WindowsCPlusPlus != project.Kind)
+                if (ProjectTypes.WindowsCPlusPlus == project.Kind)
                 {
-                    continue;
-                }
-
-                foreach (SolutionContext context in solutionConfiguration.SolutionContexts)
-                {
-                    if (System.IO.Path.GetFileName(context.ProjectName) == System.IO.Path.GetFileName(project.FileName)
-                        && context.ConfigurationName == solutionConfiguration.Name
-                        && context.PlatformName == solutionConfiguration.PlatformName
-                        && context.ShouldBuild)
+                    if (ShouldBuild(project, solutionConfiguration, solutionContexts))
                     {
                         targets.Add(project);
                     }
+                    continue;
+                }
+                if (ProjectTypes.ProjectFolders == project.Kind)
+                {
+                    TraverseProjectItems(targets, project.ProjectItems, solutionConfiguration, solutionContexts);
+                    continue;
                 }
             }
 
