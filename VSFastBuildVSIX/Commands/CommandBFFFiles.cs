@@ -1,8 +1,10 @@
+using Microsoft.VisualStudio.CommandBars;
 using Microsoft.VisualStudio.PlatformUI;
 using Microsoft.VisualStudio.Shell;
 using System.Collections.Generic;
 using System.ComponentModel.Design;
 using System.Linq;
+using System.Security.RightsManagement;
 using static VSFastBuildVSIX.CommandBFFFiles;
 using static VSFastBuildVSIX.CommandBuildProject;
 
@@ -16,14 +18,25 @@ namespace VSFastBuildVSIX
             Menu,
             Button,
         }
-        public class BFFFile
+        public struct BFFFile
         {
-            public string FilePath { get; set; } = string.Empty;
-            public string RelativePath { get; set; } = string.Empty;
-            public string FileName { get; set; } = string.Empty;
+            public CommandID id_;
+            public int order_;
+            public string filePath_;
+            public string relativePath_;
+            public string fileName_;
+        }
+
+        public struct BFFNode
+        {
+            public int index_;
+            public string name_;
+            public List<BFFNode> siblings_;
+            public List<BFFNode> children_;
         }
 
         private List<BFFFile> files_ = new List<BFFFile>();
+        private List<BFFNode> nodes_ = new List<BFFNode>();
 
         private void MenuCommandBeforeQueryStatus(object sender, EventArgs e)
         {
@@ -34,6 +47,21 @@ namespace VSFastBuildVSIX
             return base.InitializeCompletedAsync();
         }
 
+        private void ClearMenus(OleMenuCommandService menuCommandService)
+        {
+            foreach (BFFFile file in files_)
+            {
+                MenuCommand menuCommand = menuCommandService.FindCommand(file.id_);
+                if (null == menuCommand)
+                {
+                    continue;
+                }
+                menuCommandService.RemoveCommand(menuCommand);
+            }
+            files_.Clear();
+            nodes_.Clear();
+        }
+
         protected override void BeforeQueryStatus(EventArgs e)
         {
             VSFastBuildVSIXPackage package;
@@ -42,25 +70,57 @@ namespace VSFastBuildVSIX
                 return;
             }
             IServiceProvider serviceProvider = package;
-            OleMenuCommandService commandService = serviceProvider.GetService(typeof(IMenuCommandService)) as OleMenuCommandService;
-            if (commandService == null)
+            OleMenuCommandService menuCommandService = serviceProvider.GetService(typeof(IMenuCommandService)) as OleMenuCommandService;
+            if (menuCommandService == null)
             {
                 return;
             }
-            CommandID commandID = new CommandID(Command.CommandID.Guid, Command.CommandID.ID + 1);
-            if (null != commandService.FindCommand(commandID))
+            EnvDTE80.DTE2 dte = package.DTE;
+            if (null == dte.Solution || string.IsNullOrEmpty(dte.Solution.FullName))
             {
                 return;
             }
-            OleMenuCommand menuCommand = new OleMenuCommand(MenuCommandBeforeQueryStatus, commandID);
-            menuCommand.Text = "MenuCommand_Test";
-            commandService.AddCommand(menuCommand);
+
+            ClearMenus(menuCommandService);
+            string solutionDir = System.IO.Path.GetDirectoryName(dte.Solution.FullName);
+            GatherBFFs(solutionDir, solutionDir);
+            OleMenuCommand rootCommand = Command;
+            foreach (EnvDTE.Project project in dte.Solution.Projects)
+            {
+                if (null == project)
+                {
+                    continue;
+                }
+                if (SupportedProject(project) && !string.IsNullOrEmpty(project.FullName))
+                {
+                    string projectDir = System.IO.Path.GetDirectoryName(project.FullName);
+                    GatherBFFs(projectDir, solutionDir);
+                    continue;
+                }
+                if (ProjectTypes.ProjectFolders == project.Kind)
+                {
+                    TraverseProjectItems(project, solutionDir);
+                    continue;
+                }
+            }
+            AddNodeFiles();
+            BuildTree();
+            PrintTree();
+            //CommandID commandID = new CommandID(Command.CommandID.Guid, Command.CommandID.ID + 1);
+            //if (null != menuCommandService.FindCommand(commandID))
+            //{
+            //    return;
+            //}
+            //OleMenuCommand menuCommand = new OleMenuCommand(MenuCommandBeforeQueryStatus, commandID);
+            //menuCommand.Text = "MenuCommand_Test";
+            //menuCommandService.AddCommand(menuCommand);
         }
+
         private void GatherBFFs(string root, string solutionDir)
         {
             foreach (string path in System.IO.Directory.GetFiles(root, "*.bff"))
             {
-                if (files_.Any(x => x.FilePath == path))
+                if (files_.Any(x => x.filePath_ == path))
                 {
                     continue;
                 }
@@ -77,9 +137,11 @@ namespace VSFastBuildVSIX
                     name = System.IO.Path.GetFileName(path);
                 }
                 BFFFile bff = new BFFFile();
-                bff.FilePath = path;
-                bff.RelativePath = relativePath;
-                bff.FileName = name;
+                bff.id_ = new CommandID(Guid.Empty, -1);
+                bff.filePath_ = path.Replace('/', '\\');
+                bff.relativePath_ = relativePath.Replace('/', '\\');
+                bff.fileName_ = name;
+                bff.order_ = bff.relativePath_.Count(x => '\\' == x);
                 files_.Add(bff);
             }
         }
@@ -93,7 +155,7 @@ namespace VSFastBuildVSIX
                 {
                     continue;
                 }
-                if (ProjectTypes.ProjectFolders != subProject.Kind && !string.IsNullOrEmpty(subProject.FullName))
+                if (SupportedProject(subProject) && !string.IsNullOrEmpty(subProject.FullName))
                 {
                     string projectDir = System.IO.Path.GetDirectoryName(subProject.FullName);
                     GatherBFFs(projectDir, solutionDir);
@@ -107,44 +169,204 @@ namespace VSFastBuildVSIX
             }
         }
 
-#if false
-        protected override IReadOnlyList<BFFFile> GetItems()
+        private string GetName(string path, int count)
         {
-            ThreadHelper.ThrowIfNotOnUIThread();
-            files_.Clear();
-            VSFastBuildVSIXPackage package;
-            if(!VSFastBuildVSIXPackage.TryGetPackage(out package))
+            if (count <= 0)
             {
-                return files_;
+                return string.Empty;
             }
-            EnvDTE80.DTE2 dte = package.DTE;
-            if (null == dte.Solution || string.IsNullOrEmpty(dte.Solution.FullName))
+            for (int i = 0; i < path.Length; ++i)
             {
-                return files_;
-            }
-            string solutionDir = System.IO.Path.GetDirectoryName(dte.Solution.FullName);
-            GatherBFFs(solutionDir, solutionDir);
-            foreach (EnvDTE.Project project in dte.Solution.Projects)
-            {
-                if(null == project)
+                if (path[i] == '\\')
                 {
-                    continue;
-                }
-                if (ProjectTypes.ProjectFolders != project.Kind && string.IsNullOrEmpty(project.FullName))
-                {
-                    string projectDir = System.IO.Path.GetDirectoryName(project.FullName);
-                    GatherBFFs(projectDir, solutionDir);
-                    continue;
-                }
-                if(ProjectTypes.ProjectFolders == project.Kind)
-                {
-                    TraverseProjectItems(project, solutionDir);
-                    continue;
+                    --count;
+                    if (count <= 0)
+                    {
+                        return path.Substring(0, i + 1);
+                    }
                 }
             }
-            return files_;
+            return string.Empty;
         }
-#endif
+
+        private int FindNodeFile(string name)
+        {
+            for (int i = 0; i < files_.Count; ++i)
+            {
+                if (files_[i].fileName_ == name)
+                {
+                    return i;
+                }
+            }
+            return -1;
+        }
+
+        private void AddNodeFiles()
+        {
+            int count = files_.Count;
+            for (int i = 0; i < count; ++i)
+            {
+                string name = GetName(files_[i].relativePath_, files_[i].order_);
+                int index = FindNodeFile(name);
+                if (index < 0)
+                {
+                    BFFFile file = new BFFFile();
+                    file.id_ = new CommandID(Guid.Empty, -1);
+                    file.order_ = files_[i].order_;
+                    file.filePath_ = string.Empty;
+                    file.relativePath_ = name;
+                    file.fileName_ = name;
+                    files_.Add(file);
+                }
+            }
+            files_.Sort((BFFFile x0, BFFFile x1) =>
+            {
+                if (x0.order_ == x1.order_)
+                {
+                    return string.Compare(x0.relativePath_, x1.relativePath_);
+                }
+                return x0.order_ - x1.order_;
+            });
+        }
+
+        private int FindChildNode(BFFNode node, string name)
+        {
+            for (int i = 0; i < node.children_.Count; ++i)
+            {
+                if (node.children_[i].name_ == name)
+                {
+                    return i;
+                }
+            }
+            return -1;
+        }
+
+        private string GetFirstNodeName(string path)
+        {
+            int index = path.IndexOf('\\');
+            if (index <= 0)
+            {
+                return string.Empty;
+            }
+            return path.Substring(0, index);
+        }
+
+        private BFFNode FindDirectoryNode(BFFNode node, string path)
+        {
+            string name = GetFirstNodeName(path);
+            if (string.IsNullOrEmpty(name))
+            {
+                return node;
+            }
+            int index = FindChildNode(node, name);
+            if (index < 0)
+            {
+                return new BFFNode();
+            }
+            path = path.Substring(name.Length + 1);
+            return FindDirectoryNode(node.children_[index], path);
+        }
+
+        private BFFNode AddNode(BFFNode root, string path)
+        {
+            string name = GetFirstNodeName(path);
+            if (string.IsNullOrEmpty(name))
+            {
+                return new BFFNode();
+            }
+            int index = FindChildNode(root, name);
+            BFFNode node = new BFFNode();
+            if (index < 0)
+            {
+                node.name_ = name;
+                node.index_ = -1;
+                node.siblings_ = new List<BFFNode>();
+                node.children_ = new List<BFFNode>();
+                root.children_.Add(node);
+            }
+            else
+            {
+                node = root.children_[index];
+            }
+            string rest = path.Substring(name.Length + 1);
+            if (string.IsNullOrEmpty(rest) || rest == "\\")
+            {
+                return node;
+            }
+            return AddNode(node, rest);
+        }
+
+        private void PrintNode(BFFNode node, int parentIndent)
+        {
+            string indent = string.Empty;
+            string name = node.name_;
+            for (int i = 0; i < parentIndent; ++i)
+            {
+                indent += " ";
+            }
+            Log.OutputDebugLine($"{indent}+{name}");
+            for (int i = 0; i < name.Length; ++i)
+            {
+                indent += " ";
+            }
+            foreach (BFFNode sibling in node.siblings_)
+            {
+                Log.OutputDebugLine($"{indent}-{System.IO.Path.GetFileName(sibling.name_)} - {sibling.index_}");
+            }
+            parentIndent += name.Length + 1;
+            foreach (BFFNode child in node.children_)
+            {
+                PrintNode(child, parentIndent);
+            }
+        }
+
+        private void PrintTree()
+        {
+            if (nodes_.Count <= 0)
+            {
+                return;
+            }
+            PrintNode(nodes_[0], 0);
+        }
+
+
+        private void BuildTree()
+        {
+            for (int i = 0; i < files_.Count; ++i)
+            {
+                if (string.IsNullOrEmpty(files_[i].filePath_))
+                {
+                    if (nodes_.Count <= 0)
+                    {
+                        BFFNode node = new BFFNode();
+                        node.name_ = files_[i].relativePath_;
+                        node.index_ = i;
+                        node.siblings_ = new List<BFFNode>();
+                        node.children_ = new List<BFFNode>();
+                        nodes_.Add(node);
+                    }
+                    else
+                    {
+                        AddNode(nodes_[0], files_[i].relativePath_);
+                    }
+                }
+                else
+                {
+                    BFFNode directory = FindDirectoryNode(nodes_[0], files_[i].relativePath_);
+                    System.Diagnostics.Debug.Assert(null != directory.name_);
+                    if (null == directory.name_)
+                    {
+                        continue;
+                    }
+                    BFFNode node = new BFFNode();
+                    node.name_ = files_[i].relativePath_;
+                    node.index_ = i;
+                    node.siblings_ = null;
+                    node.children_ = null;
+                    directory.siblings_.Add(node);
+                }
+            }
+        }
 
         protected override async Task ExecuteAsync(OleMenuCmdEventArgs e)
         {

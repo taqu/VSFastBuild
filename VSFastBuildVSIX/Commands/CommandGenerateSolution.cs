@@ -40,7 +40,7 @@ namespace VSFastBuildVSIX
             List<EnvDTE.Project> targets = new List<EnvDTE.Project>();
             foreach (EnvDTE.Project project in solution.Projects)
             {
-                if (ProjectTypes.WindowsCPlusPlus == project.Kind)
+                if(SupportedProject(project))
                 {
                     if (ShouldBuild(project, solutionConfiguration, solutionContexts))
                     {

@@ -58,7 +58,7 @@ namespace VSFastBuildVSIX
                     {
                         continue;
                 }
-                if (ProjectTypes.WindowsCPlusPlus == project.Kind)
+                if (ProjectTypes.WindowsCPlusPlus == project.Kind || ProjectTypes.WindowsCSharp == project.Kind)
                 {
                     targets.Add(project.FileName);
                     continue;
@@ -112,7 +112,7 @@ namespace VSFastBuildVSIX
             int Count = solution.Projects.Count;
             foreach (EnvDTE.Project project in solution.Projects)
             {
-                if (ProjectTypes.WindowsCPlusPlus == project.Kind)
+                if(SupportedProject(project))
                 {
                     targets.Add(project.FullName);
                     continue;
