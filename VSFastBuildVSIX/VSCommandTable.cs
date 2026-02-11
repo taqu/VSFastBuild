@@ -40,7 +40,7 @@ namespace VSFastBuildVSIX
         public const int CommandFBuildMonitor = 0x3003;
         public const int CommandFBuildClean = 0x3004;
         public const int CommandFBuildBFF = 0x3005;
-        public const int CommandFBuildBFFFiles = 0x3006;
+        public const int CommandFBuildDynamicLevel00 = 0x4000;
         public const int icon_menu = 0x0001;
         public const int bmpPic1 = 0x0001;
         public const int bmpPic2 = 0x0002;

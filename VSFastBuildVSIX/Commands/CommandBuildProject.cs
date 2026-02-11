@@ -1,3 +1,4 @@
+#define VSFASTBUILD_USE_PRECOMPILEDHEADER
 using Blake2Fast;
 using EnvDTE;
 using EnvDTE80;
@@ -578,6 +579,7 @@ namespace VSFastBuildVSIX
             public Microsoft.Build.Evaluation.Project buildProject_;
             public List<string> dependNames_;
             public List<VSFastProject> dependencies_;
+            public bool isReference_ = false;
 
             public string configuration_;
             public string platform_;
@@ -848,7 +850,6 @@ namespace VSFastBuildVSIX
                     { "Configuration", vsFastProject.configuration_ },
                     { "Platform", vsFastProject.platform_ }
                 };
-
                 object[] requiredProjects = buildDependency.RequiredProjects as object[];
                 foreach (object item in requiredProjects)
                 {
@@ -902,6 +903,21 @@ namespace VSFastBuildVSIX
                     VSFastProject dependProject = vsFastProjects.Find((x) => x.uniqueName_ == dependName);
                     if (null != dependProject)
                     {
+                        VSLangProj.VSProject vSProject = vSFastProject.project_.Object as VSLangProj.VSProject;
+                        bool isReference = false;
+                        foreach (VSLangProj.Reference reference in vSProject.References)
+                        {
+                            if (null == reference || null == reference.SourceProject)
+                            {
+                                continue;
+                            }
+                            if(reference.SourceProject.UniqueName == dependProject.uniqueName_)
+                            {
+                                isReference = true;
+                                break;
+                            }
+                        }
+                        dependProject.isReference_ = isReference;
                         vSFastProject.dependencies_.Add(dependProject);
                     }
                 }
@@ -1477,6 +1493,7 @@ namespace VSFastBuildVSIX
             return false;
         }
 
+        #if VSFASTBUILD_USE_PRECOMPILEDHEADER
         private static void GetPrecompiledHeader(BuildContext buildContext, VSFastProject project, Microsoft.Build.Evaluation.ProjectItem item)
         {
             if (item.Metadata.Where(x => x.Name == "PrecompiledHeader" && x.EvaluatedValue == "Create").Any())
@@ -1490,7 +1507,7 @@ namespace VSFastBuildVSIX
                 ToolTask task = (ToolTask)Activator.CreateInstance(buildContext.CppTaskAssembly_.GetType("Microsoft.Build.CPPTasks.CL"));
                 string compilerPDB = string.Empty;
                 string[] propertiesToSkip = new string[] { "ObjectFileName", "AssemblerListingLocation", "ProgramDataBaseFileName", "ModuleOutputFile", "XMLDocumentationFileName", "DiagnosticsFormat" };
-                string pchCompilerOptions = GenerateTaskCommandLine(task, propertiesToSkip, ref project.compilerPDB_, item.Metadata, null);
+                string pchCompilerOptions = GenerateTaskCommandLine(task, propertiesToSkip, ref project.compilerPDB_, project.rootDir_, item.Metadata);
 #if false
                         switch (buildContext.platform_)
                         {
@@ -1517,8 +1534,9 @@ namespace VSFastBuildVSIX
                 project.precompiledHeaderInfo_.compilerOptions_ = $"/FS /Fd\"$CompilerPDB$\" {pchCompilerOptions}";
             }
         }
+        #endif
 
-        private static string GenerateTaskCommandLine(ToolTask task, string[] propertiesToSkip, ref string compilerPDB, IEnumerable<ProjectMetadata> metaDataList, List<string> dependenctyes)
+        private static string GenerateTaskCommandLine(ToolTask task, string[] propertiesToSkip, ref string compilerPDB, string rootDir, IEnumerable<ProjectMetadata> metaDataList)
         {
             List<string> additionalIncludeDirectories = new List<string>(8);
             foreach (ProjectMetadata metaData in metaDataList)
@@ -1550,27 +1568,26 @@ namespace VSFastBuildVSIX
                     PropertyInfo propInfo = matchingProps.First();
                     if (propInfo.PropertyType.IsArray && propInfo.PropertyType.GetElementType() == typeof(string))
                     {
-                        if("AdditionalDependencies" == metaData.Name && null != dependenctyes)
+                        if("AdditionalDependencies" == metaData.Name)
                         {
-                            #if false
-                            if (dependency.Contains('\\') || dependency.Contains('/'))
-                {
-                    if (!System.IO.Path.IsPathRooted(dependency))
-                    {
-                        string path = System.IO.Path.GetFullPath(System.IO.Path.Combine(project.rootDir_, dependency));
-                        objTargets.Add(path);
-                        continue;
-                    }
-                    objTargets.Add(dependency);
-                }
-                else
-                {
-                    optionBuilder.Append($" {dependency}");
-                }
-                            #endif
+                            string[] dependencies = evaluatedValue.Split(new char[] { ';' }, StringSplitOptions.RemoveEmptyEntries);
+                            for(int i=0; i<dependencies.Length; ++i)
+                            {
+                                string dependency = dependencies[i].Trim();
+                                if (dependency.Contains('\\') || dependency.Contains('/'))
+                                {
+                                    if (!System.IO.Path.IsPathRooted(dependency))
+                                    {
+                                        dependencies[i] = System.IO.Path.GetFullPath(System.IO.Path.Combine(rootDir, dependency));
+                                    }
+                                }
+                            }
+                            propInfo.SetValue(task, Convert.ChangeType(dependencies, propInfo.PropertyType));
                         }
-
-                        propInfo.SetValue(task, Convert.ChangeType(evaluatedValue.Split(';'), propInfo.PropertyType));
+                        else
+                        {
+                            propInfo.SetValue(task, Convert.ChangeType(evaluatedValue.Split(new char[] { ';' }, StringSplitOptions.RemoveEmptyEntries), propInfo.PropertyType));
+                        }
                     }
                     else
                     {
@@ -1608,6 +1625,11 @@ namespace VSFastBuildVSIX
                             }
                             evaluatedValue = string.Join(" ", list);
                         }
+                        #if !VSFASTBUILD_USE_PRECOMPILEDHEADER
+                        else if("PrecompiledHeader" == metaData.Name){
+                            evaluatedValue = "NotUsing";
+                        }
+                        #endif
                         propInfo.SetValue(task, Convert.ChangeType(evaluatedValue, propInfo.PropertyType));
                     }
                 }
@@ -1831,6 +1853,17 @@ namespace VSFastBuildVSIX
             }
         }
 
+        public static void addProjectReferences(StringBuilder stringBuilder, VSFastProject project)
+        {
+            foreach (VSFastProject dependency in project.dependencies_)
+            {
+                if (dependency.isReference_)
+                {
+                    stringBuilder.AppendLine($"      '{dependency.targetName_}_objects',");
+                }
+            }
+        }
+
         private enum BuildType
         {
             Application,
@@ -1876,6 +1909,7 @@ namespace VSFastBuildVSIX
 
             ICollection<Microsoft.Build.Evaluation.ProjectItem> compileItems = buildProject.GetItems("ClCompile");
 
+            #if VSFASTBUILD_USE_PRECOMPILEDHEADER
             // Precompile Header
             project.precompiledHeaderInfo_ = new PrecompiledHeaderInfo();
             foreach (Microsoft.Build.Evaluation.ProjectItem item in compileItems)
@@ -1890,6 +1924,7 @@ namespace VSFastBuildVSIX
                     break;
                 }
             }
+            #endif
 
             { // Resource objects
                 ICollection<Microsoft.Build.Evaluation.ProjectItem> resourceCompileItems = buildProject.GetItems("ResourceCompile");
@@ -1901,7 +1936,8 @@ namespace VSFastBuildVSIX
                     }
                     ToolTask task = (ToolTask)Activator.CreateInstance(buildContext.CppTaskAssembly_.GetType("Microsoft.Build.CPPTasks.RC"));
                     string dummyPDB = string.Empty;
-                    string resourceCompilerOptions = GenerateTaskCommandLine(task, new string[] { "ResourceOutputFileName", "DesigntimePreprocessorDefinitions", "ProgramDataBaseFileName", "ModuleOutputFile", "XMLDocumentationFileName", "DiagnosticsFormat" }, ref dummyPDB, item.Metadata, null);
+                    string[] propertiesToSkip = new string[] { "ResourceOutputFileName", "DesigntimePreprocessorDefinitions", "ProgramDataBaseFileName", "ModuleOutputFile", "XMLDocumentationFileName", "DiagnosticsFormat" };
+                    string resourceCompilerOptions = GenerateTaskCommandLine(task, propertiesToSkip, ref dummyPDB, project.rootDir_, item.Metadata);
                     resourceCompilerOptions = resourceCompilerOptions.Replace("  ", " ").Replace("\\\\", "\\").Replace("/TP", string.Empty).Replace("/TC", string.Empty).Replace("/D ", "/D");
                     string formattedCompilerOptions = $"{resourceCompilerOptions} /fo\"%2\" \"%1\"";
                     string evaluatedInclude = System.IO.Path.GetFullPath(System.IO.Path.Combine(project.rootDir_, item.EvaluatedInclude)).Replace("/", "\\").Replace("\\\\", "\\");
@@ -1930,7 +1966,7 @@ namespace VSFastBuildVSIX
                     }
 
                     ToolTask task = (ToolTask)Activator.CreateInstance(buildContext.CppTaskAssembly_.GetType("Microsoft.Build.CPPTasks.CL"));
-                    string tempCompilerOptions = GenerateTaskCommandLine(task, propertiesToSkip, ref project.compilerPDB_, item.Metadata, null);
+                    string tempCompilerOptions = GenerateTaskCommandLine(task, propertiesToSkip, ref project.compilerPDB_, project.rootDir_, item.Metadata);
                     StringBuilder optionBuilder = buildContext.optionBuilder_.Clear();
                     optionBuilder.Append("\"%1\" /Fo\"%2\" ");
                     optionBuilder.Append(" /Fd\"$CompilerPDB$\" /FS ");
@@ -2012,7 +2048,7 @@ namespace VSFastBuildVSIX
                 {
                     ToolTask task = Activator.CreateInstance(buildContext.CppTaskAssembly_.GetType("Microsoft.Build.FXCTask.FXC")) as ToolTask;
                     string dummyPDB = string.Empty;
-                    string tempCompilerOptions = GenerateTaskCommandLine(task, propertiesToSkip, ref dummyPDB, item.Metadata, null);
+                    string tempCompilerOptions = GenerateTaskCommandLine(task, propertiesToSkip, ref dummyPDB, project.rootDir_, item.Metadata);
                     StringBuilder optionBuilder = buildContext.optionBuilder_.Clear();
                     optionBuilder.Append(tempCompilerOptions);
                     optionBuilder.Append(" \"%1\" /Fo\"%2\" ");
@@ -2066,8 +2102,10 @@ namespace VSFastBuildVSIX
             }
         }
 
-        private static void GetDependentLibraries(List<string> objTargets, VSFastProject project)
+        private static List<string> GetDependentLibraries(List<string> objTargets, VSFastProject project)
         {
+            List<string> libraries = new List<string>(objTargets.Capacity);
+            libraries.AddRange(objTargets);
             foreach (VSFastProject dependency in project.dependencies_)
             {
                 string configurationType = dependency.buildProject_.GetProperty("ConfigurationType").EvaluatedValue;
@@ -2085,7 +2123,7 @@ namespace VSFastBuildVSIX
                                     if(!System.IO.Path.IsPathRooted(importLibrary)){
                                         importLibrary = System.IO.Path.Combine(dependency.rootDir_, importLibrary);
                                     }
-                                    objTargets.Add(importLibrary);
+                                    libraries.Add(importLibrary);
                                 }
                             }
                         }
@@ -2102,7 +2140,7 @@ namespace VSFastBuildVSIX
                                     if(!System.IO.Path.IsPathRooted(outputFile)){
                                         outputFile = System.IO.Path.Combine(dependency.rootDir_, outputFile);
                                     }
-                                    objTargets.Add(outputFile);
+                                    libraries.Add(outputFile);
                                 }
                             }
                         }
@@ -2111,6 +2149,7 @@ namespace VSFastBuildVSIX
                         break;
                 }
             }
+            return libraries;
         }
 
         private static Tuple<string, string> GetCommandArguments(string commandLine)
@@ -2318,6 +2357,7 @@ namespace VSFastBuildVSIX
             }
 
             // PCH
+            #if VSFASTBUILD_USE_PRECOMPILEDHEADER
             if (project.precompiledHeaderInfo_.IsValid())
             {
                 string pchTargetName = $"{project.targetName_}_pch";
@@ -2331,9 +2371,12 @@ namespace VSFastBuildVSIX
                 stringBuilder.AppendLine($"    .PCHInputFile = '{project.precompiledHeaderInfo_.PCHInputFile_}'");
                 stringBuilder.AppendLine($"    .PCHOutputFile = '{project.precompiledHeaderInfo_.PCHOutputFile_}'");
                 stringBuilder.AppendLine($"    .PCHOptions = '{project.precompiledHeaderInfo_.PCHOptions_}'");
+                stringBuilder.AppendLine("    .CompilerOutputKeepBaseExtension = false");
                 stringBuilder.AppendLine("    .Hidden = true");
                 stringBuilder.AppendLine("  }");
+                objTargets.Add(pchTargetName);
             }
+            #endif
 
             string dependenciesName = string.Empty;
             if (0 < dependencies.Count)
@@ -2579,16 +2622,6 @@ namespace VSFastBuildVSIX
                     }
 
                     stringBuilder.AppendLine($"    .Compiler = .{buildContext.compilerName_}");
-
-                    //if (project.precompiledHeaderInfo_.IsValid())
-                    //{
-                    //    stringBuilder.AppendLine($"    .PCHInputFile = '{project.precompiledHeaderInfo_.PCHInputFile_}'");
-                    //    stringBuilder.AppendLine($"    .PCHOutputFile = '{project.precompiledHeaderInfo_.PCHOutputFile_}'");
-                    //    if (!string.IsNullOrEmpty(project.precompiledHeaderInfo_.PCHOptions_))
-                    //    {
-                    //        stringBuilder.AppendLine($"    .PCHOptions = '{project.precompiledHeaderInfo_.PCHOptions_}'");
-                    //    }
-                    //}
                     stringBuilder.AppendLine($"    .CompilerOptions = ' {item.Options}'");
                     stringBuilder.AppendLine($"    .CompilerOutputPath = '{item.OutputPath}'");
                     stringBuilder.AppendLine($"    .CompilerOutputExtension = '.{item.OutputExtension}'");
@@ -2645,7 +2678,8 @@ namespace VSFastBuildVSIX
             switch (buildType)
             {
                 case BuildType.Application:
-                    GetDependentLibraries(objTargets, project);
+                    {
+                    List<string> libraries = GetDependentLibraries(objTargets, project);
                     if (0 < objTargets.Count){
                         stringBuilder.AppendLine($"  Executable('{lastTargetName}')");
                         stringBuilder.AppendLine("  {");
@@ -2679,7 +2713,7 @@ namespace VSFastBuildVSIX
                         string ltcgOptim = linkDefinitions.GetMetadataValue("LinkTimeCodeGeneration");
                         ToolTask task = (ToolTask)Activator.CreateInstance(buildContext.CppTaskAssembly_.GetType("Microsoft.Build.CPPTasks.Link"));
                         string[] propertiesToSkip = new string[] {"OutputFile", "ProfileGuidedDatabase", "ProgramDatabaseFile", "XMLDocumentationFileName", "DiagnosticsFormat", "LinkTimeCodeGenerationObjectFile", "IncrementalLinkDatabaseFile" };
-                        string linkerOptions = GenerateTaskCommandLine(task, propertiesToSkip, ref project.linkerPDB_, linkDefinitions.Metadata, objTargets);
+                        string linkerOptions = GenerateTaskCommandLine(task, propertiesToSkip, ref project.linkerPDB_, project.rootDir_, linkDefinitions.Metadata);
                         linkerOptions = linkerOptions.Replace("'", "^'");
                         StringBuilder optionBuilder = buildContext.optionBuilder_.Clear();
                         optionBuilder.Append("\"%1[0]\" /OUT:\"%2\" /PDB:\"$LinkerPDB$\"");
@@ -2712,7 +2746,8 @@ namespace VSFastBuildVSIX
 
                         stringBuilder.AppendLine("    .Libraries =");
                         stringBuilder.AppendLine("    {");
-                        addStringList(stringBuilder, objTargets, "      ");
+                        addProjectReferences(stringBuilder, project);
+                        addStringList(stringBuilder, libraries, "      ");
                         stringBuilder.AppendLine("    }");
                         stringBuilder.AppendLine("    .LinkerType = 'msvc'");
                         stringBuilder.AppendLine("    .LinkerLinkObjects = false");
@@ -2739,6 +2774,7 @@ namespace VSFastBuildVSIX
                             stringBuilder.AppendLine("    }");
                         }
                         stringBuilder.AppendLine("  }");
+                    }
                     }
                     break;
                 case BuildType.StaticLib:
@@ -2782,7 +2818,7 @@ namespace VSFastBuildVSIX
                         string ltcgOptim = libDefinitions.GetMetadataValue("LinkTimeCodeGeneration");
                         ToolTask task = (ToolTask)Activator.CreateInstance(buildContext.CppTaskAssembly_.GetType("Microsoft.Build.CPPTasks.LIB"));
                         string[] propertiesToSkip = new string[] {"OutputFile", "ProgramDatabaseFile", "XMLDocumentationFileName", "DiagnosticsFormat" };
-                        string linkerOptions = GenerateTaskCommandLine(task, propertiesToSkip, ref project.linkerPDB_, libDefinitions.Metadata, objTargets);
+                        string linkerOptions = GenerateTaskCommandLine(task, propertiesToSkip, ref project.linkerPDB_, project.rootDir_, libDefinitions.Metadata);
                         StringBuilder optionBuilder = buildContext.optionBuilder_.Clear();
                         string outputFile = System.IO.Path.GetFullPath(System.IO.Path.Combine(project.rootDir_, libDefinitions.GetMetadataValue("OutputFile")));
                         optionBuilder.Append("\"%1\" /OUT:\"%2\"");
@@ -2796,6 +2832,7 @@ namespace VSFastBuildVSIX
 
                         stringBuilder.AppendLine("    .LibrarianAdditionalInputs =");
                         stringBuilder.AppendLine("    {");
+                        addProjectReferences(stringBuilder, project);
                         addStringList(stringBuilder, objTargets, "      ");
                         stringBuilder.AppendLine("    }");
                         stringBuilder.AppendLine("    .LibrarianType = 'msvc'");
@@ -2806,7 +2843,7 @@ namespace VSFastBuildVSIX
                     break;
                 case BuildType.DynamicLib:
                     {
-                        GetDependentLibraries(objTargets, project);
+                        List<string> libraries = GetDependentLibraries(objTargets, project);
                         stringBuilder.AppendLine($"  DLL('{lastTargetName}')");
                         stringBuilder.AppendLine("  {");
                         if (!string.IsNullOrEmpty(dependenciesName))
@@ -2838,7 +2875,7 @@ namespace VSFastBuildVSIX
                         }
                         ToolTask task = (ToolTask)Activator.CreateInstance(buildContext.CppTaskAssembly_.GetType("Microsoft.Build.CPPTasks.Link"));
                         string[] propertiesToSkip = new string[] { "OutputFile", "ProfileGuidedDatabase", "XMLDocumentationFileName", "DiagnosticsFormat", "LinkTimeCodeGenerationObjectFile", "IncrementalLinkDatabaseFile" };
-                        string linkerOptions = GenerateTaskCommandLine(task, propertiesToSkip, ref project.linkerPDB_, linkDefinitions.Metadata, objTargets);
+                        string linkerOptions = GenerateTaskCommandLine(task, propertiesToSkip, ref project.linkerPDB_, project.rootDir_, linkDefinitions.Metadata);
                         linkerOptions = linkerOptions.Replace("'", "^'");
                         StringBuilder optionBuilder = buildContext.optionBuilder_.Clear();
                         optionBuilder.Append("\"%1[0]\" /OUT:\"%2\" /PDB:\"$LinkerPDB$\"");
@@ -2876,7 +2913,8 @@ namespace VSFastBuildVSIX
 
                         stringBuilder.AppendLine("    .Libraries =");
                         stringBuilder.AppendLine("    {");
-                        addStringList(stringBuilder, objTargets, "      ");
+                        addProjectReferences(stringBuilder, project);
+                        addStringList(stringBuilder, libraries, "      ");
                         stringBuilder.AppendLine("    }");
                         stringBuilder.AppendLine("    .LinkerType = 'auto'");
                         stringBuilder.AppendLine("    .LinkerLinkObjects = false");
@@ -2886,7 +2924,7 @@ namespace VSFastBuildVSIX
                     break;
             }
 
-            {
+            { // PostBuild
                 ICollection<Microsoft.Build.Evaluation.ProjectItem> postBuildEvents = buildProject.GetItems("PostBuildEvent");
                 int count = 0;
                 List<string> postbuilds = new List<string>();
@@ -2933,6 +2971,16 @@ namespace VSFastBuildVSIX
                     stringBuilder.AppendLine("  }");
                     project.postDepend_ = postbuild;
                 }
+            }
+            if(0<objTargets.Count){ // objects
+                string objectsName = $"{project.targetName_}_objects";
+                stringBuilder.AppendLine($"  Alias('{objectsName}')");
+                stringBuilder.AppendLine("  {");
+                stringBuilder.AppendLine("    .Targets =");
+                stringBuilder.AppendLine("    {");
+                addStringList(stringBuilder, objTargets, "      ");
+                stringBuilder.AppendLine("    }");
+                stringBuilder.AppendLine("  }");
             }
             stringBuilder.AppendLine("}");
         }

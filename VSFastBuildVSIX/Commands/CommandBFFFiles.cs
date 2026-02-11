@@ -10,7 +10,7 @@ using static VSFastBuildVSIX.CommandBuildProject;
 
 namespace VSFastBuildVSIX
 {
-    [Command(PackageGuids.VSFastBuildVSIXString, PackageIds.CommandFBuildBFFFiles)]
+    [Command(PackageGuids.VSFastBuildVSIXString, PackageIds.CommandFBuildDynamicLevel00)]
     internal sealed class CommandBFFFiles : BaseCommand<CommandBFFFiles>
     {
         public enum Type
@@ -105,12 +105,13 @@ namespace VSFastBuildVSIX
             }
             AddNodeFiles();
             BuildTree();
-            PrintTree();
-            //CommandID commandID = new CommandID(Command.CommandID.Guid, Command.CommandID.ID + 1);
-            //if (null != menuCommandService.FindCommand(commandID))
-            //{
-            //    return;
-            //}
+            rootCommand.Visible = false;
+            //PrintTree();
+            CommandID commandID = new CommandID(Command.CommandID.Guid, Command.CommandID.ID + 1);
+            if (null != menuCommandService.FindCommand(commandID))
+            {
+                return;
+            }
             //OleMenuCommand menuCommand = new OleMenuCommand(MenuCommandBeforeQueryStatus, commandID);
             //menuCommand.Text = "MenuCommand_Test";
             //menuCommandService.AddCommand(menuCommand);
@@ -296,16 +297,16 @@ namespace VSFastBuildVSIX
             return AddNode(node, rest);
         }
 
-        private void PrintNode(BFFNode node, int parentIndent)
+        private void PrintNode(BFFNode node, int level)
         {
             string indent = string.Empty;
             string name = node.name_;
-            for (int i = 0; i < parentIndent; ++i)
+            for (int i = 0; i < level; ++i)
             {
-                indent += " ";
+                indent += "  ";
             }
-            Log.OutputDebugLine($"{indent}+{name}");
-            for (int i = 0; i < name.Length; ++i)
+            Log.OutputDebugLine($"{indent}+{level}.{name}");
+            for (int i = 0; i < 2; ++i)
             {
                 indent += " ";
             }
@@ -313,10 +314,10 @@ namespace VSFastBuildVSIX
             {
                 Log.OutputDebugLine($"{indent}-{System.IO.Path.GetFileName(sibling.name_)} - {sibling.index_}");
             }
-            parentIndent += name.Length + 1;
+            ++level;
             foreach (BFFNode child in node.children_)
             {
-                PrintNode(child, parentIndent);
+                PrintNode(child, level);
             }
         }
 
