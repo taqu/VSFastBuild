@@ -8,6 +8,7 @@ using Microsoft.Build.Utilities;
 using Microsoft.IO;
 using Microsoft.VisualStudio.Threading;
 using Microsoft.VisualStudio.VCProjectEngine;
+using Newtonsoft.Json.Linq;
 using System.Buffers;
 using System.Collections;
 using System.Collections.Generic;
@@ -2123,6 +2124,30 @@ namespace VSFastBuildVSIX
         {
             List<string> libraries = new List<string>(objTargets.Capacity);
             libraries.AddRange(objTargets);
+            if("libjpeg_turbo" == project.targetName_)
+            {
+                foreach(object obj in project.project_.Properties)
+                {
+                    try {
+                        EnvDTE.Property property = obj as EnvDTE.Property;
+                        if(null != property.Value)
+                        {
+                        if(property.Value is string)
+                        {
+                            Log.OutputDebugLine($"{property.Name}={property.Value}");
+                        }
+                        else
+                        {
+                            Log.OutputDebugLine($"{property.Name}={property.Value.GetType().Name}");
+                        }
+                        }
+                    }
+                    catch(Exception ex)
+                    {
+                        Log.OutputDebugLine(ex.Message);
+                    }
+                }
+            }
             foreach (VSFastProject dependency in project.dependencies_)
             {
                 string configurationType = dependency.buildProject_.GetProperty("ConfigurationType").EvaluatedValue;
@@ -2671,6 +2696,7 @@ namespace VSFastBuildVSIX
                     ++count;
                 } //for (int i = 0
 
+                #if false
                 // Objects
                 foreach (FBCompileItem item in project.CompileItems.Where(item => item.Type == ItemType.Object))
                 {
@@ -2690,6 +2716,7 @@ namespace VSFastBuildVSIX
                     stringBuilder.AppendLine("    .Hidden = true");
                     stringBuilder.AppendLine("  }");
                 }
+                #endif
             }
 
             string lastTargetName = project.targetName_;
