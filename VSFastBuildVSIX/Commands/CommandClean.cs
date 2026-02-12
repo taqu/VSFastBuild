@@ -1,5 +1,7 @@
 using EnvDTE;
+using EnvDTE80;
 using System.Collections.Generic;
+using System.Text;
 using static VSFastBuildVSIX.CommandBuildProject;
 
 namespace VSFastBuildVSIX
@@ -103,7 +105,7 @@ namespace VSFastBuildVSIX
             await Log.ClearPanelAsync(Log.PaneBuild);
             await Log.OutputBuildLineAsync("--- VSFastBuild begin cleaning ---");
 
-            RunSolutionClear(solution);
+            await RunSolutionClearAsync(solution);
             List<string> targets = new List<string>();
             // Clean solution directory
             targets.Add(solution.FullName);

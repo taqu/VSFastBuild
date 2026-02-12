@@ -18,6 +18,7 @@ using System.Reflection;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
+using static VSFastBuildVSIX.CommandBuildProject;
 
 namespace VSFastBuildVSIX
 {
@@ -270,6 +271,11 @@ namespace VSFastBuildVSIX
                 await process_.WaitForExitAsync(cancellationToken);
             }
 
+            public async Task WaitForExitAsync()
+            {
+                await process_.WaitForExitAsync();
+            }
+
             public void WaitForExit()
             {
                 process_.WaitForExit();
@@ -483,6 +489,7 @@ namespace VSFastBuildVSIX
         {
             CXX,
             Resource,
+            Object,
             MASM,
             HLSL,
             CUDA,
@@ -553,6 +560,19 @@ namespace VSFastBuildVSIX
                 }
                 return false;
             }
+
+            public bool AddIfMatches(ItemType type, string inputFile)
+            {
+                if (type_ == type)
+                {
+                    if (inputFiles_.FindIndex((string x) => x == inputFile) < 0)
+                    {
+                        inputFiles_.Add(inputFile);
+                    }
+                    return true;
+                }
+                return false;
+            }
         }
 
         public struct PrecompiledHeaderInfo
@@ -579,7 +599,6 @@ namespace VSFastBuildVSIX
             public Microsoft.Build.Evaluation.Project buildProject_;
             public List<string> dependNames_;
             public List<VSFastProject> dependencies_;
-            public bool isReference_ = false;
 
             public string configuration_;
             public string platform_;
@@ -903,21 +922,6 @@ namespace VSFastBuildVSIX
                     VSFastProject dependProject = vsFastProjects.Find((x) => x.uniqueName_ == dependName);
                     if (null != dependProject)
                     {
-                        VSLangProj.VSProject vSProject = vSFastProject.project_.Object as VSLangProj.VSProject;
-                        bool isReference = false;
-                        foreach (VSLangProj.Reference reference in vSProject.References)
-                        {
-                            if (null == reference || null == reference.SourceProject)
-                            {
-                                continue;
-                            }
-                            if(reference.SourceProject.UniqueName == dependProject.uniqueName_)
-                            {
-                                isReference = true;
-                                break;
-                            }
-                        }
-                        dependProject.isReference_ = isReference;
                         vSFastProject.dependencies_.Add(dependProject);
                     }
                 }
@@ -933,7 +937,7 @@ namespace VSFastBuildVSIX
             return relativeUri.OriginalString;
         }
 
-        public static void RunSolutionClear(EnvDTE.Solution solution)
+        public static async Task RunSolutionClearAsync(EnvDTE.Solution solution)
         {
             StringBuilder stringBuilder = new StringBuilder();
             SolutionBuild2 solutionBuild = solution.SolutionBuild as SolutionBuild2;
@@ -949,12 +953,13 @@ namespace VSFastBuildVSIX
             OptionsPage optionPage = VSFastBuildVSIXPackage.Options;
             string fbuildPath = optionPage.Path;
             string fbuldArgs = $"{optionPage.Arguments} -config {bffName} clean";
-            FBProcess process = CreateProcess(fbuildPath, fbuldArgs, rootDirectory);
-            if (process.Start())
+            try
             {
-                Task.Run(()=>{
-                    process.WaitForExit();
-                });
+                FBProcess process = CreateProcess(fbuildPath, fbuldArgs, rootDirectory);
+                await process.WaitForExitAsync();
+            }
+            catch
+            {
             }
         }
 
@@ -1449,6 +1454,11 @@ namespace VSFastBuildVSIX
                     string cleanTarget = target.Replace('/', '\\');
                     cleanBuilder.AppendLine($"DEL /F /Q {cleanTarget}");
                 }
+                if (!string.IsNullOrEmpty(vsFastProject.compilerPDB_))
+                {
+                    cleanBuilder.AppendLine($"DEL /F /Q {vsFastProject.compilerPDB_}");
+                }
+                cleanBuilder.AppendLine($"DEL /S /Q \"{vsFastProject.intDir_}\\*.*\"");
                 try {
                     using (FileStream stream = new FileStream(System.IO.Path.Combine(fbuilddir, cleanname), FileMode.OpenOrCreate, FileAccess.Write))
                         using(StreamWriter writer = new StreamWriter(stream))
@@ -1853,17 +1863,6 @@ namespace VSFastBuildVSIX
             }
         }
 
-        public static void addProjectReferences(StringBuilder stringBuilder, VSFastProject project)
-        {
-            foreach (VSFastProject dependency in project.dependencies_)
-            {
-                if (dependency.isReference_)
-                {
-                    stringBuilder.AppendLine($"      '{dependency.targetName_}_objects',");
-                }
-            }
-        }
-
         private enum BuildType
         {
             Application,
@@ -2002,6 +2001,24 @@ namespace VSFastBuildVSIX
                     {
                         project.CompileItems.Add(new FBCompileItem(ItemType.CXX, outputPath, evaluatedInclude, formattedCompilerOptions, "obj"));
                         project.ExistsFlags.Set((int)ItemType.CXX, true);
+                    }
+                }
+            }
+
+            { // Objects
+                ICollection<Microsoft.Build.Evaluation.ProjectItem> objectFiles = buildProject.GetItems("Object");
+                foreach (Microsoft.Build.Evaluation.ProjectItem item in objectFiles)
+                {
+                    if (!IsBuildTarget(item))
+                    {
+                        continue;
+                    }
+                    string evaluatedInclude = item.EvaluatedInclude;
+                    IEnumerable<FBCompileItem> matchingNodes = project.CompileItems.Where(el => el.AddIfMatches(ItemType.Object, evaluatedInclude));
+                    if (!matchingNodes.Any())
+                    {
+                        project.CompileItems.Add(new FBCompileItem(ItemType.Object, string.Empty, evaluatedInclude, string.Empty, "obj"));
+                        project.ExistsFlags.Set((int)ItemType.Object, true);
                     }
                 }
             }
@@ -2653,6 +2670,26 @@ namespace VSFastBuildVSIX
                     stringBuilder.AppendLine("  }");
                     ++count;
                 } //for (int i = 0
+
+                // Objects
+                foreach (FBCompileItem item in project.CompileItems.Where(item => item.Type == ItemType.Object))
+                {
+                    string objTargetName = $"{project.targetName_}_objs{count}";
+                    stringBuilder.AppendLine($"  Alias('{objTargetName}')");
+                    objTargets.Add(objTargetName);
+                    stringBuilder.AppendLine("  {");
+                    if (!string.IsNullOrEmpty(dependenciesName))
+                    {
+                        stringBuilder.AppendLine("    .Targets =");
+                        stringBuilder.AppendLine("    {");
+                        foreach(string target in item.InputFiles) {
+                            stringBuilder.AppendLine($"      '{target}',");
+                        }
+                        stringBuilder.AppendLine("    }");
+                    }
+                    stringBuilder.AppendLine("    .Hidden = true");
+                    stringBuilder.AppendLine("  }");
+                }
             }
 
             string lastTargetName = project.targetName_;
@@ -2746,7 +2783,7 @@ namespace VSFastBuildVSIX
 
                         stringBuilder.AppendLine("    .Libraries =");
                         stringBuilder.AppendLine("    {");
-                        addProjectReferences(stringBuilder, project);
+                        //addProjectReferences(stringBuilder, project);
                         addStringList(stringBuilder, libraries, "      ");
                         stringBuilder.AppendLine("    }");
                         stringBuilder.AppendLine("    .LinkerType = 'msvc'");
@@ -2779,6 +2816,7 @@ namespace VSFastBuildVSIX
                     break;
                 case BuildType.StaticLib:
                     {
+                        List<string> libraries = GetDependentLibraries(objTargets, project);
                         IEnumerable<FBCompileItem> firstCompileItem = project.CompileItems.Where(el => el.Type == ItemType.CXX || el.Type == ItemType.Resource);
                         if(null == firstCompileItem || firstCompileItem.Count()<=0)
                         {
@@ -2832,7 +2870,7 @@ namespace VSFastBuildVSIX
 
                         stringBuilder.AppendLine("    .LibrarianAdditionalInputs =");
                         stringBuilder.AppendLine("    {");
-                        addProjectReferences(stringBuilder, project);
+                        //addProjectReferences(stringBuilder, project);
                         addStringList(stringBuilder, objTargets, "      ");
                         stringBuilder.AppendLine("    }");
                         stringBuilder.AppendLine("    .LibrarianType = 'msvc'");
@@ -2913,7 +2951,7 @@ namespace VSFastBuildVSIX
 
                         stringBuilder.AppendLine("    .Libraries =");
                         stringBuilder.AppendLine("    {");
-                        addProjectReferences(stringBuilder, project);
+                        //addProjectReferences(stringBuilder, project);
                         addStringList(stringBuilder, libraries, "      ");
                         stringBuilder.AppendLine("    }");
                         stringBuilder.AppendLine("    .LinkerType = 'auto'");
