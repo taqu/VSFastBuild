@@ -1,4 +1,4 @@
-﻿using EnvDTE;
+using EnvDTE;
 using EnvDTE80;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
@@ -36,9 +36,10 @@ namespace VSFastBuildVSIX
 
         public const float PIX_SPACE_BETWEEN_EVENTS = 2.0f;
         public const float PIX_PER_SECOND = 20.0f;
-        public const float PIX_HEIGHT = 20.0f;
+        public const float PIX_HEIGHT = 16.0f;
         public const float PIX_LOD_THRESHOLD = 2.0f;
         public const float TIMESTEP_MS = 500.0f;
+        public const float FontSize = 12.0f;
 
         public const int TextLabelOffset_X = 4;
         public const int TextLabelOffset_Y = 4;

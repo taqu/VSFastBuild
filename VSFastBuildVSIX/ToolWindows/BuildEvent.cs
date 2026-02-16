@@ -27,9 +27,7 @@ namespace VSFastBuildVSIX.ToolWindows
         }
 
         // Constants
-        private const int TextLavelOffset = 4;
         private const float MinTextLabelWidthThreshold = 50.0f;
-        private const float MinDotDotDotWidthThreshold = 20.0f;
         private const float RacingIconWidth = 20.0f;
 
         private ToolWindowMonitorControl parent_;

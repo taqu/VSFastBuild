@@ -70,7 +70,7 @@ namespace VSFastBuildVSIX.ToolWindows
                     // TODO: activate culling optimization
                     //if (x >= _savedTimebarViewPort.X && x <= _savedTimebarViewPort.Y)
                     {
-                        double height = bDrawBigMarker ? 5.0f : 2.0f;
+                        double height = bDrawBigMarker ? 3.0f : 1.5f;
 
                         ctx.BeginFigure(new System.Windows.Point(x, Y), true /* is filled */, false /* is closed */);
 
