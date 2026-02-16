@@ -7,6 +7,7 @@ using Microsoft.VisualStudio.Shell.Interop;
 using System.Runtime.InteropServices;
 using System.Threading;
 using System.Threading.Tasks;
+using System.Windows.Documents;
 
 namespace VSFastBuildVSIX
 {
@@ -153,11 +154,40 @@ namespace VSFastBuildVSIX
             }
         }
 
+        public System.Collections.Generic.List<BaseCommand> Menus => menus_;
+        public System.Collections.Generic.List<BaseCommand> Commands => commands_;
+
+        public void AddMenu(BaseCommand menu)
+        {
+            lock (lock_)
+            {
+                if(menus_.Contains(menu))
+                {
+                    return;
+                }
+                menus_.Add(menu);
+            }
+        }
+
+        public void AddCommand(BaseCommand command)
+        {
+            lock (lock_)
+            {
+                if(commands_.Contains(command))
+                {
+                    return;
+                }
+                commands_.Add(command);
+            }
+        }
+
         private EnvDTE80.DTE2 dte2_;
         private System.Diagnostics.Process process_;
         private bool cancelable_ = false;
         private readonly object lock_ = new();
         private CancellationTokenSource cancellationTokenSource_ = new CancellationTokenSource();
+        private System.Collections.Generic.List<BaseCommand> menus_ = new System.Collections.Generic.List<BaseCommand>();
+        private System.Collections.Generic.List<BaseCommand> commands_ = new System.Collections.Generic.List<BaseCommand>();
 
         protected override async Task InitializeAsync(CancellationToken cancellationToken, IProgress<ServiceProgressData> progress)
         {

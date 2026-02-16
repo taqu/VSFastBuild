@@ -46,12 +46,14 @@
     <WarningLevel>4</WarningLevel>
   </PropertyGroup>
   <ItemGroup>
+    <Compile Include="Commands\ComandBFF.cs" />
     <Compile Include="Commands\CommandBFFFiles.cs" />
     <Compile Include="Commands\CommandBuildProject.cs" />
     <Compile Include="Commands\CommandBuildSolution.cs" />
     <Compile Include="Commands\CommandClean.cs" />
     <Compile Include="Commands\CommandGenerateSolution.cs" />
     <Compile Include="Commands\CommandOpenMonitor.cs" />
+    <Compile Include="Commands\MenuBFF.cs" />
     <Compile Include="Log.cs" />
     <Compile Include="Options\OptionsPage.cs" />
     <Compile Include="ProjectTypes.cs" />
