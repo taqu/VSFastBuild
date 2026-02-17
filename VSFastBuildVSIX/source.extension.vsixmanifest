@@ -1,22 +1,26 @@
 <?xml version="1.0" encoding="utf-8"?>
 <PackageManifest Version="2.0.0" xmlns="http://schemas.microsoft.com/developer/vsx-schema/2011" xmlns:d="http://schemas.microsoft.com/developer/vsx-schema-design/2011">
     <Metadata>
-        <Identity Id="VSFastBuildVSIX.a7cd32ba-4468-4093-bf42-d7b7230b77df" Version="1.0" Language="en-US" Publisher="Company" />
+        <Identity Id="VSFastBuildVSIX.a7cd32ba-4468-4093-bf42-d7b7230b77df" Version="0.1.0" Language="en-US" Publisher="taqu29" />
         <DisplayName>VSFastBuild</DisplayName>
         <Description xml:space="preserve">Integration of FASTBuild for Visual Studio.</Description>
+        <MoreInfo>https://github.com/taqu/VSFastBuild</MoreInfo>
         <License>LICENSE.txt</License>
+        <GettingStartedGuide>GettingStartedGuide.txt</GettingStartedGuide>
+        <ReleaseNotes>ReleaseNotes.txt</ReleaseNotes>
         <Icon>Resources\Icon.png</Icon>
         <PreviewImage>Resources\Icon.png</PreviewImage>
         <Tags>Build,FASTBuild</Tags>
+        <Preview>true</Preview>
     </Metadata>
     <Installation>
-        <InstallationTarget Id="Microsoft.VisualStudio.Community" Version="[17.0, 18.0)">
+        <InstallationTarget Id="Microsoft.VisualStudio.Community" Version="[17.0,)">
             <ProductArchitecture>amd64</ProductArchitecture>
         </InstallationTarget>
-        <InstallationTarget Version="[17.0, 18.0)" Id="Microsoft.VisualStudio.Pro">
+        <InstallationTarget Version="[17.0,)" Id="Microsoft.VisualStudio.Pro">
             <ProductArchitecture>amd64</ProductArchitecture>
         </InstallationTarget>
-        <InstallationTarget Version="[17.0, 18.0)" Id="Microsoft.VisualStudio.Enterprise">
+        <InstallationTarget Version="[17.0,)" Id="Microsoft.VisualStudio.Enterprise">
             <ProductArchitecture>amd64</ProductArchitecture>
         </InstallationTarget>
     </Installation>

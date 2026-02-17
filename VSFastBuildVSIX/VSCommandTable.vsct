@@ -1,25 +1,320 @@
 <?xml version="1.0" encoding="utf-8"?>
 <CommandTable xmlns="http://schemas.microsoft.com/VisualStudio/2005-10-18/CommandTable" xmlns:xs="http://www.w3.org/2001/XMLSchema">
 
-	<Extern href="stdidcmd.h"/>
-	<Extern href="vsshlids.h"/>
-	<Include href="KnownImageIds.vsct"/>
-	<Include href="VSGlobals.vsct"/>
+	<Extern href="stdidcmd.h" />
+	<Extern href="vsshlids.h" />
+	<Include href="KnownImageIds.vsct" />
+	<Include href="VSGlobals.vsct" />
 
 	<Commands package="VSFastBuildVSIX">
 		<Groups>
-			<Group guid="VSFastBuildVSIX" id="VSFastBuildSolutionMenuGroup" priority="0x1000"/>
-			<Group guid="VSFastBuildVSIX" id="VSFastBuildProjectGroup" priority="0x1000"/>
+			<Group guid="VSFastBuildVSIX" id="VSFastBuildMenuGroup" />
+			<Group guid="VSFastBuildVSIX" id="VSFastBuildMenuSolutionGroup" />
+			<Group guid="VSFastBuildVSIX" id="VSFastBuildMenuProjectGroup" />
+			<Group guid="VSFastBuildVSIX" id="VSFastBuildMenuCleanGroup" />
+			<Group guid="VSFastBuildVSIX" id="VSFastBuildMenuToolGroup" />
+			<Group guid="VSFastBuildVSIX" id="VSFastBuildMenuBFFGroup" />
+			<Group guid="VSFastBuildVSIX" id="VSFastBuildMenuBFF00Group" />
+			<Group guid="VSFastBuildVSIX" id="VSFastBuildMenuBFF01Group" />
+			<Group guid="VSFastBuildVSIX" id="VSFastBuildMenuBFF02Group" />
+			<Group guid="VSFastBuildVSIX" id="VSFastBuildMenuBFF03Group" />
+			<Group guid="VSFastBuildVSIX" id="VSFastBuildMenuBFF04Group" />
+			<Group guid="VSFastBuildVSIX" id="VSFastBuildMenuBFF05Group" />
+			<Group guid="VSFastBuildVSIX" id="VSFastBuildMenuBFF06Group" />
+			<Group guid="VSFastBuildVSIX" id="VSFastBuildMenuBFF07Group" />
+			<Group guid="VSFastBuildVSIX" id="VSFastBuildMenuBFF08Group" />
+			<Group guid="VSFastBuildVSIX" id="VSFastBuildMenuBFF09Group" />
+			<Group guid="VSFastBuildVSIX" id="VSFastBuildMenuBFF0AGroup" />
+			<Group guid="VSFastBuildVSIX" id="VSFastBuildMenuBFF0BGroup" />
+			<Group guid="VSFastBuildVSIX" id="VSFastBuildMenuBFF0CGroup" />
+			<Group guid="VSFastBuildVSIX" id="VSFastBuildMenuBFF0DGroup" />
+			<Group guid="VSFastBuildVSIX" id="VSFastBuildMenuBFF0EGroup" />
+			<Group guid="VSFastBuildVSIX" id="VSFastBuildMenuBFF0FGroup" />
+
+			<Group guid="VSFastBuildVSIX" id="VSFastBuildMenuBFF10Group" />
+			<Group guid="VSFastBuildVSIX" id="VSFastBuildMenuBFF11Group" />
+			<Group guid="VSFastBuildVSIX" id="VSFastBuildMenuBFF12Group" />
+			<Group guid="VSFastBuildVSIX" id="VSFastBuildMenuBFF13Group" />
+			<Group guid="VSFastBuildVSIX" id="VSFastBuildMenuBFF14Group" />
+			<Group guid="VSFastBuildVSIX" id="VSFastBuildMenuBFF15Group" />
+			<Group guid="VSFastBuildVSIX" id="VSFastBuildMenuBFF16Group" />
+			<Group guid="VSFastBuildVSIX" id="VSFastBuildMenuBFF17Group" />
+			<Group guid="VSFastBuildVSIX" id="VSFastBuildMenuBFF18Group" />
+			<Group guid="VSFastBuildVSIX" id="VSFastBuildMenuBFF19Group" />
+			<Group guid="VSFastBuildVSIX" id="VSFastBuildMenuBFF1AGroup" />
+			<Group guid="VSFastBuildVSIX" id="VSFastBuildMenuBFF1BGroup" />
+			<Group guid="VSFastBuildVSIX" id="VSFastBuildMenuBFF1CGroup" />
+			<Group guid="VSFastBuildVSIX" id="VSFastBuildMenuBFF1DGroup" />
+			<Group guid="VSFastBuildVSIX" id="VSFastBuildMenuBFF1EGroup" />
+			<Group guid="VSFastBuildVSIX" id="VSFastBuildMenuBFF1FGroup" />
+
 		</Groups>
 		<Menus>
-			<Menu guid="VSFastBuildVSIX" id="VSFastBuildBuildMenu" type="Menu">
+			<Menu guid="VSFastBuildVSIX" id="VSFastBuildMenu" type="Menu">
 				<Strings>
 					<ButtonText>FastBuild</ButtonText>
+					<MenuText>FastBuild</MenuText>
+				</Strings>
+			</Menu>
+			<Menu guid="VSFastBuildVSIX" id="VSFastBuildMenuBFF00" type="Menu">
+				<CommandFlag>DynamicVisibility</CommandFlag>
+				<CommandFlag>TextChanges</CommandFlag>
+				<Strings>
+					<ButtonText>MenuBFF00</ButtonText>
+					<MenuText>MenuBFF00</MenuText>
+			</Strings>
+			</Menu>
+			<Menu guid="VSFastBuildVSIX" id="VSFastBuildMenuBFF01" type="Menu">
+				<CommandFlag>DynamicVisibility</CommandFlag>
+				<CommandFlag>TextChanges</CommandFlag>
+				<Strings>
+					<ButtonText>MenuBFF01</ButtonText>
+					<MenuText>MenuBFF01</MenuText>
+				</Strings>
+			</Menu>
+			<Menu guid="VSFastBuildVSIX" id="VSFastBuildMenuBFF02" type="Menu">
+				<CommandFlag>DynamicVisibility</CommandFlag>
+				<CommandFlag>TextChanges</CommandFlag>
+				<Strings>
+					<ButtonText>MenuBFF02</ButtonText>
+					<MenuText>MenuBFF02</MenuText>
+				</Strings>
+			</Menu>
+			<Menu guid="VSFastBuildVSIX" id="VSFastBuildMenuBFF03" type="Menu">
+				<CommandFlag>DynamicVisibility</CommandFlag>
+				<CommandFlag>TextChanges</CommandFlag>
+				<Strings>
+					<ButtonText>MenuBFF03</ButtonText>
+					<MenuText>MenuBFF03</MenuText>
+				</Strings>
+			</Menu>
+			<Menu guid="VSFastBuildVSIX" id="VSFastBuildMenuBFF04" type="Menu">
+				<CommandFlag>DynamicVisibility</CommandFlag>
+				<CommandFlag>TextChanges</CommandFlag>
+				<Strings>
+					<ButtonText>MenuBFF04</ButtonText>
+					<MenuText>MenuBFF04</MenuText>
+				</Strings>
+			</Menu>
+			<Menu guid="VSFastBuildVSIX" id="VSFastBuildMenuBFF05" type="Menu">
+				<CommandFlag>DynamicVisibility</CommandFlag>
+				<CommandFlag>TextChanges</CommandFlag>
+				<Strings>
+					<ButtonText>MenuBFF05</ButtonText>
+					<MenuText>MenuBFF05</MenuText>
+				</Strings>
+			</Menu>
+			<Menu guid="VSFastBuildVSIX" id="VSFastBuildMenuBFF06" type="Menu">
+				<CommandFlag>DynamicVisibility</CommandFlag>
+				<CommandFlag>TextChanges</CommandFlag>
+				<Strings>
+					<ButtonText>MenuBFF06</ButtonText>
+					<MenuText>MenuBFF06</MenuText>
+				</Strings>
+			</Menu>
+			<Menu guid="VSFastBuildVSIX" id="VSFastBuildMenuBFF07" type="Menu">
+				<CommandFlag>DynamicVisibility</CommandFlag>
+				<CommandFlag>TextChanges</CommandFlag>
+				<Strings>
+					<ButtonText>MenuBFF07</ButtonText>
+					<MenuText>MenuBFF07</MenuText>
+				</Strings>
+			</Menu>
+			<Menu guid="VSFastBuildVSIX" id="VSFastBuildMenuBFF08" type="Menu">
+				<CommandFlag>DynamicVisibility</CommandFlag>
+				<CommandFlag>TextChanges</CommandFlag>
+				<Strings>
+					<ButtonText>MenuBFF08</ButtonText>
+					<MenuText>MenuBFF08</MenuText>
+				</Strings>
+			</Menu>
+			<Menu guid="VSFastBuildVSIX" id="VSFastBuildMenuBFF09" type="Menu">
+				<CommandFlag>DynamicVisibility</CommandFlag>
+				<CommandFlag>TextChanges</CommandFlag>
+				<Strings>
+					<ButtonText>MenuBFF09</ButtonText>
+					<MenuText>MenuBFF09</MenuText>
+				</Strings>
+			</Menu>
+			<Menu guid="VSFastBuildVSIX" id="VSFastBuildMenuBFF0A" type="Menu">
+				<CommandFlag>DynamicVisibility</CommandFlag>
+				<CommandFlag>TextChanges</CommandFlag>
+				<Strings>
+					<ButtonText>MenuBFF0A</ButtonText>
+					<MenuText>MenuBFF0A</MenuText>
+				</Strings>
+			</Menu>
+			<Menu guid="VSFastBuildVSIX" id="VSFastBuildMenuBFF0B" type="Menu">
+				<CommandFlag>DynamicVisibility</CommandFlag>
+				<CommandFlag>TextChanges</CommandFlag>
+				<Strings>
+					<ButtonText>MenuBFF0B</ButtonText>
+					<MenuText>MenuBFF0B</MenuText>
+				</Strings>
+			</Menu>
+			<Menu guid="VSFastBuildVSIX" id="VSFastBuildMenuBFF0C" type="Menu">
+				<CommandFlag>DynamicVisibility</CommandFlag>
+				<CommandFlag>TextChanges</CommandFlag>
+				<Strings>
+					<ButtonText>MenuBFF0C</ButtonText>
+					<MenuText>MenuBFF0C</MenuText>
+				</Strings>
+			</Menu>
+			<Menu guid="VSFastBuildVSIX" id="VSFastBuildMenuBFF0D" type="Menu">
+				<CommandFlag>DynamicVisibility</CommandFlag>
+				<CommandFlag>TextChanges</CommandFlag>
+				<Strings>
+					<ButtonText>MenuBFF0D</ButtonText>
+					<MenuText>MenuBFF0D</MenuText>
+				</Strings>
+			</Menu>
+			<Menu guid="VSFastBuildVSIX" id="VSFastBuildMenuBFF0E" type="Menu">
+				<CommandFlag>DynamicVisibility</CommandFlag>
+				<CommandFlag>TextChanges</CommandFlag>
+				<Strings>
+					<ButtonText>MenuBFF0E</ButtonText>
+					<MenuText>MenuBFF0E</MenuText>
+				</Strings>
+			</Menu>
+			<Menu guid="VSFastBuildVSIX" id="VSFastBuildMenuBFF0F" type="Menu">
+				<CommandFlag>DynamicVisibility</CommandFlag>
+				<CommandFlag>TextChanges</CommandFlag>
+				<Strings>
+					<ButtonText>MenuBFF0F</ButtonText>
+					<MenuText>MenuBFF0F</MenuText>
+				</Strings>
+			</Menu>
+			<Menu guid="VSFastBuildVSIX" id="VSFastBuildMenuBFF10" type="Menu">
+				<CommandFlag>DynamicVisibility</CommandFlag>
+				<CommandFlag>TextChanges</CommandFlag>
+				<Strings>
+					<ButtonText>MenuBFF10</ButtonText>
+					<MenuText>MenuBFF10</MenuText>
+				</Strings>
+			</Menu>
+			<Menu guid="VSFastBuildVSIX" id="VSFastBuildMenuBFF11" type="Menu">
+				<CommandFlag>DynamicVisibility</CommandFlag>
+				<CommandFlag>TextChanges</CommandFlag>
+				<Strings>
+					<ButtonText>MenuBFF11</ButtonText>
+					<MenuText>MenuBFF11</MenuText>
+				</Strings>
+			</Menu>
+			<Menu guid="VSFastBuildVSIX" id="VSFastBuildMenuBFF12" type="Menu">
+				<CommandFlag>DynamicVisibility</CommandFlag>
+				<CommandFlag>TextChanges</CommandFlag>
+				<Strings>
+					<ButtonText>MenuBFF12</ButtonText>
+					<MenuText>MenuBFF12</MenuText>
+				</Strings>
+			</Menu>
+			<Menu guid="VSFastBuildVSIX" id="VSFastBuildMenuBFF13" type="Menu">
+				<CommandFlag>DynamicVisibility</CommandFlag>
+				<CommandFlag>TextChanges</CommandFlag>
+				<Strings>
+					<ButtonText>MenuBFF13</ButtonText>
+					<MenuText>MenuBFF13</MenuText>
+				</Strings>
+			</Menu>
+			<Menu guid="VSFastBuildVSIX" id="VSFastBuildMenuBFF14" type="Menu">
+				<CommandFlag>DynamicVisibility</CommandFlag>
+				<CommandFlag>TextChanges</CommandFlag>
+				<Strings>
+					<ButtonText>MenuBFF14</ButtonText>
+					<MenuText>MenuBFF14</MenuText>
+				</Strings>
+			</Menu>
+			<Menu guid="VSFastBuildVSIX" id="VSFastBuildMenuBFF15" type="Menu">
+				<CommandFlag>DynamicVisibility</CommandFlag>
+				<CommandFlag>TextChanges</CommandFlag>
+				<Strings>
+					<ButtonText>MenuBFF15</ButtonText>
+					<MenuText>MenuBFF15</MenuText>
+				</Strings>
+			</Menu>
+			<Menu guid="VSFastBuildVSIX" id="VSFastBuildMenuBFF16" type="Menu">
+				<CommandFlag>DynamicVisibility</CommandFlag>
+				<CommandFlag>TextChanges</CommandFlag>
+				<Strings>
+					<ButtonText>MenuBFF16</ButtonText>
+					<MenuText>MenuBFF16</MenuText>
+				</Strings>
+			</Menu>
+			<Menu guid="VSFastBuildVSIX" id="VSFastBuildMenuBFF17" type="Menu">
+				<CommandFlag>DynamicVisibility</CommandFlag>
+				<CommandFlag>TextChanges</CommandFlag>
+				<Strings>
+					<ButtonText>MenuBFF17</ButtonText>
+					<MenuText>MenuBFF17</MenuText>
+				</Strings>
+			</Menu>
+			<Menu guid="VSFastBuildVSIX" id="VSFastBuildMenuBFF18" type="Menu">
+				<CommandFlag>DynamicVisibility</CommandFlag>
+				<CommandFlag>TextChanges</CommandFlag>
+				<Strings>
+					<ButtonText>MenuBFF18</ButtonText>
+					<MenuText>MenuBFF18</MenuText>
+				</Strings>
+			</Menu>
+			<Menu guid="VSFastBuildVSIX" id="VSFastBuildMenuBFF19" type="Menu">
+				<CommandFlag>DynamicVisibility</CommandFlag>
+				<CommandFlag>TextChanges</CommandFlag>
+				<Strings>
+					<ButtonText>MenuBFF19</ButtonText>
+					<MenuText>MenuBFF19</MenuText>
+				</Strings>
+			</Menu>
+			<Menu guid="VSFastBuildVSIX" id="VSFastBuildMenuBFF1A" type="Menu">
+				<CommandFlag>DynamicVisibility</CommandFlag>
+				<CommandFlag>TextChanges</CommandFlag>
+				<Strings>
+					<ButtonText>MenuBFF1A</ButtonText>
+					<MenuText>MenuBFF1A</MenuText>
+				</Strings>
+			</Menu>
+			<Menu guid="VSFastBuildVSIX" id="VSFastBuildMenuBFF1B" type="Menu">
+				<CommandFlag>DynamicVisibility</CommandFlag>
+				<CommandFlag>TextChanges</CommandFlag>
+				<Strings>
+					<ButtonText>MenuBFF1B</ButtonText>
+					<MenuText>MenuBFF1B</MenuText>
+				</Strings>
+			</Menu>
+			<Menu guid="VSFastBuildVSIX" id="VSFastBuildMenuBFF1C" type="Menu">
+				<CommandFlag>DynamicVisibility</CommandFlag>
+				<CommandFlag>TextChanges</CommandFlag>
+				<Strings>
+					<ButtonText>MenuBFF1C</ButtonText>
+					<MenuText>MenuBFF1C</MenuText>
+				</Strings>
+			</Menu>
+			<Menu guid="VSFastBuildVSIX" id="VSFastBuildMenuBFF1D" type="Menu">
+				<CommandFlag>DynamicVisibility</CommandFlag>
+				<CommandFlag>TextChanges</CommandFlag>
+				<Strings>
+					<ButtonText>MenuBFF1D</ButtonText>
+					<MenuText>MenuBFF1D</MenuText>
+				</Strings>
+			</Menu>
+			<Menu guid="VSFastBuildVSIX" id="VSFastBuildMenuBFF1E" type="Menu">
+				<CommandFlag>DynamicVisibility</CommandFlag>
+				<CommandFlag>TextChanges</CommandFlag>
+				<Strings>
+					<ButtonText>MenuBFF1E</ButtonText>
+					<MenuText>MenuBFF1E</MenuText>
+				</Strings>
+			</Menu>
+			<Menu guid="VSFastBuildVSIX" id="VSFastBuildMenuBFF1F" type="Menu">
+				<CommandFlag>DynamicVisibility</CommandFlag>
+				<CommandFlag>TextChanges</CommandFlag>
+				<Strings>
+					<ButtonText>MenuBFF1F</ButtonText>
+					<MenuText>MenuBFF1F</MenuText>
 				</Strings>
 			</Menu>
 		</Menus>
 		<Buttons>
-			<Button guid="VSFastBuildVSIX" id="CommandFBuildSolution" priority="0x100" type="Button">
+			<Button guid="VSFastBuildVSIX" id="CommandFBuildSolution" type="Button">
 				<Icon guid="VSFastBuildImages" id="icon_menu" />
 				<CommandFlag>TextChanges</CommandFlag>
 				<Strings>
@@ -27,7 +322,15 @@
 					<CommandName>FBuildSolution</CommandName>
 				</Strings>
 			</Button>
-			<Button guid="VSFastBuildVSIX" id="CommandFBuildProject" priority="0x100" type="Button">
+			<Button guid="VSFastBuildVSIX" id="CommandFBuildGenerateSolution" type="Button">
+				<Icon guid="VSFastBuildImages" id="icon_menu" />
+				<CommandFlag>TextChanges</CommandFlag>
+				<Strings>
+					<ButtonText>FastBuild Generate Solution</ButtonText>
+					<CommandName>FBuildGenerateSolution</CommandName>
+				</Strings>
+			</Button>
+			<Button guid="VSFastBuildVSIX" id="CommandFBuildProject" type="Button">
 				<Icon guid="VSFastBuildImages" id="icon_menu" />
 				<CommandFlag>TextChanges</CommandFlag>
 				<Strings>
@@ -35,52 +338,734 @@
 					<CommandName>FBuildProject</CommandName>
 				</Strings>
 			</Button>
-			<Button guid="VSFastBuildVSIX" id="CommandFBuildMonitor" priority="0x100" type="Button">
-				<Icon guid="VSFastBuildImages" id="icon_menu" />
-				<CommandFlag>TextChanges</CommandFlag>
+			<Button guid="VSFastBuildVSIX" id="CommandFBuildMonitor" type="Button">
+				<Icon guid="ImageCatalogGuid" id="BarChart" />
+				<CommandFlag>IconIsMoniker</CommandFlag>
 				<Strings>
 					<ButtonText>FastBuild Monitor</ButtonText>
 					<CommandName>FBuildMonitor</CommandName>
 				</Strings>
 			</Button>
+			<Button guid="VSFastBuildVSIX" id="CommandFBuildClean" type="Button">
+				<Icon guid="ImageCatalogGuid" id="CleanData" />
+				<CommandFlag>IconIsMoniker</CommandFlag>
+				<Strings>
+					<ButtonText>FastBuild Clean</ButtonText>
+					<CommandName>FBuildClean</CommandName>
+				</Strings>
+			</Button>
+			<Button guid="VSFastBuildVSIX" id="CommandFBuildBFFFiles" type="Button">
+				<CommandFlag>DynamicVisibility</CommandFlag>
+				<!--<CommandFlag>DefaultDisabled</CommandFlag>-->
+				<CommandFlag>TextOnly</CommandFlag>
+				<Strings>
+					<ButtonText>Scan BFF Files</ButtonText>
+				</Strings>
+			</Button>
+			<Button guid="VSFastBuildVSIX" id="CommandFBuildBFF00" type="Button">
+				<CommandFlag>DynamicItemStart</CommandFlag>
+				<CommandFlag>DynamicVisibility</CommandFlag>
+				<Strings>
+					<ButtonText>BFF00</ButtonText>
+				</Strings>
+			</Button>
+			<Button guid="VSFastBuildVSIX" id="CommandFBuildBFF01" type="Button">
+				<CommandFlag>DynamicItemStart</CommandFlag>
+				<CommandFlag>DynamicVisibility</CommandFlag>
+				<Strings>
+					<ButtonText>BFF01</ButtonText>
+				</Strings>
+			</Button>
+			<Button guid="VSFastBuildVSIX" id="CommandFBuildBFF02" type="Button">
+				<CommandFlag>DynamicItemStart</CommandFlag>
+				<CommandFlag>DynamicVisibility</CommandFlag>
+				<Strings>
+					<ButtonText>BFF02</ButtonText>
+				</Strings>
+			</Button>
+			<Button guid="VSFastBuildVSIX" id="CommandFBuildBFF03" type="Button">
+				<CommandFlag>DynamicItemStart</CommandFlag>
+				<CommandFlag>DynamicVisibility</CommandFlag>
+				<Strings>
+					<ButtonText>BFF03</ButtonText>
+				</Strings>
+			</Button>
+			<Button guid="VSFastBuildVSIX" id="CommandFBuildBFF04" type="Button">
+				<CommandFlag>DynamicItemStart</CommandFlag>
+				<CommandFlag>DynamicVisibility</CommandFlag>
+				<Strings>
+					<ButtonText>BFF04</ButtonText>
+				</Strings>
+			</Button>
+			<Button guid="VSFastBuildVSIX" id="CommandFBuildBFF05" type="Button">
+				<CommandFlag>DynamicItemStart</CommandFlag>
+				<CommandFlag>DynamicVisibility</CommandFlag>
+				<Strings>
+					<ButtonText>BFF05</ButtonText>
+				</Strings>
+			</Button>
+			<Button guid="VSFastBuildVSIX" id="CommandFBuildBFF06" type="Button">
+				<CommandFlag>DynamicItemStart</CommandFlag>
+				<CommandFlag>DynamicVisibility</CommandFlag>
+				<Strings>
+					<ButtonText>BFF06</ButtonText>
+				</Strings>
+			</Button>
+			<Button guid="VSFastBuildVSIX" id="CommandFBuildBFF07" type="Button">
+				<CommandFlag>DynamicItemStart</CommandFlag>
+				<CommandFlag>DynamicVisibility</CommandFlag>
+				<Strings>
+					<ButtonText>BFF07</ButtonText>
+				</Strings>
+			</Button>
+			<Button guid="VSFastBuildVSIX" id="CommandFBuildBFF08" type="Button">
+				<CommandFlag>DynamicItemStart</CommandFlag>
+				<CommandFlag>DynamicVisibility</CommandFlag>
+				<Strings>
+					<ButtonText>BFF08</ButtonText>
+				</Strings>
+			</Button>
+			<Button guid="VSFastBuildVSIX" id="CommandFBuildBFF09" type="Button">
+				<CommandFlag>DynamicItemStart</CommandFlag>
+				<CommandFlag>DynamicVisibility</CommandFlag>
+				<Strings>
+					<ButtonText>BFF09</ButtonText>
+				</Strings>
+			</Button>
+			<Button guid="VSFastBuildVSIX" id="CommandFBuildBFF0A" type="Button">
+				<CommandFlag>DynamicItemStart</CommandFlag>
+				<CommandFlag>DynamicVisibility</CommandFlag>
+				<Strings>
+					<ButtonText>BFF0A</ButtonText>
+				</Strings>
+			</Button>
+			<Button guid="VSFastBuildVSIX" id="CommandFBuildBFF0B" type="Button">
+				<CommandFlag>DynamicItemStart</CommandFlag>
+				<CommandFlag>DynamicVisibility</CommandFlag>
+				<Strings>
+					<ButtonText>BFF0B</ButtonText>
+				</Strings>
+			</Button>
+			<Button guid="VSFastBuildVSIX" id="CommandFBuildBFF0C" type="Button">
+				<CommandFlag>DynamicItemStart</CommandFlag>
+				<CommandFlag>DynamicVisibility</CommandFlag>
+				<Strings>
+					<ButtonText>BFF0C</ButtonText>
+				</Strings>
+			</Button>
+			<Button guid="VSFastBuildVSIX" id="CommandFBuildBFF0D" type="Button">
+				<CommandFlag>DynamicItemStart</CommandFlag>
+				<CommandFlag>DynamicVisibility</CommandFlag>
+				<Strings>
+					<ButtonText>BFF0D</ButtonText>
+				</Strings>
+			</Button>
+			<Button guid="VSFastBuildVSIX" id="CommandFBuildBFF0E" type="Button">
+				<CommandFlag>DynamicItemStart</CommandFlag>
+				<CommandFlag>DynamicVisibility</CommandFlag>
+				<Strings>
+					<ButtonText>BFF0E</ButtonText>
+				</Strings>
+			</Button>
+			<Button guid="VSFastBuildVSIX" id="CommandFBuildBFF0F" type="Button">
+				<CommandFlag>DynamicItemStart</CommandFlag>
+				<CommandFlag>DynamicVisibility</CommandFlag>
+				<Strings>
+					<ButtonText>BFF0F</ButtonText>
+				</Strings>
+			</Button>
+			<Button guid="VSFastBuildVSIX" id="CommandFBuildBFF10" type="Button">
+				<CommandFlag>DynamicItemStart</CommandFlag>
+				<CommandFlag>DynamicVisibility</CommandFlag>
+				<Strings>
+					<ButtonText>BFF10</ButtonText>
+				</Strings>
+			</Button>
+			<Button guid="VSFastBuildVSIX" id="CommandFBuildBFF11" type="Button">
+				<CommandFlag>DynamicItemStart</CommandFlag>
+				<CommandFlag>DynamicVisibility</CommandFlag>
+				<Strings>
+					<ButtonText>BFF11</ButtonText>
+				</Strings>
+			</Button>
+			<Button guid="VSFastBuildVSIX" id="CommandFBuildBFF12" type="Button">
+				<CommandFlag>DynamicItemStart</CommandFlag>
+				<CommandFlag>DynamicVisibility</CommandFlag>
+				<Strings>
+					<ButtonText>BFF12</ButtonText>
+				</Strings>
+			</Button>
+			<Button guid="VSFastBuildVSIX" id="CommandFBuildBFF13" type="Button">
+				<CommandFlag>DynamicItemStart</CommandFlag>
+				<CommandFlag>DynamicVisibility</CommandFlag>
+				<Strings>
+					<ButtonText>BFF13</ButtonText>
+				</Strings>
+			</Button>
+			<Button guid="VSFastBuildVSIX" id="CommandFBuildBFF14" type="Button">
+				<CommandFlag>DynamicItemStart</CommandFlag>
+				<CommandFlag>DynamicVisibility</CommandFlag>
+				<Strings>
+					<ButtonText>BFF14</ButtonText>
+				</Strings>
+			</Button>
+			<Button guid="VSFastBuildVSIX" id="CommandFBuildBFF15" type="Button">
+				<CommandFlag>DynamicItemStart</CommandFlag>
+				<CommandFlag>DynamicVisibility</CommandFlag>
+				<Strings>
+					<ButtonText>BFF15</ButtonText>
+				</Strings>
+			</Button>
+			<Button guid="VSFastBuildVSIX" id="CommandFBuildBFF16" type="Button">
+				<CommandFlag>DynamicItemStart</CommandFlag>
+				<CommandFlag>DynamicVisibility</CommandFlag>
+				<Strings>
+					<ButtonText>BFF16</ButtonText>
+				</Strings>
+			</Button>
+			<Button guid="VSFastBuildVSIX" id="CommandFBuildBFF17" type="Button">
+				<CommandFlag>DynamicItemStart</CommandFlag>
+				<CommandFlag>DynamicVisibility</CommandFlag>
+				<Strings>
+					<ButtonText>BFF17</ButtonText>
+				</Strings>
+			</Button>
+			<Button guid="VSFastBuildVSIX" id="CommandFBuildBFF18" type="Button">
+				<CommandFlag>DynamicItemStart</CommandFlag>
+				<CommandFlag>DynamicVisibility</CommandFlag>
+				<Strings>
+					<ButtonText>BFF18</ButtonText>
+				</Strings>
+			</Button>
+			<Button guid="VSFastBuildVSIX" id="CommandFBuildBFF19" type="Button">
+				<CommandFlag>DynamicItemStart</CommandFlag>
+				<CommandFlag>DynamicVisibility</CommandFlag>
+				<Strings>
+					<ButtonText>BFF19</ButtonText>
+				</Strings>
+			</Button>
+			<Button guid="VSFastBuildVSIX" id="CommandFBuildBFF1A" type="Button">
+				<CommandFlag>DynamicItemStart</CommandFlag>
+				<CommandFlag>DynamicVisibility</CommandFlag>
+				<Strings>
+					<ButtonText>BFF1A</ButtonText>
+				</Strings>
+			</Button>
+			<Button guid="VSFastBuildVSIX" id="CommandFBuildBFF1B" type="Button">
+				<CommandFlag>DynamicItemStart</CommandFlag>
+				<CommandFlag>DynamicVisibility</CommandFlag>
+				<Strings>
+					<ButtonText>BFF1B</ButtonText>
+				</Strings>
+			</Button>
+			<Button guid="VSFastBuildVSIX" id="CommandFBuildBFF1C" type="Button">
+				<CommandFlag>DynamicItemStart</CommandFlag>
+				<CommandFlag>DynamicVisibility</CommandFlag>
+				<Strings>
+					<ButtonText>BFF1C</ButtonText>
+				</Strings>
+			</Button>
+			<Button guid="VSFastBuildVSIX" id="CommandFBuildBFF1D" type="Button">
+				<CommandFlag>DynamicItemStart</CommandFlag>
+				<CommandFlag>DynamicVisibility</CommandFlag>
+				<Strings>
+					<ButtonText>BFF1D</ButtonText>
+				</Strings>
+			</Button>
+			<Button guid="VSFastBuildVSIX" id="CommandFBuildBFF1E" type="Button">
+				<CommandFlag>DynamicItemStart</CommandFlag>
+				<CommandFlag>DynamicVisibility</CommandFlag>
+				<Strings>
+					<ButtonText>BFF1E</ButtonText>
+				</Strings>
+			</Button>
+			<Button guid="VSFastBuildVSIX" id="CommandFBuildBFF1F" type="Button">
+				<CommandFlag>DynamicItemStart</CommandFlag>
+				<CommandFlag>DynamicVisibility</CommandFlag>
+				<Strings>
+					<ButtonText>BFF1F</ButtonText>
+				</Strings>
+			</Button>
+
 		</Buttons>
 		<Bitmaps>
 			<Bitmap guid="VSFastBuildImages" href="Resources\icon_menu.png" usedList="icon_menu" />
-		</Bitmaps>
+        </Bitmaps>
 	</Commands>
 
 	<CommandPlacements>
-		<CommandPlacement guid="VSFastBuildVSIX" id="CommandFBuildSolution" priority="0x1000">
-			<Parent guid="VSMainMenu" id="Build.SolutionGroup" />
+		<CommandPlacement guid="VSFastBuildVSIX" id="VSFastBuildMenuGroup" priority="0x100">
+			<Parent guid="VSMainMenu" id="Extensions" />
+		</CommandPlacement>
+		<CommandPlacement guid="VSFastBuildVSIX" id="VSFastBuildMenu" priority="0x100">
+			<Parent guid="VSFastBuildVSIX" id="VSFastBuildMenuGroup" />
+		</CommandPlacement>
+		<CommandPlacement guid="VSFastBuildVSIX" id="VSFastBuildMenuSolutionGroup" priority="0x100">
+			<Parent guid="VSFastBuildVSIX" id="VSFastBuildMenu" />
+		</CommandPlacement>
+		<CommandPlacement guid="VSFastBuildVSIX" id="VSFastBuildMenuProjectGroup" priority="0x101">
+			<Parent guid="VSFastBuildVSIX" id="VSFastBuildMenu" />
+		</CommandPlacement>
+		<CommandPlacement guid="VSFastBuildVSIX" id="VSFastBuildMenuCleanGroup" priority="0x103">
+			<Parent guid="VSFastBuildVSIX" id="VSFastBuildMenu" />
+		</CommandPlacement>
+		<CommandPlacement guid="VSFastBuildVSIX" id="VSFastBuildMenuToolGroup" priority="0x103">
+			<Parent guid="VSFastBuildVSIX" id="VSFastBuildMenu" />
+		</CommandPlacement>
+		<CommandPlacement guid="VSFastBuildVSIX" id="VSFastBuildMenuBFFGroup" priority="0x104">
+			<Parent guid="VSFastBuildVSIX" id="VSFastBuildMenu" />
+		</CommandPlacement>
+		<CommandPlacement guid="VSFastBuildVSIX" id="VSFastBuildMenuBFF00Group" priority="0x100">
+			<Parent guid="VSFastBuildVSIX" id="VSFastBuildMenuBFF00" />
+		</CommandPlacement>
+		<CommandPlacement guid="VSFastBuildVSIX" id="VSFastBuildMenuBFF01Group" priority="0x100">
+			<Parent guid="VSFastBuildVSIX" id="VSFastBuildMenuBFF01" />
+		</CommandPlacement>
+		<CommandPlacement guid="VSFastBuildVSIX" id="VSFastBuildMenuBFF02Group" priority="0x100">
+			<Parent guid="VSFastBuildVSIX" id="VSFastBuildMenuBFF02" />
+		</CommandPlacement>
+		<CommandPlacement guid="VSFastBuildVSIX" id="VSFastBuildMenuBFF03Group" priority="0x100">
+			<Parent guid="VSFastBuildVSIX" id="VSFastBuildMenuBFF03" />
+		</CommandPlacement>
+		<CommandPlacement guid="VSFastBuildVSIX" id="VSFastBuildMenuBFF04Group" priority="0x100">
+			<Parent guid="VSFastBuildVSIX" id="VSFastBuildMenuBFF04" />
+		</CommandPlacement>
+		<CommandPlacement guid="VSFastBuildVSIX" id="VSFastBuildMenuBFF05Group" priority="0x100">
+			<Parent guid="VSFastBuildVSIX" id="VSFastBuildMenuBFF05" />
+		</CommandPlacement>
+		<CommandPlacement guid="VSFastBuildVSIX" id="VSFastBuildMenuBFF06Group" priority="0x100">
+			<Parent guid="VSFastBuildVSIX" id="VSFastBuildMenuBFF06" />
+		</CommandPlacement>
+		<CommandPlacement guid="VSFastBuildVSIX" id="VSFastBuildMenuBFF07Group" priority="0x100">
+			<Parent guid="VSFastBuildVSIX" id="VSFastBuildMenuBFF07" />
+		</CommandPlacement>
+		<CommandPlacement guid="VSFastBuildVSIX" id="VSFastBuildMenuBFF08Group" priority="0x100">
+			<Parent guid="VSFastBuildVSIX" id="VSFastBuildMenuBFF08" />
+		</CommandPlacement>
+		<CommandPlacement guid="VSFastBuildVSIX" id="VSFastBuildMenuBFF09Group" priority="0x100">
+			<Parent guid="VSFastBuildVSIX" id="VSFastBuildMenuBFF09" />
+		</CommandPlacement>
+		<CommandPlacement guid="VSFastBuildVSIX" id="VSFastBuildMenuBFF0AGroup" priority="0x100">
+			<Parent guid="VSFastBuildVSIX" id="VSFastBuildMenuBFF0A" />
+		</CommandPlacement>
+		<CommandPlacement guid="VSFastBuildVSIX" id="VSFastBuildMenuBFF0BGroup" priority="0x100">
+			<Parent guid="VSFastBuildVSIX" id="VSFastBuildMenuBFF0B" />
+		</CommandPlacement>
+		<CommandPlacement guid="VSFastBuildVSIX" id="VSFastBuildMenuBFF0CGroup" priority="0x100">
+			<Parent guid="VSFastBuildVSIX" id="VSFastBuildMenuBFF0C" />
+		</CommandPlacement>
+		<CommandPlacement guid="VSFastBuildVSIX" id="VSFastBuildMenuBFF0DGroup" priority="0x100">
+			<Parent guid="VSFastBuildVSIX" id="VSFastBuildMenuBFF0D" />
+		</CommandPlacement>
+		<CommandPlacement guid="VSFastBuildVSIX" id="VSFastBuildMenuBFF0EGroup" priority="0x100">
+			<Parent guid="VSFastBuildVSIX" id="VSFastBuildMenuBFF0E" />
+		</CommandPlacement>
+		<CommandPlacement guid="VSFastBuildVSIX" id="VSFastBuildMenuBFF0FGroup" priority="0x100">
+			<Parent guid="VSFastBuildVSIX" id="VSFastBuildMenuBFF0F" />
 		</CommandPlacement>
 
-		<CommandPlacement guid="VSFastBuildVSIX" id="CommandFBuildProject" priority="0x1000">
-			<Parent guid="VSMainMenu" id="Build.SelectionGroup" />
+		<CommandPlacement guid="VSFastBuildVSIX" id="VSFastBuildMenuBFF10Group" priority="0x100">
+			<Parent guid="VSFastBuildVSIX" id="VSFastBuildMenuBFF10" />
+		</CommandPlacement>
+		<CommandPlacement guid="VSFastBuildVSIX" id="VSFastBuildMenuBFF11Group" priority="0x100">
+			<Parent guid="VSFastBuildVSIX" id="VSFastBuildMenuBFF11" />
+		</CommandPlacement>
+		<CommandPlacement guid="VSFastBuildVSIX" id="VSFastBuildMenuBFF12Group" priority="0x100">
+			<Parent guid="VSFastBuildVSIX" id="VSFastBuildMenuBFF12" />
+		</CommandPlacement>
+		<CommandPlacement guid="VSFastBuildVSIX" id="VSFastBuildMenuBFF13Group" priority="0x100">
+			<Parent guid="VSFastBuildVSIX" id="VSFastBuildMenuBFF13" />
+		</CommandPlacement>
+		<CommandPlacement guid="VSFastBuildVSIX" id="VSFastBuildMenuBFF14Group" priority="0x100">
+			<Parent guid="VSFastBuildVSIX" id="VSFastBuildMenuBFF14" />
+		</CommandPlacement>
+		<CommandPlacement guid="VSFastBuildVSIX" id="VSFastBuildMenuBFF15Group" priority="0x100">
+			<Parent guid="VSFastBuildVSIX" id="VSFastBuildMenuBFF15" />
+		</CommandPlacement>
+		<CommandPlacement guid="VSFastBuildVSIX" id="VSFastBuildMenuBFF16Group" priority="0x100">
+			<Parent guid="VSFastBuildVSIX" id="VSFastBuildMenuBFF16" />
+		</CommandPlacement>
+		<CommandPlacement guid="VSFastBuildVSIX" id="VSFastBuildMenuBFF17Group" priority="0x100">
+			<Parent guid="VSFastBuildVSIX" id="VSFastBuildMenuBFF17" />
+		</CommandPlacement>
+		<CommandPlacement guid="VSFastBuildVSIX" id="VSFastBuildMenuBFF18Group" priority="0x100">
+			<Parent guid="VSFastBuildVSIX" id="VSFastBuildMenuBFF18" />
+		</CommandPlacement>
+		<CommandPlacement guid="VSFastBuildVSIX" id="VSFastBuildMenuBFF19Group" priority="0x100">
+			<Parent guid="VSFastBuildVSIX" id="VSFastBuildMenuBFF19" />
+		</CommandPlacement>
+		<CommandPlacement guid="VSFastBuildVSIX" id="VSFastBuildMenuBFF1AGroup" priority="0x100">
+			<Parent guid="VSFastBuildVSIX" id="VSFastBuildMenuBFF1A" />
+		</CommandPlacement>
+		<CommandPlacement guid="VSFastBuildVSIX" id="VSFastBuildMenuBFF1BGroup" priority="0x100">
+			<Parent guid="VSFastBuildVSIX" id="VSFastBuildMenuBFF1B" />
+		</CommandPlacement>
+		<CommandPlacement guid="VSFastBuildVSIX" id="VSFastBuildMenuBFF1CGroup" priority="0x100">
+			<Parent guid="VSFastBuildVSIX" id="VSFastBuildMenuBFF1C" />
+		</CommandPlacement>
+		<CommandPlacement guid="VSFastBuildVSIX" id="VSFastBuildMenuBFF1DGroup" priority="0x100">
+			<Parent guid="VSFastBuildVSIX" id="VSFastBuildMenuBFF1D" />
+		</CommandPlacement>
+		<CommandPlacement guid="VSFastBuildVSIX" id="VSFastBuildMenuBFF1EGroup" priority="0x100">
+			<Parent guid="VSFastBuildVSIX" id="VSFastBuildMenuBFF1E" />
+		</CommandPlacement>
+		<CommandPlacement guid="VSFastBuildVSIX" id="VSFastBuildMenuBFF1FGroup" priority="0x100">
+			<Parent guid="VSFastBuildVSIX" id="VSFastBuildMenuBFF1F" />
+		</CommandPlacement>
+
+		<CommandPlacement guid="VSFastBuildVSIX" id="CommandFBuildSolution" priority="0x100">
+			<Parent guid="VSFastBuildVSIX" id="VSFastBuildMenuSolutionGroup" />
+		</CommandPlacement>
+		<CommandPlacement guid="VSFastBuildVSIX" id="CommandFBuildGenerateSolution" priority="0x100">
+			<Parent guid="VSFastBuildVSIX" id="VSFastBuildMenuSolutionGroup" />
+		</CommandPlacement>
+		<CommandPlacement guid="VSFastBuildVSIX" id="CommandFBuildProject" priority="0x100">
+			<Parent guid="VSFastBuildVSIX" id="VSFastBuildMenuProjectGroup" />
+		</CommandPlacement>
+		<CommandPlacement guid="VSFastBuildVSIX" id="CommandFBuildClean" priority="0x100">
+			<Parent guid="VSFastBuildVSIX" id="VSFastBuildMenuCleanGroup" />
+		</CommandPlacement>
+		<CommandPlacement guid="VSFastBuildVSIX" id="CommandFBuildMonitor" priority="0x101">
+			<Parent guid="VSFastBuildVSIX" id="VSFastBuildMenuToolGroup" />
+		</CommandPlacement>
+		<CommandPlacement guid="VSFastBuildVSIX" id="VSFastBuildMenuBFF00" priority="0x103">
+			<Parent guid="VSFastBuildVSIX" id="VSFastBuildMenuBFFGroup" />
+		</CommandPlacement>
+		<CommandPlacement guid="VSFastBuildVSIX" id="VSFastBuildMenuBFF01" priority="0x104">
+			<Parent guid="VSFastBuildVSIX" id="VSFastBuildMenuBFFGroup" />
+		</CommandPlacement>
+		<CommandPlacement guid="VSFastBuildVSIX" id="VSFastBuildMenuBFF02" priority="0x105">
+			<Parent guid="VSFastBuildVSIX" id="VSFastBuildMenuBFFGroup" />
+		</CommandPlacement>
+		<CommandPlacement guid="VSFastBuildVSIX" id="VSFastBuildMenuBFF03" priority="0x106">
+			<Parent guid="VSFastBuildVSIX" id="VSFastBuildMenuBFFGroup" />
+		</CommandPlacement>
+		<CommandPlacement guid="VSFastBuildVSIX" id="VSFastBuildMenuBFF04" priority="0x107">
+			<Parent guid="VSFastBuildVSIX" id="VSFastBuildMenuBFFGroup" />
+		</CommandPlacement>
+		<CommandPlacement guid="VSFastBuildVSIX" id="VSFastBuildMenuBFF05" priority="0x108">
+			<Parent guid="VSFastBuildVSIX" id="VSFastBuildMenuBFFGroup" />
+		</CommandPlacement>
+		<CommandPlacement guid="VSFastBuildVSIX" id="VSFastBuildMenuBFF06" priority="0x109">
+			<Parent guid="VSFastBuildVSIX" id="VSFastBuildMenuBFFGroup" />
+		</CommandPlacement>
+		<CommandPlacement guid="VSFastBuildVSIX" id="VSFastBuildMenuBFF07" priority="0x10A">
+			<Parent guid="VSFastBuildVSIX" id="VSFastBuildMenuBFFGroup" />
+		</CommandPlacement>
+		<CommandPlacement guid="VSFastBuildVSIX" id="VSFastBuildMenuBFF08" priority="0x110">
+			<Parent guid="VSFastBuildVSIX" id="VSFastBuildMenuBFFGroup" />
+		</CommandPlacement>
+		<CommandPlacement guid="VSFastBuildVSIX" id="VSFastBuildMenuBFF09" priority="0x111">
+			<Parent guid="VSFastBuildVSIX" id="VSFastBuildMenuBFFGroup" />
+		</CommandPlacement>
+		<CommandPlacement guid="VSFastBuildVSIX" id="VSFastBuildMenuBFF0A" priority="0x112">
+			<Parent guid="VSFastBuildVSIX" id="VSFastBuildMenuBFFGroup" />
+		</CommandPlacement>
+		<CommandPlacement guid="VSFastBuildVSIX" id="VSFastBuildMenuBFF0B" priority="0x113">
+			<Parent guid="VSFastBuildVSIX" id="VSFastBuildMenuBFFGroup" />
+		</CommandPlacement>
+		<CommandPlacement guid="VSFastBuildVSIX" id="VSFastBuildMenuBFF0C" priority="0x114">
+			<Parent guid="VSFastBuildVSIX" id="VSFastBuildMenuBFFGroup" />
+		</CommandPlacement>
+		<CommandPlacement guid="VSFastBuildVSIX" id="VSFastBuildMenuBFF0D" priority="0x115">
+			<Parent guid="VSFastBuildVSIX" id="VSFastBuildMenuBFFGroup" />
+		</CommandPlacement>
+		<CommandPlacement guid="VSFastBuildVSIX" id="VSFastBuildMenuBFF0E" priority="0x116">
+			<Parent guid="VSFastBuildVSIX" id="VSFastBuildMenuBFFGroup" />
+		</CommandPlacement>
+		<CommandPlacement guid="VSFastBuildVSIX" id="VSFastBuildMenuBFF0F" priority="0x117">
+			<Parent guid="VSFastBuildVSIX" id="VSFastBuildMenuBFFGroup" />
+		</CommandPlacement>
+		<CommandPlacement guid="VSFastBuildVSIX" id="VSFastBuildMenuBFF10" priority="0x118">
+			<Parent guid="VSFastBuildVSIX" id="VSFastBuildMenuBFFGroup" />
+		</CommandPlacement>
+		<CommandPlacement guid="VSFastBuildVSIX" id="VSFastBuildMenuBFF11" priority="0x119">
+			<Parent guid="VSFastBuildVSIX" id="VSFastBuildMenuBFFGroup" />
+		</CommandPlacement>
+		<CommandPlacement guid="VSFastBuildVSIX" id="VSFastBuildMenuBFF12" priority="0x11A">
+			<Parent guid="VSFastBuildVSIX" id="VSFastBuildMenuBFFGroup" />
+		</CommandPlacement>
+		<CommandPlacement guid="VSFastBuildVSIX" id="VSFastBuildMenuBFF13" priority="0x11B">
+			<Parent guid="VSFastBuildVSIX" id="VSFastBuildMenuBFFGroup" />
+		</CommandPlacement>
+		<CommandPlacement guid="VSFastBuildVSIX" id="VSFastBuildMenuBFF14" priority="0x11C">
+			<Parent guid="VSFastBuildVSIX" id="VSFastBuildMenuBFFGroup" />
+		</CommandPlacement>
+		<CommandPlacement guid="VSFastBuildVSIX" id="VSFastBuildMenuBFF15" priority="0x11D">
+			<Parent guid="VSFastBuildVSIX" id="VSFastBuildMenuBFFGroup" />
+		</CommandPlacement>
+		<CommandPlacement guid="VSFastBuildVSIX" id="VSFastBuildMenuBFF16" priority="0x11E">
+			<Parent guid="VSFastBuildVSIX" id="VSFastBuildMenuBFFGroup" />
+		</CommandPlacement>
+		<CommandPlacement guid="VSFastBuildVSIX" id="VSFastBuildMenuBFF17" priority="0x11F">
+			<Parent guid="VSFastBuildVSIX" id="VSFastBuildMenuBFFGroup" />
+		</CommandPlacement>
+		<CommandPlacement guid="VSFastBuildVSIX" id="VSFastBuildMenuBFF18" priority="0x120">
+			<Parent guid="VSFastBuildVSIX" id="VSFastBuildMenuBFFGroup" />
+		</CommandPlacement>
+		<CommandPlacement guid="VSFastBuildVSIX" id="VSFastBuildMenuBFF19" priority="0x121">
+			<Parent guid="VSFastBuildVSIX" id="VSFastBuildMenuBFFGroup" />
+		</CommandPlacement>
+		<CommandPlacement guid="VSFastBuildVSIX" id="VSFastBuildMenuBFF1A" priority="0x122">
+			<Parent guid="VSFastBuildVSIX" id="VSFastBuildMenuBFFGroup" />
+		</CommandPlacement>
+		<CommandPlacement guid="VSFastBuildVSIX" id="VSFastBuildMenuBFF1B" priority="0x123">
+			<Parent guid="VSFastBuildVSIX" id="VSFastBuildMenuBFFGroup" />
+		</CommandPlacement>
+		<CommandPlacement guid="VSFastBuildVSIX" id="VSFastBuildMenuBFF1C" priority="0x124">
+			<Parent guid="VSFastBuildVSIX" id="VSFastBuildMenuBFFGroup" />
+		</CommandPlacement>
+		<CommandPlacement guid="VSFastBuildVSIX" id="VSFastBuildMenuBFF1D" priority="0x125">
+			<Parent guid="VSFastBuildVSIX" id="VSFastBuildMenuBFFGroup" />
+		</CommandPlacement>
+		<CommandPlacement guid="VSFastBuildVSIX" id="VSFastBuildMenuBFF1E" priority="0x126">
+			<Parent guid="VSFastBuildVSIX" id="VSFastBuildMenuBFFGroup" />
+		</CommandPlacement>
+		<CommandPlacement guid="VSFastBuildVSIX" id="VSFastBuildMenuBFF1F" priority="0x127">
+			<Parent guid="VSFastBuildVSIX" id="VSFastBuildMenuBFFGroup" />
+		</CommandPlacement>
+		<CommandPlacement guid="VSFastBuildVSIX" id="CommandFBuildBFFFiles" priority="0x200">
+			<Parent guid="VSFastBuildVSIX" id="VSFastBuildMenuBFFGroup" />
+		</CommandPlacement>
+
+		<CommandPlacement guid="VSFastBuildVSIX" id="CommandFBuildBFF00" priority="0x100">
+			<Parent guid="VSFastBuildVSIX" id="VSFastBuildMenuBFF00Group" />
+		</CommandPlacement>
+		<CommandPlacement guid="VSFastBuildVSIX" id="CommandFBuildBFF01" priority="0x100">
+			<Parent guid="VSFastBuildVSIX" id="VSFastBuildMenuBFF01Group" />
+		</CommandPlacement>
+		<CommandPlacement guid="VSFastBuildVSIX" id="CommandFBuildBFF02" priority="0x100">
+			<Parent guid="VSFastBuildVSIX" id="VSFastBuildMenuBFF02Group" />
+		</CommandPlacement>
+		<CommandPlacement guid="VSFastBuildVSIX" id="CommandFBuildBFF03" priority="0x100">
+			<Parent guid="VSFastBuildVSIX" id="VSFastBuildMenuBFF03Group" />
+		</CommandPlacement>
+		<CommandPlacement guid="VSFastBuildVSIX" id="CommandFBuildBFF04" priority="0x100">
+			<Parent guid="VSFastBuildVSIX" id="VSFastBuildMenuBFF04Group" />
+		</CommandPlacement>
+		<CommandPlacement guid="VSFastBuildVSIX" id="CommandFBuildBFF05" priority="0x100">
+			<Parent guid="VSFastBuildVSIX" id="VSFastBuildMenuBFF05Group" />
+		</CommandPlacement>
+		<CommandPlacement guid="VSFastBuildVSIX" id="CommandFBuildBFF06" priority="0x100">
+			<Parent guid="VSFastBuildVSIX" id="VSFastBuildMenuBFF06Group" />
+		</CommandPlacement>
+		<CommandPlacement guid="VSFastBuildVSIX" id="CommandFBuildBFF07" priority="0x100">
+			<Parent guid="VSFastBuildVSIX" id="VSFastBuildMenuBFF07Group" />
+		</CommandPlacement>
+		<CommandPlacement guid="VSFastBuildVSIX" id="CommandFBuildBFF08" priority="0x100">
+			<Parent guid="VSFastBuildVSIX" id="VSFastBuildMenuBFF08Group" />
+		</CommandPlacement>
+		<CommandPlacement guid="VSFastBuildVSIX" id="CommandFBuildBFF09" priority="0x100">
+			<Parent guid="VSFastBuildVSIX" id="VSFastBuildMenuBFF09Group" />
+		</CommandPlacement>
+		<CommandPlacement guid="VSFastBuildVSIX" id="CommandFBuildBFF0A" priority="0x100">
+			<Parent guid="VSFastBuildVSIX" id="VSFastBuildMenuBFF0AGroup" />
+		</CommandPlacement>
+		<CommandPlacement guid="VSFastBuildVSIX" id="CommandFBuildBFF0B" priority="0x100">
+			<Parent guid="VSFastBuildVSIX" id="VSFastBuildMenuBFF0BGroup" />
+		</CommandPlacement>
+		<CommandPlacement guid="VSFastBuildVSIX" id="CommandFBuildBFF0C" priority="0x100">
+			<Parent guid="VSFastBuildVSIX" id="VSFastBuildMenuBFF0CGroup" />
+		</CommandPlacement>
+		<CommandPlacement guid="VSFastBuildVSIX" id="CommandFBuildBFF0D" priority="0x100">
+			<Parent guid="VSFastBuildVSIX" id="VSFastBuildMenuBFF0DGroup" />
+		</CommandPlacement>
+		<CommandPlacement guid="VSFastBuildVSIX" id="CommandFBuildBFF0E" priority="0x100">
+			<Parent guid="VSFastBuildVSIX" id="VSFastBuildMenuBFF0EGroup" />
+		</CommandPlacement>
+		<CommandPlacement guid="VSFastBuildVSIX" id="CommandFBuildBFF0F" priority="0x100">
+			<Parent guid="VSFastBuildVSIX" id="VSFastBuildMenuBFF0FGroup" />
+		</CommandPlacement>
+
+		<CommandPlacement guid="VSFastBuildVSIX" id="CommandFBuildBFF10" priority="0x100">
+			<Parent guid="VSFastBuildVSIX" id="VSFastBuildMenuBFF10Group" />
+		</CommandPlacement>
+		<CommandPlacement guid="VSFastBuildVSIX" id="CommandFBuildBFF11" priority="0x100">
+			<Parent guid="VSFastBuildVSIX" id="VSFastBuildMenuBFF11Group" />
+		</CommandPlacement>
+		<CommandPlacement guid="VSFastBuildVSIX" id="CommandFBuildBFF12" priority="0x100">
+			<Parent guid="VSFastBuildVSIX" id="VSFastBuildMenuBFF12Group" />
+		</CommandPlacement>
+		<CommandPlacement guid="VSFastBuildVSIX" id="CommandFBuildBFF13" priority="0x100">
+			<Parent guid="VSFastBuildVSIX" id="VSFastBuildMenuBFF13Group" />
+		</CommandPlacement>
+		<CommandPlacement guid="VSFastBuildVSIX" id="CommandFBuildBFF14" priority="0x100">
+			<Parent guid="VSFastBuildVSIX" id="VSFastBuildMenuBFF14Group" />
+		</CommandPlacement>
+		<CommandPlacement guid="VSFastBuildVSIX" id="CommandFBuildBFF15" priority="0x100">
+			<Parent guid="VSFastBuildVSIX" id="VSFastBuildMenuBFF15Group" />
+		</CommandPlacement>
+		<CommandPlacement guid="VSFastBuildVSIX" id="CommandFBuildBFF16" priority="0x100">
+			<Parent guid="VSFastBuildVSIX" id="VSFastBuildMenuBFF16Group" />
+		</CommandPlacement>
+		<CommandPlacement guid="VSFastBuildVSIX" id="CommandFBuildBFF17" priority="0x100">
+			<Parent guid="VSFastBuildVSIX" id="VSFastBuildMenuBFF17Group" />
+		</CommandPlacement>
+		<CommandPlacement guid="VSFastBuildVSIX" id="CommandFBuildBFF18" priority="0x100">
+			<Parent guid="VSFastBuildVSIX" id="VSFastBuildMenuBFF18Group" />
+		</CommandPlacement>
+		<CommandPlacement guid="VSFastBuildVSIX" id="CommandFBuildBFF19" priority="0x100">
+			<Parent guid="VSFastBuildVSIX" id="VSFastBuildMenuBFF19Group" />
+		</CommandPlacement>
+		<CommandPlacement guid="VSFastBuildVSIX" id="CommandFBuildBFF1A" priority="0x100">
+			<Parent guid="VSFastBuildVSIX" id="VSFastBuildMenuBFF1AGroup" />
+		</CommandPlacement>
+		<CommandPlacement guid="VSFastBuildVSIX" id="CommandFBuildBFF1B" priority="0x100">
+			<Parent guid="VSFastBuildVSIX" id="VSFastBuildMenuBFF1BGroup" />
+		</CommandPlacement>
+		<CommandPlacement guid="VSFastBuildVSIX" id="CommandFBuildBFF1C" priority="0x100">
+			<Parent guid="VSFastBuildVSIX" id="VSFastBuildMenuBFF1CGroup" />
+		</CommandPlacement>
+		<CommandPlacement guid="VSFastBuildVSIX" id="CommandFBuildBFF1D" priority="0x100">
+			<Parent guid="VSFastBuildVSIX" id="VSFastBuildMenuBFF1DGroup" />
+		</CommandPlacement>
+		<CommandPlacement guid="VSFastBuildVSIX" id="CommandFBuildBFF1E" priority="0x100">
+			<Parent guid="VSFastBuildVSIX" id="VSFastBuildMenuBFF1EGroup" />
+		</CommandPlacement>
+		<CommandPlacement guid="VSFastBuildVSIX" id="CommandFBuildBFF1F" priority="0x100">
+			<Parent guid="VSFastBuildVSIX" id="VSFastBuildMenuBFF1FGroup" />
 		</CommandPlacement>
 
 		<CommandPlacement guid="VSFastBuildVSIX" id="CommandFBuildSolution" priority="0x3000">
-			<Parent guid="VSMainMenu" id="SolutionNode.BuildGroup"/>
+			<Parent guid="VSMainMenu" id="SolutionNode.BuildGroup" />
+		</CommandPlacement>
+		<CommandPlacement guid="VSFastBuildVSIX" id="CommandFBuildGenerateSolution" priority="0x3001">
+			<Parent guid="VSMainMenu" id="SolutionNode.BuildGroup" />
 		</CommandPlacement>
 		<CommandPlacement guid="VSFastBuildVSIX" id="CommandFBuildProject" priority="0x3000">
-			<Parent guid="VSMainMenu" id="ProjectNode.BuildGroup"/>
+			<Parent guid="VSMainMenu" id="ProjectNode.BuildGroup" />
 		</CommandPlacement>
-
-		<CommandPlacement guid="VSFastBuildVSIX" id="CommandFBuildMonitor" priority="0x3000">
-			<Parent guid="VSMainMenu" id="View.DevWindowsGroup.OtherWindows.Group1"/>
+		<CommandPlacement guid="VSFastBuildVSIX" id="CommandFBuildProject" priority="0x3000">
+			<Parent guid="VSMainMenu" id="ProjectNode.MultiProjectBuildGroup" />
 		</CommandPlacement>
 	</CommandPlacements>
 
 	<Symbols>
 		<GuidSymbol name="VSFastBuildVSIX" value="{73d9eb2b-a45e-4cf2-81ec-517c78ad7093}">
-			<IDSymbol name="VSFastBuildBuildMenu" value="0x1000" />
-			<IDSymbol name="VSFastBuildSolutionMenuGroup" value="0x1001" />
-			<IDSymbol name="VSFastBuildProjectGroup" value="0x1002" />
-			<IDSymbol name="CommandFBuildSolution" value="0x2000" />
-			<IDSymbol name="CommandFBuildProject" value="0x2001" />
-			<IDSymbol name="CommandFBuildMonitor" value="0x2002" />
+			<IDSymbol name="VSFastBuildMenuGroup" value="0x1000" />
+			<IDSymbol name="VSFastBuildMenuSolutionGroup" value="0x1001" />
+			<IDSymbol name="VSFastBuildMenuProjectGroup" value="0x1002" />
+			<IDSymbol name="VSFastBuildMenuCleanGroup" value="0x1003" />
+			<IDSymbol name="VSFastBuildMenuToolGroup" value="0x1004" />
+			<IDSymbol name="VSFastBuildMenuBFFGroup" value="0x1005" />
+			<IDSymbol name="VSFastBuildMenuBFF00Group" value="0x1006" />
+			<IDSymbol name="VSFastBuildMenuBFF01Group" value="0x1007" />
+			<IDSymbol name="VSFastBuildMenuBFF02Group" value="0x1008" />
+			<IDSymbol name="VSFastBuildMenuBFF03Group" value="0x1009" />
+			<IDSymbol name="VSFastBuildMenuBFF04Group" value="0x100A" />
+			<IDSymbol name="VSFastBuildMenuBFF05Group" value="0x100B" />
+			<IDSymbol name="VSFastBuildMenuBFF06Group" value="0x100C" />
+			<IDSymbol name="VSFastBuildMenuBFF07Group" value="0x100D" />
+			<IDSymbol name="VSFastBuildMenuBFF08Group" value="0x100E" />
+			<IDSymbol name="VSFastBuildMenuBFF09Group" value="0x100F" />
+			<IDSymbol name="VSFastBuildMenuBFF0AGroup" value="0x1010" />
+			<IDSymbol name="VSFastBuildMenuBFF0BGroup" value="0x1011" />
+			<IDSymbol name="VSFastBuildMenuBFF0CGroup" value="0x1012" />
+			<IDSymbol name="VSFastBuildMenuBFF0DGroup" value="0x1013" />
+			<IDSymbol name="VSFastBuildMenuBFF0EGroup" value="0x1014" />
+			<IDSymbol name="VSFastBuildMenuBFF0FGroup" value="0x1015" />
+			<IDSymbol name="VSFastBuildMenuBFF10Group" value="0x1016" />
+			<IDSymbol name="VSFastBuildMenuBFF11Group" value="0x1017" />
+			<IDSymbol name="VSFastBuildMenuBFF12Group" value="0x1018" />
+			<IDSymbol name="VSFastBuildMenuBFF13Group" value="0x1019" />
+			<IDSymbol name="VSFastBuildMenuBFF14Group" value="0x101A" />
+			<IDSymbol name="VSFastBuildMenuBFF15Group" value="0x101B" />
+			<IDSymbol name="VSFastBuildMenuBFF16Group" value="0x101C" />
+			<IDSymbol name="VSFastBuildMenuBFF17Group" value="0x101D" />
+			<IDSymbol name="VSFastBuildMenuBFF18Group" value="0x101E" />
+			<IDSymbol name="VSFastBuildMenuBFF19Group" value="0x101F" />
+			<IDSymbol name="VSFastBuildMenuBFF1AGroup" value="0x1020" />
+			<IDSymbol name="VSFastBuildMenuBFF1BGroup" value="0x1021" />
+			<IDSymbol name="VSFastBuildMenuBFF1CGroup" value="0x1022" />
+			<IDSymbol name="VSFastBuildMenuBFF1DGroup" value="0x1023" />
+			<IDSymbol name="VSFastBuildMenuBFF1EGroup" value="0x1024" />
+			<IDSymbol name="VSFastBuildMenuBFF1FGroup" value="0x1025" />
+
+			<IDSymbol name="VSFastBuildMenu" value="0x2000" />
+			<IDSymbol name="VSFastBuildMenuBFF00" value="0x2001" />
+			<IDSymbol name="VSFastBuildMenuBFF01" value="0x2002" />
+			<IDSymbol name="VSFastBuildMenuBFF02" value="0x2003" />
+			<IDSymbol name="VSFastBuildMenuBFF03" value="0x2004" />
+			<IDSymbol name="VSFastBuildMenuBFF04" value="0x2005" />
+			<IDSymbol name="VSFastBuildMenuBFF05" value="0x2006" />
+			<IDSymbol name="VSFastBuildMenuBFF06" value="0x2007" />
+			<IDSymbol name="VSFastBuildMenuBFF07" value="0x2008" />
+			<IDSymbol name="VSFastBuildMenuBFF08" value="0x2009" />
+			<IDSymbol name="VSFastBuildMenuBFF09" value="0x200A" />
+			<IDSymbol name="VSFastBuildMenuBFF0A" value="0x200B" />
+			<IDSymbol name="VSFastBuildMenuBFF0B" value="0x200C" />
+			<IDSymbol name="VSFastBuildMenuBFF0C" value="0x200D" />
+			<IDSymbol name="VSFastBuildMenuBFF0D" value="0x200E" />
+			<IDSymbol name="VSFastBuildMenuBFF0E" value="0x200F" />
+			<IDSymbol name="VSFastBuildMenuBFF0F" value="0x2010" />
+			<IDSymbol name="VSFastBuildMenuBFF10" value="0x2011" />
+			<IDSymbol name="VSFastBuildMenuBFF11" value="0x2012" />
+			<IDSymbol name="VSFastBuildMenuBFF12" value="0x2013" />
+			<IDSymbol name="VSFastBuildMenuBFF13" value="0x2014" />
+			<IDSymbol name="VSFastBuildMenuBFF14" value="0x2015" />
+			<IDSymbol name="VSFastBuildMenuBFF15" value="0x2016" />
+			<IDSymbol name="VSFastBuildMenuBFF16" value="0x2017" />
+			<IDSymbol name="VSFastBuildMenuBFF17" value="0x2018" />
+			<IDSymbol name="VSFastBuildMenuBFF18" value="0x2019" />
+			<IDSymbol name="VSFastBuildMenuBFF19" value="0x201A" />
+			<IDSymbol name="VSFastBuildMenuBFF1A" value="0x201B" />
+			<IDSymbol name="VSFastBuildMenuBFF1B" value="0x201C" />
+			<IDSymbol name="VSFastBuildMenuBFF1C" value="0x201D" />
+			<IDSymbol name="VSFastBuildMenuBFF1D" value="0x201E" />
+			<IDSymbol name="VSFastBuildMenuBFF1E" value="0x201F" />
+			<IDSymbol name="VSFastBuildMenuBFF1F" value="0x2020" />
+
+			<IDSymbol name="CommandFBuildSolution" value="0x3000" />
+			<IDSymbol name="CommandFBuildGenerateSolution" value="0x3001" />
+			<IDSymbol name="CommandFBuildProject" value="0x3002" />
+			<IDSymbol name="CommandFBuildMonitor" value="0x3003" />
+			<IDSymbol name="CommandFBuildClean" value="0x3004" />
+			<IDSymbol name="CommandFBuildBFFFiles" value="0x3005" />
+
+			<IDSymbol name="CommandFBuildBFF00" value="0x4000" />
+			<IDSymbol name="CommandFBuildBFF01" value="0x4100" />
+			<IDSymbol name="CommandFBuildBFF02" value="0x4200" />
+			<IDSymbol name="CommandFBuildBFF03" value="0x4300" />
+			<IDSymbol name="CommandFBuildBFF04" value="0x4400" />
+			<IDSymbol name="CommandFBuildBFF05" value="0x4500" />
+			<IDSymbol name="CommandFBuildBFF06" value="0x4600" />
+			<IDSymbol name="CommandFBuildBFF07" value="0x4700" />
+			<IDSymbol name="CommandFBuildBFF08" value="0x4800" />
+			<IDSymbol name="CommandFBuildBFF09" value="0x4900" />
+			<IDSymbol name="CommandFBuildBFF0A" value="0x4A00" />
+			<IDSymbol name="CommandFBuildBFF0B" value="0x4B00" />
+			<IDSymbol name="CommandFBuildBFF0C" value="0x4C00" />
+			<IDSymbol name="CommandFBuildBFF0D" value="0x4D00" />
+			<IDSymbol name="CommandFBuildBFF0E" value="0x4E00" />
+			<IDSymbol name="CommandFBuildBFF0F" value="0x4F00" />
+			<IDSymbol name="CommandFBuildBFF10" value="0x5000" />
+			<IDSymbol name="CommandFBuildBFF11" value="0x5100" />
+			<IDSymbol name="CommandFBuildBFF12" value="0x5200" />
+			<IDSymbol name="CommandFBuildBFF13" value="0x5300" />
+			<IDSymbol name="CommandFBuildBFF14" value="0x5400" />
+			<IDSymbol name="CommandFBuildBFF15" value="0x5500" />
+			<IDSymbol name="CommandFBuildBFF16" value="0x5600" />
+			<IDSymbol name="CommandFBuildBFF17" value="0x5700" />
+			<IDSymbol name="CommandFBuildBFF18" value="0x5800" />
+			<IDSymbol name="CommandFBuildBFF19" value="0x5900" />
+			<IDSymbol name="CommandFBuildBFF1A" value="0x5A00" />
+			<IDSymbol name="CommandFBuildBFF1B" value="0x5B00" />
+			<IDSymbol name="CommandFBuildBFF1C" value="0x5C00" />
+			<IDSymbol name="CommandFBuildBFF1D" value="0x5D00" />
+			<IDSymbol name="CommandFBuildBFF1E" value="0x5E00" />
+			<IDSymbol name="CommandFBuildBFF1F" value="0x5F00" />
 		</GuidSymbol>
 		<GuidSymbol name="VSFastBuildImages" value="{334E00CC-D085-4475-A258-7B02C3133597}">
 			<IDSymbol name="icon_menu" value="1" />
 		</GuidSymbol>
-	</Symbols>
+	
+    <GuidSymbol value="{bf66704f-c9c9-4236-931f-b61d861bc317}" name="guidImages">
+      <IDSymbol name="bmpPic1" value="1" />
+      <IDSymbol name="bmpPic2" value="2" />
+      <IDSymbol name="bmpPicSearch" value="3" />
+      <IDSymbol name="bmpPicX" value="4" />
+      <IDSymbol name="bmpPicArrows" value="5" />
+      <IDSymbol name="bmpPicStrikethrough" value="6" />
+    </GuidSymbol>
+  </Symbols>
 </CommandTable>

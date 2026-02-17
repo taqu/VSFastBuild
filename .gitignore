@@ -1,6 +1,11 @@
+# files
 *.user
+*.pdb
+
 # directories
 /packages
 .vs/
 bin/
 obj/
+lib/
+build*/

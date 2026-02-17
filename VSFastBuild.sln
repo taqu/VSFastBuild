@@ -7,8 +7,6 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "VSFastBuildVSIX", "VSFastBu
 EndProject
 Project("{D954291E-2A0B-460D-934E-DC6B0785DB48}") = "VSFastBuildCommon", "VSFastBuildCommon\VSFastBuildCommon.shproj", "{6E05E33B-8A80-4522-9F35-D9E478CC4580}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "VSFastBuildCLI", "VSFastBuildCLI\VSFastBuildCLI.csproj", "{74E5F057-4ECF-41BE-A6BF-1A0304C6D188}"
-EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -31,18 +29,6 @@ Global
 		{19C249BB-0D63-4A86-BC35-4B58DE761F4F}.Release|arm64.Build.0 = Release|arm64
 		{19C249BB-0D63-4A86-BC35-4B58DE761F4F}.Release|x86.ActiveCfg = Release|x86
 		{19C249BB-0D63-4A86-BC35-4B58DE761F4F}.Release|x86.Build.0 = Release|x86
-		{74E5F057-4ECF-41BE-A6BF-1A0304C6D188}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{74E5F057-4ECF-41BE-A6BF-1A0304C6D188}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{74E5F057-4ECF-41BE-A6BF-1A0304C6D188}.Debug|arm64.ActiveCfg = Debug|Any CPU
-		{74E5F057-4ECF-41BE-A6BF-1A0304C6D188}.Debug|arm64.Build.0 = Debug|Any CPU
-		{74E5F057-4ECF-41BE-A6BF-1A0304C6D188}.Debug|x86.ActiveCfg = Debug|Any CPU
-		{74E5F057-4ECF-41BE-A6BF-1A0304C6D188}.Debug|x86.Build.0 = Debug|Any CPU
-		{74E5F057-4ECF-41BE-A6BF-1A0304C6D188}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{74E5F057-4ECF-41BE-A6BF-1A0304C6D188}.Release|Any CPU.Build.0 = Release|Any CPU
-		{74E5F057-4ECF-41BE-A6BF-1A0304C6D188}.Release|arm64.ActiveCfg = Release|Any CPU
-		{74E5F057-4ECF-41BE-A6BF-1A0304C6D188}.Release|arm64.Build.0 = Release|Any CPU
-		{74E5F057-4ECF-41BE-A6BF-1A0304C6D188}.Release|x86.ActiveCfg = Release|Any CPU
-		{74E5F057-4ECF-41BE-A6BF-1A0304C6D188}.Release|x86.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
@@ -53,6 +39,5 @@ Global
 	GlobalSection(SharedMSBuildProjectFiles) = preSolution
 		VSFastBuildCommon\VSFastBuildCommon.projitems*{19c249bb-0d63-4a86-bc35-4b58de761f4f}*SharedItemsImports = 4
 		VSFastBuildCommon\VSFastBuildCommon.projitems*{6e05e33b-8a80-4522-9f35-d9e478cc4580}*SharedItemsImports = 13
-		VSFastBuildCommon\VSFastBuildCommon.projitems*{74e5f057-4ecf-41be-a6bf-1a0304c6d188}*SharedItemsImports = 4
 	EndGlobalSection
 EndGlobal

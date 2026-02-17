@@ -1,0 +1,6 @@
+- v.0.1.0
+  - Preview release
+  - Generate FASTBuild's bff files from vcxproj
+  - List bff files in a solution
+  - Run FASTBuild
+  - Monitoring FASTBuild's log

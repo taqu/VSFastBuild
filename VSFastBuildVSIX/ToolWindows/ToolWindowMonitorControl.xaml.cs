@@ -1,6 +1,6 @@
+//#define VSFASTBUILD_ENABLE_FILTER
 using EnvDTE;
 using EnvDTE80;
-using System.Collections;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Diagnostics;
@@ -15,7 +15,6 @@ using System.Windows.Media;
 using System.Windows.Media.Imaging;
 using System.Windows.Threading;
 using VSFastBuildVSIX.ToolWindows;
-using static VSFastBuildVSIX.ToolWindowMonitorControl;
 using static VSFastBuildVSIX.ToolWindows.BuildEvent;
 
 namespace VSFastBuildVSIX
@@ -38,18 +37,21 @@ namespace VSFastBuildVSIX
 
         public const float PIX_SPACE_BETWEEN_EVENTS = 2.0f;
         public const float PIX_PER_SECOND = 20.0f;
-        public const float PIX_HEIGHT = 20.0f;
+        public const float PIX_HEIGHT = 16.0f;
         public const float PIX_LOD_THRESHOLD = 2.0f;
         public const float TIMESTEP_MS = 500.0f;
+        public const float FontSize = 12.0f;
 
-        public const int TextLabeloffset_X = 4;
-        public const int TextLabeloffset_Y = 4;
+        public const int TextLabelOffset_X = 4;
+        public const int TextLabelOffset_Y = 4;
         public const float MinTextLabelWidthThreshold = 50.0f; // The minimum element width to be eligible for text display
         public const float MinDotDotDotWidthThreshold = 20.0f; // The minimum element width to be eligible for a "..." display
         public const float RacingIconWidth = 20.0f;
         public const string LocalHostName = "local";
         public const string PrepareBuildStepsText = "Preparing Build Steps";
         public const long TargetPIDCheckPeriodMS = 1 * 1000;
+        private const string FastBuildLogPath = @"\FastBuild\FastBuildLog.log";
+        private const int MillisecondsForUpdate = 500;
 
         public static class CommandArgumentIndex
         {
@@ -153,6 +155,8 @@ namespace VSFastBuildVSIX
             return currentTimeMS;
         }
 
+        public long BuildStartTimeMS { get { return buildStartTimeMS_; } }
+
         public long GetCurrentBuildTimeMS(bool bUseTimeStep = false)
         {
             long elapsedBuildTime = -buildStartTimeMS_;
@@ -243,7 +247,8 @@ namespace VSFastBuildVSIX
         private ObservableCollection<OutputFilterItem> outputComboBoxFilters_ = new ObservableCollection<OutputFilterItem>();
         private bool outputTextBoxPendingLayoutUpdate_ = false;
         private DispatcherTimer timer_;
-        /* Input File IO feature */
+
+        //Input file I/O
         private FileStream fileStream_;
         private long fileStreamPosition_;
         private List<byte> fileBuffer_ = new System.Collections.Generic.List<byte>();
@@ -251,7 +256,7 @@ namespace VSFastBuildVSIX
 
         private int targetPID_;
         private bool isLiveSession_;
-private long lastTargetPIDCheckTimeMS_ = 0;
+        private long lastTargetPIDCheckTimeMS_ = 0;
 
         private float currentProgressPCT_;
         private ToolTip statusBarProgressToolTip_ = new ToolTip();
@@ -262,6 +267,7 @@ private long lastTargetPIDCheckTimeMS_ = 0;
 
             // Initialize text rendering
             TextUtils.StaticInitialize();
+            ToolImages.Initialize();
 
             // Time bar display
             timebar_ = new Timebar(TimeBarCanvas, this);
@@ -296,36 +302,35 @@ private long lastTargetPIDCheckTimeMS_ = 0;
             OutputTextBox.KeyDown += OutputTextBox_KeyDown;
             OutputTextBox.LayoutUpdated += OutputTextBox_LayoutUpdated;
 
+            #if VSFASTBUILD_ENABLE_FILTER
             OutputWindowComboBox.SelectionChanged += OutputWindowComboBox_SelectionChanged;
-            {
-                VSFastBuildVSIXPackage package;
-                if(VSFastBuildVSIXPackage.TryGetPackage(out package))
-                {
-                    if (package.IsBuildProcessRunning())
-                    {
-                        StartTimer();
-                    }
-                }
-            }
+            #endif
         }
 
-        public void StartTimer()
+        public bool Start()
         {
-            if(null != timer_)
+            if (null != timer_)
             {
-                return;
+                return false;
             }
+            Reset();
             Dispatcher.BeginInvoke(DispatcherPriority.Loaded, new Action(() =>
             {
+                StartStopButton.Content = "Stop";
                 //update timer
                 timer_ = new DispatcherTimer();
                 timer_.Tick += HandleTick;
-                timer_.Interval = new TimeSpan(TimeSpan.TicksPerMillisecond * 16);
+                timer_.Interval = new TimeSpan(TimeSpan.TicksPerMillisecond * MillisecondsForUpdate);
                 timer_.Start();
             }));
+            return true;
         }
 
-        public void StopTimer()
+        public void Stop()
+        {
+        }
+
+        private void StopInternal()
         {
             if(null == timer_)
             {
@@ -333,6 +338,58 @@ private long lastTargetPIDCheckTimeMS_ = 0;
             }
             timer_.Stop();
             timer_ = null;
+            StartStopButton.Content = "Start";
+        }
+
+        public void Reset()
+        {
+            if (null != fileStream_)
+            {
+                fileStream_.Close();
+                fileStream_ = null;
+            }
+            fileStreamPosition_ = 0;
+            fileBuffer_.Clear();
+
+            buildRunningState_ = BuildRunningState.Ready;
+            buildStatus_ = BuildStatus.AllClear;
+
+            buildStartTimeMS_ = GetCurrentSystemTimeMS();
+            latestTimeStampMS_ = 0;
+
+            buildHosts_.Clear();
+            localHost_ = null;
+
+            lastProcessedPosition_ = 0;
+            preparingBuildsteps_ = false;
+
+            EventsCanvas.Children.Clear();
+            CoresCanvas.Children.Clear();
+
+            preparingBuildsteps_ = true;
+
+            // Reset the Output window text
+            OutputTextBox.Clear();
+
+            // progress status
+            UpdateBuildProgress(0.0f);
+            StatusBarProgressBar.Foreground = ToolImages.StatusInitialBrush;
+
+            // target pid
+            targetPID_ = 0;
+            lastTargetPIDCheckTimeMS_ = 0;
+
+            // live build session state
+            isLiveSession_ = false;
+
+            // graphs
+            SystemGraphsCanvas.Children.Clear();
+
+            // allow a free render update on the first frame after the reset
+            SetConditionalRenderUpdateFlag(true);
+
+            // reset the cached SteppedBuildTime value
+            previousSteppedBuildTimeMS_ = 0;
         }
 
         public void UpdateEventsCanvasMaxSize(float x, float y)
@@ -343,7 +400,8 @@ private long lastTargetPIDCheckTimeMS_ = 0;
 
         private void ToolWindowMonitorControl_Loaded(object sender, RoutedEventArgs e)
         {
-            #if false
+            StatusBarRunning.Source = ToolImages.IconRunning.ImageSource;
+#if false
             Image image = new Image();
             image.Source = GetBitmapImage(VSFastBuildVSIX.Resources.Images.TimeLineTabIcon);
             image.Margin = new Thickness(5, 5, 5, 5);
@@ -370,7 +428,7 @@ private long lastTargetPIDCheckTimeMS_ = 0;
             image.ToolTip = new ToolTip();
             ((ToolTip)image.ToolTip).Content = "Settings";
             TabItemSettings.Header = image;
-            #endif
+#endif
         }
 
         #region Mouse Wheel Zooming
@@ -551,7 +609,7 @@ private long lastTargetPIDCheckTimeMS_ = 0;
 
                     HitTest result = HitTest(mousePosition);
 
-                    if (result != null && result.event_ !=null)
+                    if (result != null && result.event_ != null)
                     {
                         string filename = result.event_.name_.Substring(1, result.event_.name_.Length - 2);
 
@@ -567,6 +625,7 @@ private long lastTargetPIDCheckTimeMS_ = 0;
         #region Output TextBox Handling
         public void ChangeOutputWindowComboBoxSelection(BuildEvent buildEvent)
         {
+            #if VSFASTBUILD_ENABLE_FILTER
             int index = 0;
             foreach (OutputFilterItem filter in outputComboBoxFilters_)
             {
@@ -577,6 +636,7 @@ private long lastTargetPIDCheckTimeMS_ = 0;
                 }
                 ++index;
             }
+            #endif
         }
 
         void ResetOutputWindowCombox()
@@ -592,16 +652,28 @@ private long lastTargetPIDCheckTimeMS_ = 0;
 
             outputComboBoxFilters_.Add(new OutputFilterItem("ALL"));
 
+            #if VSFASTBUILD_ENABLE_FILTER
             OutputWindowComboBox.ItemsSource = outputComboBoxFilters_;
             OutputWindowComboBox.SelectedIndex = 0;
+            #endif
         }
 
 
         public void AddOutputWindowFilterItem(BuildEvent buildEvent)
         {
-            outputComboBoxFilters_.Add(new OutputFilterItem(buildEvent));
+            #if VSFASTBUILD_ENABLE_FILTER
+            OutputFilterItem outputFilterItem = new OutputFilterItem(buildEvent);
+            outputComboBoxFilters_.Add(outputFilterItem);
+            if (0 <= OutputWindowComboBox.SelectedIndex)
+            {
+                OutputFilterItem selectedFilter = outputComboBoxFilters_[OutputWindowComboBox.SelectedIndex];
 
-            RefreshOutputTextBox();
+                if (outputFilterItem.BuildEvent != null && (selectedFilter.BuildEvent == null || outputFilterItem.BuildEvent == selectedFilter.BuildEvent))
+                {
+                    OutputTextBox.AppendText(outputFilterItem.BuildEvent.outputMessages_ + "\n");
+                }
+            }
+            #endif
         }
 
         private void OutputWindowComboBox_SelectionChanged(object sender, System.Windows.Controls.SelectionChangedEventArgs e)
@@ -613,7 +685,7 @@ private long lastTargetPIDCheckTimeMS_ = 0;
         {
             OutputTextBox.Clear();
 
-
+#if VSFASTBUILD_ENABLE_FILTER
             if (0 <= OutputWindowComboBox.SelectedIndex)
             {
                 OutputFilterItem selectedFilter = outputComboBoxFilters_[OutputWindowComboBox.SelectedIndex];
@@ -626,6 +698,16 @@ private long lastTargetPIDCheckTimeMS_ = 0;
                     }
                 }
             }
+#else
+            OutputFilterItem selectedFilter = outputComboBoxFilters_[0];
+            foreach (OutputFilterItem filter in outputComboBoxFilters_)
+            {
+                if (filter.BuildEvent != null && (selectedFilter.BuildEvent == null || filter.BuildEvent == selectedFilter.BuildEvent))
+                {
+                    OutputTextBox.AppendText(filter.BuildEvent.outputMessages_ + "\n");
+                }
+            }
+#endif
 
             // Since we changed the text inside the text box we now require a layout update to refresh
             // the internal state of the UIControl
@@ -634,8 +716,7 @@ private long lastTargetPIDCheckTimeMS_ = 0;
             OutputTextBox.UpdateLayout();
         }
 
-         /* Output Window double click */
-
+        /* OutputTextBox double click */
         private void OutputTextBox_PreviewMouseDoubleClick(object sender, MouseButtonEventArgs e)
         {
             if (e.ChangedButton == MouseButton.Left)
@@ -665,7 +746,7 @@ private long lastTargetPIDCheckTimeMS_ = 0;
                             Int32 lineNumber = Int32.Parse(lineString);
 
                             VSFastBuildVSIXPackage package;
-                            if(!VSFastBuildVSIXPackage.TryGetPackage(out package))
+                            if (!VSFastBuildVSIXPackage.TryGetPackage(out package))
                             {
                                 return;
                             }
@@ -757,7 +838,7 @@ private long lastTargetPIDCheckTimeMS_ = 0;
         private void OutputTextBox_KeyDown(object sender, KeyEventArgs e)
         {
             e.Handled = true;
-
+#if VSFASTBUILD_ENABLE_FILTER
             if (e.Key == Key.Space)
             {
                 if (OutputWindowComboBox.SelectedIndex != 0)
@@ -765,15 +846,32 @@ private long lastTargetPIDCheckTimeMS_ = 0;
                     OutputWindowComboBox.SelectedIndex = 0;
                 }
             }
-            else if (e.KeyboardDevice.Modifiers == ModifierKeys.Control && e.Key == Key.C)
+            else
+#endif
+            if (e.KeyboardDevice.Modifiers == ModifierKeys.Control && e.Key == Key.C)
             {
+                try {
                 Clipboard.SetText(OutputTextBox.SelectedText);
-            }                 
+                }
+                catch { }
+            }
         }
 
         private void OutputTextBox_LayoutUpdated(object sender, EventArgs e)
         {
             outputTextBoxPendingLayoutUpdate_ = false;
+        }
+
+        private void OnClick_OutputTextBox_SelectAll(object sender, RoutedEventArgs args)
+        {
+            args.Handled = true;
+            OutputTextBox.SelectAll();
+        }
+
+        private void OnClick_OutputTextBox_Clear(object sender, RoutedEventArgs args)
+        {
+            args.Handled = true;
+            OutputTextBox.Clear();
         }
         #endregion
 
@@ -817,6 +915,8 @@ private long lastTargetPIDCheckTimeMS_ = 0;
             return fileStream_ != null && fileStream_.CanRead;
         }
 
+        private byte[] buffer_;
+
         private bool HasFileContentChanged()
         {
             bool bFileChanged = false;
@@ -826,25 +926,31 @@ private long lastTargetPIDCheckTimeMS_ = 0;
                 // detect if the current file has been overwritten with less data
                 bFileChanged = true;
             }
-            else if (0<fileBuffer_.Count)
+            else if (0 < fileBuffer_.Count)
             {
                 // detect if the current file has been overwritten with different data
 
                 int numBytesToCompare = Math.Min(fileBuffer_.Count, 256);
 
-                byte[] buffer = new byte[numBytesToCompare];
+                if (null == buffer_ || buffer_.Length < numBytesToCompare)
+                {
+                    buffer_ = new byte[numBytesToCompare];
+                }
 
                 fileStream_.Seek(0, SeekOrigin.Begin);
 
-                int numBytesRead = fileStream_.Read(buffer, 0, numBytesToCompare);
-                Debug.Assert(numBytesRead == numBytesToCompare, "Could not read the expected amount of data from the log file...!");
-
-                for (int i = 0; i < numBytesToCompare; ++i)
+                int numBytesRead = fileStream_.Read(buffer_, 0, numBytesToCompare);
+                if (0 < numBytesRead)
                 {
-                    if (buffer[i] != fileBuffer_[i])
+                    Debug.Assert(numBytesRead == numBytesToCompare, "Could not read the expected amount of data from the log file...!");
+
+                    for (int i = 0; i < numBytesToCompare; ++i)
                     {
-                        bFileChanged = true;
-                        break;
+                        if (buffer_[i] != fileBuffer_[i])
+                        {
+                            bFileChanged = true;
+                            break;
+                        }
                     }
                 }
             }
@@ -867,7 +973,7 @@ private long lastTargetPIDCheckTimeMS_ = 0;
             buildRunningState_ = BuildRunningState.Ready;
             buildStatus_ = BuildStatus.AllClear;
 
-            buildStartTimeMS_ = 0;
+            buildStartTimeMS_ = GetCurrentSystemTimeMS();
             latestTimeStampMS_ = 0;
 
             buildHosts_.Clear();
@@ -884,7 +990,7 @@ private long lastTargetPIDCheckTimeMS_ = 0;
             buildHosts_.Add(LocalHostName, localHost_);
 
             // Always add the prepare build steps event first
-            BuildEvent buildEvent = new BuildEvent(this, PrepareBuildStepsText, 0);
+            BuildEvent buildEvent = new BuildEvent(this, PrepareBuildStepsText, buildStartTimeMS_);
             localHost_.OnStartEvent(buildEvent);
             preparingBuildsteps_ = true;
 
@@ -898,7 +1004,7 @@ private long lastTargetPIDCheckTimeMS_ = 0;
 
             // progress status
             UpdateBuildProgress(0.0f);
-            StatusBarProgressBar.Foreground = (SolidColorBrush)(new BrushConverter().ConvertFrom("#FF06B025"));
+            StatusBarProgressBar.Foreground = ToolImages.StatusInitialBrush;
 
             // reset to autoscrolling ON
             autoScrolling_ = true;
@@ -923,6 +1029,50 @@ private long lastTargetPIDCheckTimeMS_ = 0;
 
             // reset the cached SteppedBuildTime value
             previousSteppedBuildTimeMS_ = 0;
+        }
+
+        private void BuildRestart()
+        {
+            fileStreamPosition_ = 0;
+            fileStream_.Seek(0, SeekOrigin.Begin);
+
+            fileBuffer_.Clear();
+
+            buildRunningState_ = BuildRunningState.Ready;
+            buildStatus_ = BuildStatus.AllClear;
+
+            if (0 == buildStartTimeMS_)
+            {
+                buildStartTimeMS_ = GetCurrentSystemTimeMS();
+            }
+            buildHosts_.Clear();
+            localHost_ = null;
+
+            lastProcessedPosition_ = 0;
+            preparingBuildsteps_ = false;
+
+            // Start by adding a local host
+            localHost_ = new BuildHost(LocalHostName, this);
+            buildHosts_.Add(LocalHostName, localHost_);
+
+            // Always add the prepare build steps event first
+            BuildEvent buildEvent = new BuildEvent(this, PrepareBuildStepsText, GetCurrentSystemTimeMS());
+            localHost_.OnStartEvent(buildEvent);
+            preparingBuildsteps_ = true;
+
+            // progress status
+            UpdateBuildProgress(0.0f);
+            StatusBarProgressBar.Foreground = ToolImages.StatusInitialBrush;
+
+            // target pid
+            targetPID_ = 0;
+            lastTargetPIDCheckTimeMS_ = 0;
+
+            // live build session state
+            isLiveSession_ = false;
+
+            // allow a free render update on the first frame after the reset
+            SetConditionalRenderUpdateFlag(true);
         }
 
         private void UpdateStatusBar()
@@ -955,16 +1105,36 @@ private long lastTargetPIDCheckTimeMS_ = 0;
             StatusBarDetails.Text = string.Format("{0} Agents - {1} Cores", buildHosts_.Count, numCores);
         }
 
-        private void UpdateBuildProgress(float progressPCT)
+        private void UpdateBuildProgress(float progressPCT, bool buildStop=false)
         {
             currentProgressPCT_ = progressPCT;
 
             StatusBarBuildTime.Text = string.Format("Duration: {0}", GetTimeFormattedString2(GetCurrentBuildTimeMS()));
 
             StatusBarProgressBar.Value = currentProgressPCT_;
-
-
             StatusBarProgressBar.ToolTip = statusBarProgressToolTip_;
+            if (buildStop)
+            {
+                switch (buildStatus_)
+                {
+                    case BuildStatus.HasErrors:
+                        StatusBarProgressBar.Foreground = Brushes.Red;
+                        break;
+                    case BuildStatus.HasWarnings:
+                        StatusBarProgressBar.Foreground = Brushes.Yellow;
+                        break;
+                    default:
+                        StatusBarProgressBar.Foreground = ToolImages.StatusInitialBrush;
+                        break;
+                }
+                ToolImages.StatusProgressBrush.Viewbox = new Rect(0.0f, 0.0f, 1.0f, 1.0f);
+            }
+            else
+            {
+                float rate = currentProgressPCT_/100.0f;
+                ToolImages.StatusProgressBrush.Viewbox = new Rect(0.0f, 0.0f, rate, 1.0f);
+                StatusBarProgressBar.Foreground = ToolImages.StatusProgressBrush;
+            }
 
             statusBarProgressToolTip_.Content = string.Format("{0:0.00}%", currentProgressPCT_);
         }
@@ -1011,7 +1181,7 @@ private long lastTargetPIDCheckTimeMS_ = 0;
             }
         }
 
-         private void ConditionalRenderUpdate()
+        private void ConditionalRenderUpdate()
         {
             // Resolve ViewPort center/size in case of zoom in/out event
             UpdateZoomTargetPosition();
@@ -1055,7 +1225,7 @@ private long lastTargetPIDCheckTimeMS_ = 0;
         {
             timebar_.RenderUpdate(10, 0, ZoomFactor);
             systemPerformanceGraphs_.RenderUpdate(10, 0, ZoomFactor);
-                        
+
             // Update the tooltips
             Point mousePosition = Mouse.GetPosition(EventsScrollViewer);
 
@@ -1109,7 +1279,7 @@ private long lastTargetPIDCheckTimeMS_ = 0;
             return output;
         }
 
-         /* Commands parsing feature */
+        /* Commands parsing feature */
         private BuildEventState TranslateBuildEventState(string eventString)
         {
             BuildEventState output = BuildEventState.UNKOWN;
@@ -1167,9 +1337,27 @@ private long lastTargetPIDCheckTimeMS_ = 0;
                     case BuildStatus.HasWarnings:
                         StatusBarProgressBar.Foreground = Brushes.Yellow;
                         break;
+                    default:
+                        StatusBarProgressBar.Foreground = ToolImages.StatusInitialBrush;
+                        break;
                 }
-
                 buildStatus_ = newBuildStatus;
+            }
+        }
+
+        public static void TruncateLogFile()
+        {
+            string path = System.Environment.GetEnvironmentVariable("TEMP") + FastBuildLogPath;
+            try
+            {
+                using (FileStream fileStream = new FileStream(path, FileMode.Open, FileAccess.Write, FileShare.Write))
+                {
+                    fileStream.SetLength(0);
+                    fileStream.Flush();
+                }
+            }
+            catch
+            {
             }
         }
 
@@ -1200,8 +1388,7 @@ private long lastTargetPIDCheckTimeMS_ = 0;
             // The file has been emptied so we must reset our state and start over
             if (BuildRestarted())
             {
-                ResetState();
-
+                BuildRestart();
                 return;
             }
 
@@ -1250,7 +1437,7 @@ private long lastTargetPIDCheckTimeMS_ = 0;
                                          .ToList().ToArray();
 
                         // TODO More error handling...
-                        if (2<=tokens.Length)
+                        if (2 <= tokens.Length)
                         {
                             // let's get the command timestamp and update our internal time reference
                             long eventFileTime = long.Parse(tokens[CommandArgumentIndex.TIME_STAMP]);
@@ -1338,7 +1525,7 @@ private long lastTargetPIDCheckTimeMS_ = 0;
             {
                 long currentTimeMS = GetCurrentSystemTimeMS();
 
-                if (TargetPIDCheckPeriodMS<(currentTimeMS - lastTargetPIDCheckTimeMS_))
+                if (TargetPIDCheckPeriodMS < (currentTimeMS - lastTargetPIDCheckTimeMS_))
                 {
                     bIsRunning = IsTargetProcessRunning(targetPID_);
                     lastTargetPIDCheckTimeMS_ = currentTimeMS;
@@ -1370,27 +1557,30 @@ private long lastTargetPIDCheckTimeMS_ = 0;
                 buildRunningState_ = BuildRunningState.Running;
 
                 // start the gif "building" animation
-                StatusBarRunningGif.StartAnimation();
 
                 ToolTip newToolTip = new ToolTip();
-                StatusBarRunningGif.ToolTip = newToolTip;
+                StatusBarRunning.ToolTip = newToolTip;
                 newToolTip.Content = "Build in Progress...";
+                if (preparingBuildsteps_)
+                {
+                    localHost_.OnCompleteEvent(eventLocalTimeMS, PrepareBuildStepsText, string.Empty, BuildEventState.SUCCEEDED_COMPLETED, string.Empty);
+                    preparingBuildsteps_ = false;
+                }
             }
         }
 
         private void ExecuteCommandStopBuild(string[] tokens, long eventLocalTimeMS)
         {
-            long timeStamp = (eventLocalTimeMS - buildStartTimeMS_);
+            long timeStamp = eventLocalTimeMS;//Math.Max(eventLocalTimeMS - buildStartTimeMS_, 0);
 
             if (preparingBuildsteps_)
             {
                 localHost_.OnCompleteEvent(timeStamp, PrepareBuildStepsText, string.Empty, BuildEventState.SUCCEEDED_COMPLETED, string.Empty);
+                preparingBuildsteps_ = false;
+            }
 
-				preparingBuildsteps_ = false;
-			}
-
-			// Stop all the active events currently running
-			foreach (var entry in buildHosts_)
+            // Stop all the active events currently running
+            foreach (var entry in buildHosts_)
             {
                 BuildHost host = entry.Value;
                 foreach (CPUCore core in host._cores)
@@ -1401,34 +1591,33 @@ private long lastTargetPIDCheckTimeMS_ = 0;
 
             buildRunningState_ = BuildRunningState.Ready;
 
-            StatusBarRunningGif.StopAnimation();
-            StatusBarRunningGif.ToolTip = null;
+            StatusBarRunning.ToolTip = null;
 
-            UpdateBuildProgress(100.0f);
-            StopTimer();
+            UpdateBuildProgress(100.0f, true);
 
             if (isLiveSession_)
             {
                 systemPerformanceGraphs_.CloseSession();
                 isLiveSession_ = false;
             }
+            StopInternal();
         }
 
         private void ExecuteCommandStartJob(string[] tokens, long eventLocalTimeMS)
         {
-            long timeStamp = (eventLocalTimeMS - buildStartTimeMS_);
+            long timeStamp = eventLocalTimeMS;//Math.Max(eventLocalTimeMS - buildStartTimeMS_, 0);
 
             string hostName = tokens[CommandArgumentIndex.START_JOB_HOST_NAME];
             string eventName = tokens[CommandArgumentIndex.START_JOB_EVENT_NAME];
 
             if (preparingBuildsteps_)
             {
-                localHost_.OnCompleteEvent(timeStamp, PrepareBuildStepsText, hostName, BuildEventState.SUCCEEDED_COMPLETED, "");
+                localHost_.OnCompleteEvent(timeStamp, PrepareBuildStepsText, hostName, BuildEventState.SUCCEEDED_COMPLETED, string.Empty);
 
-				preparingBuildsteps_ = false;
-			}
+                preparingBuildsteps_ = false;
+            }
 
-			BuildEvent newEvent = new BuildEvent(this, eventName, timeStamp);
+            BuildEvent newEvent = new BuildEvent(this, eventName, timeStamp);
 
             BuildHost host = null;
             if (buildHosts_.ContainsKey(hostName))
@@ -1442,33 +1631,32 @@ private long lastTargetPIDCheckTimeMS_ = 0;
                 buildHosts_.Add(hostName, host);
             }
 
+            // Find out if this new Job is local and is racing another remote one
+            if (host.bLocalHost)
+            {
+                foreach (var entry in buildHosts_)
+                {
+                    BuildHost otherHost = entry.Value;
 
-			// Find out if this new Job is local and is racing another remote one
-			if(host.bLocalHost)
-			{
-				foreach (var entry in buildHosts_)
-				{
-					BuildHost otherHost = entry.Value;
-
-					if(otherHost != host)
-					{
-						if(otherHost.FindAndFlagRacingEvents(eventName))
-						{
-							if(!newEvent.isRacingJob_)
-							{
-								newEvent.isRacingJob_ = true;
-							}
-						}
-					}
-				}
-			}
+                    if (otherHost != host)
+                    {
+                        if (otherHost.FindAndFlagRacingEvents(eventName))
+                        {
+                            if (!newEvent.isRacingJob_)
+                            {
+                                newEvent.isRacingJob_ = true;
+                            }
+                        }
+                    }
+                }
+            }
 
             host.OnStartEvent(newEvent);
         }
 
         private void ExecuteCommandFinishJob(string[] tokens, long eventLocalTimeMS)
         {
-            long timeStamp = (eventLocalTimeMS - buildStartTimeMS_);
+            long timeStamp = eventLocalTimeMS;//Math.Max(eventLocalTimeMS - buildStartTimeMS_, 0);
 
             string jobResultString = tokens[CommandArgumentIndex.FINISH_JOB_RESULT];
             string hostName = tokens[CommandArgumentIndex.FINISH_JOB_HOST_NAME];
@@ -1487,7 +1675,7 @@ private long lastTargetPIDCheckTimeMS_ = 0;
             foreach (var entry in buildHosts_)
             {
                 BuildHost host = entry.Value;
-								
+
                 host.OnCompleteEvent(timeStamp, eventName, hostName, jobResult, eventOutputMessages);
             }
 
@@ -1505,14 +1693,14 @@ private long lastTargetPIDCheckTimeMS_ = 0;
 
         private void ExecuteCommandGraph(string[] tokens, long eventLocalTimeMS)
         {
-            long timeStamp = (eventLocalTimeMS - buildStartTimeMS_);
+            long timeStamp = Math.Max(eventLocalTimeMS - buildStartTimeMS_, 0);
 
-            string groupName = tokens[CommandArgumentIndex.GRAPH_GROUP_NAME]; 
+            string groupName = tokens[CommandArgumentIndex.GRAPH_GROUP_NAME];
             string counterName = tokens[CommandArgumentIndex.GRAPH_COUNTER_NAME].Substring(1, tokens[CommandArgumentIndex.GRAPH_COUNTER_NAME].Length - 2); // Remove the quotes at the start and end 
             string counterUnitTag = tokens[CommandArgumentIndex.GRAPH_COUNTER_UNIT_TAG];
             float value = float.Parse(tokens[CommandArgumentIndex.GRAPH_COUNTER_VALUE], CultureInfo.InvariantCulture);
 
-			systemPerformanceGraphs_.HandleLogEvent(timeStamp, groupName, counterName, counterUnitTag, value);
+            systemPerformanceGraphs_.HandleLogEvent(timeStamp, groupName, counterName, counterUnitTag, value);
         }
         #endregion
 
@@ -1571,15 +1759,36 @@ private long lastTargetPIDCheckTimeMS_ = 0;
             }
         }
 
-        private void CheckBox_Checked(object sender, RoutedEventArgs e)
+        private void OnClick_StartStop(object sender, RoutedEventArgs e)
         {
+            e.Handled = true;
+            if(null == timer_)
+            {
+                Start();
+            }
+            else
+            {
+                StopInternal();
+            }
+        }
+
+        private void CheckBox_SystemGraph_Checked(object sender, RoutedEventArgs e)
+        {
+            e.Handled = true;
             systemPerformanceGraphs_.SetVisibility((bool)(sender as CheckBox).IsChecked);
         }
 
-        private void CheckBox_Unchecked(object sender, RoutedEventArgs e)
+        private void CheckBox_SystemGraph_Unchecked(object sender, RoutedEventArgs e)
         {
+            e.Handled = true;
             systemPerformanceGraphs_.SetVisibility((bool)(sender as CheckBox).IsChecked);
 
+        }
+
+        private void OnClick_SettingsAutoScroll(object sender, RoutedEventArgs e)
+        {
+            e.Handled = true;
+            autoScrolling_ = true;
         }
     }
 }

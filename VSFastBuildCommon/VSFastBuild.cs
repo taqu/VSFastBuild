@@ -1,13 +1,15 @@
 using Microsoft.Build.Evaluation;
 using Microsoft.Build.Utilities;
-using System;
-using System.Collections;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Reflection;
 using System.Text;
+
+#if DEBUG
+using System;
+#endif
 
 namespace VSFastBuildCommon
 {
@@ -135,7 +137,7 @@ namespace VSFastBuildCommon
         public string Configuration { get; set; } = "Debug";
         public string Platform { get; set; } = "x64";
         public string FBuildPath { get; set; } = "FBuild.exe";
-        public string FBuildArgs { get; set; } = "-dist -cache";
+        public string FBuildArgs { get; set; } = "-dist";
         public bool UnityBuild { get; set; } = false;
         private string rootDirectory_ = string.Empty;
         private VSEnvironment vSEnvironment_;
@@ -152,10 +154,9 @@ namespace VSFastBuildCommon
 
         private static bool HasFileChanged(string inputFile, string platform, string config, string bbfOutputFilePath, out string hash)
         {
-            System.Security.Cryptography.SHA256Managed sha256managed = new System.Security.Cryptography.SHA256Managed();
             using (FileStream stream = File.OpenRead(inputFile))
             {
-                byte[] computedhash = sha256managed.ComputeHash(stream);
+                byte[] computedhash = MurmurHash.MurmurHash3.ComputeHash(stream);
                 StringBuilder stringBuilder = new StringBuilder();
                 stringBuilder.AppendFormat("// {0}_{1}_{2}_", inputFile, platform, config);
                 foreach (byte b in computedhash)
@@ -365,7 +366,6 @@ namespace VSFastBuildCommon
             bool fileChanged = HasFileChanged(activeProject.FullPath, platform, config, bffOutputFilePath, out filehash);
             VCBasePath = string.Empty;
             WindowsSDKTarget = string.Empty;
-
             string configType = activeProject.GetProperty("ConfigurationType").EvaluatedValue;
             BuildType buildType;
             switch (configType)

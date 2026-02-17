@@ -1,26 +1,66 @@
 using EnvDTE;
 using EnvDTE80;
-using Microsoft.Build.Construction;
 using Microsoft.VisualStudio.Threading;
-using Microsoft.VisualStudio.VCProjectEngine;
 using System.Collections.Generic;
-using System.Configuration;
-using System.Linq;
-using VSFastBuildCommon;
-using VSFastBuildVSIX.Options;
+using System.Runtime.Remoting.Contexts;
+using static VSFastBuildVSIX.CommandBuildProject;
 
-namespace VSFastBuildVSIX.Commands
+namespace VSFastBuildVSIX
 {
     [Command(PackageGuids.VSFastBuildVSIXString, PackageIds.CommandFBuildSolution)]
     internal sealed class CommandBuildSolution : BaseCommand<CommandBuildSolution>
     {
         private string commandText_ = string.Empty;
 
-        private void LeaveProcess(VSFastBuildVSIXPackage package)
+        public static void TraverseProjectItems(List<EnvDTE.Project> targets, EnvDTE.ProjectItems projectItems, SolutionConfiguration2 solutionConfiguration, SolutionContexts solutionContexts)
         {
-            System.Diagnostics.Debug.Assert(null != package);
-            Command.Text = commandText_;
-            package.LeaveBuildProcess();
+            foreach (EnvDTE.ProjectItem projectItem in projectItems)
+            {
+                EnvDTE.Project project = projectItem.Object as EnvDTE.Project;
+                if(null == project)
+                {
+                    continue;
+                }
+                
+                if(SupportedProject(project))
+                {
+                    if(ShouldBuild(project, solutionConfiguration, solutionContexts))
+                    {
+                        targets.Add(project);
+                    }
+                    continue;
+                }
+                if(ProjectTypes.ProjectFolders == project.Kind)
+                {
+                    TraverseProjectItems(targets, project.ProjectItems, solutionConfiguration, solutionContexts);
+                    continue;
+                }
+            }
+        }
+
+        public static bool ShouldBuild(EnvDTE.Project project, SolutionConfiguration2 solutionConfiguration, SolutionContexts solutionContexts)
+        {
+            foreach (SolutionContext context in solutionContexts)
+            {
+                if (System.IO.Path.GetFileName(context.ProjectName) == System.IO.Path.GetFileName(project.FileName)
+                            && context.ConfigurationName == solutionConfiguration.Name
+                            && context.PlatformName == solutionConfiguration.PlatformName
+                            && context.ShouldBuild)
+                {
+                    return true;
+                }
+            }
+            return false;
+        }
+
+        protected override void BeforeQueryStatus(EventArgs e)
+        {
+            OptionsPage options = VSFastBuildVSIXPackage.Options;
+            if(null == options)
+            {
+                return;
+            }
+            Command.Enabled = options.EnableGeneration;
         }
 
         protected override async Task ExecuteAsync(OleMenuCmdEventArgs e)
@@ -30,10 +70,10 @@ namespace VSFastBuildVSIX.Commands
             {
                 return;
             }
-            if (!package.EnterBuildProcess())
+            if (package.IsBuildProcessRunning())
             {
                 package.CancelBuildProcess();
-                await CommandBuildProject.StopMonitor();
+                await CommandBuildProject.StopMonitorAsync(package);
                 return;
             }
             commandText_ = Command.Text;
@@ -42,35 +82,53 @@ namespace VSFastBuildVSIX.Commands
             EnvDTE80.DTE2 dte = package.DTE;
             if (null == dte.Solution)
             {
-                LeaveProcess(package);
+                CommandBuildProject.LeaveProcess(package, Command, commandText_);
                 return;
             }
             EnvDTE.Solution solution = dte.Solution;
             SolutionBuild solutionBuild = solution.SolutionBuild;
             SolutionConfiguration2 solutionConfiguration = solutionBuild.ActiveConfiguration as SolutionConfiguration2;
+            SolutionContexts solutionContexts = solutionConfiguration.SolutionContexts;
             List<EnvDTE.Project> targets = new List<EnvDTE.Project>();
-            foreach (EnvDTE.Project project in dte.Solution.Projects)
+            foreach (EnvDTE.Project project in solution.Projects)
             {
-                foreach (SolutionContext context in solutionConfiguration.SolutionContexts)
+                if(SupportedProject(project))
                 {
-                    if(System.IO.Path.GetFileName(context.ProjectName) == System.IO.Path.GetFileName(project.FileName)
-                        && context.ConfigurationName == solutionConfiguration.Name
-                        && context.PlatformName == solutionConfiguration.PlatformName
-                        && context.ShouldBuild)
+                    if(ShouldBuild(project, solutionConfiguration, solutionContexts))
                     {
-                        Log.OutputBuildLine(string.Format("Project {0} will be built.", project.Name));
                         targets.Add(project);
                     }
+                    continue;
+                }
+                if(ProjectTypes.ProjectFolders == project.Kind)
+                {
+                    TraverseProjectItems(targets, project.ProjectItems, solutionConfiguration, solutionContexts);
+                    continue;
                 }
             }
+            targets.RemoveAll(
+                x =>
+                {
+                    Microsoft.VisualStudio.Shell.ThreadHelper.ThrowIfNotOnUIThread();
+                    foreach (string exclude in CommandBuildProject.ExcludeProjects)
+                    {
+                        string uniqueName = x.UniqueName;
+                        if (uniqueName.EndsWith(exclude))
+                        {
+                            return true;
+                        }
+                    }
+                    return false;
+                }
+            );
 
             if (targets.Count <= 0)
             {
                 CommandBuildProject.LeaveProcess(package, Command, commandText_);
                 return;
             }
-
-            await CommandBuildProject.BuildAsync(package, targets, Command, commandText_);
+            await BuildProjectsAsync(package, targets, true);
+            LeaveProcess(package, Command, commandText_);
         }
     }
 }

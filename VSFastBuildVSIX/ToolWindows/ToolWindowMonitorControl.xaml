@@ -3,16 +3,16 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:toolkit="clr-namespace:Community.VisualStudio.Toolkit;assembly=Community.VisualStudio.Toolkit"
              xmlns:imaging="clr-namespace:Microsoft.VisualStudio.Imaging;assembly=Microsoft.VisualStudio.Imaging"
              xmlns:theming="clr-namespace:Microsoft.VisualStudio.PlatformUI;assembly=Microsoft.VisualStudio.Imaging"
              xmlns:util="clr-namespace:Microsoft.VisualStudio.PlatformUI;assembly=Microsoft.VisualStudio.Utilities"
              xmlns:catalog="clr-namespace:Microsoft.VisualStudio.Imaging;assembly=Microsoft.VisualStudio.ImageCatalog"
-             xmlns:toolkit="clr-namespace:Community.VisualStudio.Toolkit;assembly=Community.VisualStudio.Toolkit"
              xmlns:fbuild="clr-namespace:VSFastBuildVSIX"
              toolkit:Themes.UseVsTheme="True"
              mc:Ignorable="d"
-             d:DesignHeight="480"
              d:DesignWidth="960"
+             d:DesignHeight="640"
              Name="ToolWindowMonitor">
     <DockPanel Margin="0,0,0,0">
         <Grid Height="Auto">
@@ -29,11 +29,12 @@
                             <TextBlock Text="TimeLine" />
                         </StackPanel>
                     </TabItem.Header>
-                    <Grid Background="#FFE5E0E0" >
+                    <Grid Background="#FFE0E0E0">
                         <Grid.RowDefinitions>
                             <RowDefinition Height="auto" MaxHeight="150"/>
                             <RowDefinition Height="30"/>
                             <RowDefinition/>
+                            <RowDefinition Height="72"/>
                         </Grid.RowDefinitions>
                         <Grid.ColumnDefinitions>
                             <ColumnDefinition Width="120" MaxWidth="250"/>
@@ -50,10 +51,19 @@
                         <ScrollViewer x:Name="EventsScrollViewer" ScrollViewer.HorizontalScrollBarVisibility="Auto" ScrollViewer.VerticalScrollBarVisibility="Auto" ScrollChanged="ScrollViewer_ScrollChanged" Margin="10,10,10,0" Grid.Row="2" Grid.Column="3" >
                             <Canvas x:Name="EventsCanvas" HorizontalAlignment="Left" Height="Auto" VerticalAlignment="Top" Width="Auto" Margin="0,0,0,0"/>
                         </ScrollViewer>
-                        <TreeView x:Name="GraphsSelectionTreeView" BorderBrush="LightGray" Visibility =" Hidden" Grid.Row="0" Grid.Column="0" Height="150" Grid.ColumnSpan="3"/>
+                        <TreeView x:Name="GraphsSelectionTreeView" Visibility =" Hidden" Grid.Row="0" Grid.Column="0" Height="150" Grid.ColumnSpan="3"/>
                         <ScrollViewer x:Name="CoresScrollViewer" ScrollViewer.HorizontalScrollBarVisibility="Hidden" ScrollViewer.VerticalScrollBarVisibility="Hidden" Margin="10,10,5,25" Grid.Row="2" Grid.Column="0" Grid.ColumnSpan="2" >
                             <Canvas x:Name="CoresCanvas" HorizontalAlignment="Left" Height="366" VerticalAlignment="Top" Width="148" Margin="0,0,0,0"/>
                         </ScrollViewer>
+                        <StackPanel Orientation="Horizontal" Grid.Row="3" Grid.Column="3">
+                            <Button x:Name="StartStopButton" Content="Start" Click="OnClick_StartStop" VerticalAlignment="Center" Width="60" Height="25" Margin="5,5,5,10" FontSize="14"/>
+                            <GroupBox x:Name="SettingsGroupBox" Header="Settings" HorizontalAlignment="Left" Margin="0,5,0,0" VerticalAlignment="Top" Height="Auto" Width="220" Background="LightGray">
+                                <StackPanel Orientation="Horizontal">
+                                    <CheckBox x:Name="SettingsGraphsCheckBox" Content="System Graphs" Margin="5,0,5,0" VerticalAlignment="Center" Checked="CheckBox_SystemGraph_Checked" Unchecked="CheckBox_SystemGraph_Unchecked" Foreground="Black" />
+                                    <Button Content="Auto Scroll" Click="OnClick_SettingsAutoScroll" VerticalAlignment="Center" Margin="5,5,5,5"/>
+                                </StackPanel>
+                            </GroupBox>
+                        </StackPanel>
                     </Grid>
                 </TabItem>
                 <TabItem x:Name="TabItemOutput">
@@ -64,42 +74,32 @@
                             <TextBlock Text="Output" />
                         </StackPanel>
                     </TabItem.Header>
-                    <Grid Background="#FFE5E0E0">
+                    <Grid >
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="50" MaxHeight="150"/>
+                            <RowDefinition Height="*"/>
+                        </Grid.RowDefinitions>
                         <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="53*"/>
-                            <ColumnDefinition Width="118*"/>
-                            <ColumnDefinition Width="19*"/>
-                            <ColumnDefinition Width="764*"/>
+                            <ColumnDefinition Width="39"/>
+                            <ColumnDefinition Width="311"/>
+                            <ColumnDefinition Width="*"/>
                         </Grid.ColumnDefinitions>
-                        <Grid.RowDefinitions>
-                            <RowDefinition Height="Auto"/>
-                            <RowDefinition/>
-                        </Grid.RowDefinitions>
-                        <ComboBox x:Name="OutputWindowComboBox" ItemsSource="{Binding FASTBuildMonitorControl._outputComboBoxFilters}" DisplayMemberPath="_name" HorizontalAlignment="Left" Margin="10,10,0,0" VerticalAlignment="Top" Width="330" Grid.Row="0" HorizontalContentAlignment="Left" Grid.ColumnSpan="4" Grid.RowSpan="2"/>
-                        <Label x:Name="label" Content="Press (SPACE) to reset filter" Foreground="Black" HorizontalAlignment="Left" Margin="155,10,0,0" VerticalAlignment="Top" Width="155" Grid.Row="0" Grid.Column="3" Grid.RowSpan="2"/>
-                        <TextBox x:Name="OutputTextBox" AcceptsReturn="True" Foreground="Black" Background="#FFE5E0E0" HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Auto" IsReadOnly="True" Grid.Row="1" Margin="5,5,5,5" Grid.ColumnSpan="4"/>
+                        <!--
+                        <ComboBox x:Name="OutputWindowComboBox" DisplayMemberPath="Name" HorizontalAlignment="Left" Margin="5,5,0,0" VerticalAlignment="Top" Width="330" Height="30" Grid.Row="0" Grid.Column="0"  HorizontalContentAlignment="Left" Grid.ColumnSpan="2"/>
+                        <Label x:Name="label" Content="Press (SPACE) to reset filter"  Background="Transparent" HorizontalAlignment="Left" Margin="10,10,0,0" VerticalAlignment="Top" Width="155" Grid.Row="0" Grid.Column="2"/>
+                        -->
+                        <TextBox x:Name="OutputTextBox" AcceptsReturn="True" HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Auto" IsReadOnly="True" Grid.Row="1" Grid.Column="0" Grid.ColumnSpan="3" Margin="5,5,5,5">
+                            <TextBox.ContextMenu>
+                                <ContextMenu>
+                                    <MenuItem Header="Select All" Click="OnClick_OutputTextBox_SelectAll" />
+                                    <MenuItem Header="Clear" Click="OnClick_OutputTextBox_Clear" />
+                                </ContextMenu>
+                            </TextBox.ContextMenu>
+                        </TextBox>
                     </Grid>
                 </TabItem>
-                <TabItem x:Name="TabItemSettings">
-                    <TabItem.Header>
-                        <StackPanel Orientation="Horizontal">
-                            <Image Height="16" Width="16" Source="/VSFastBuildVSIX;component/Resources/icon_settings.png">
-                            </Image>
-                            <TextBlock Text="Settings"/>
-                        </StackPanel>
-                    </TabItem.Header>
-                    <Grid Background="#FFE5E0E0">
-                        <Grid.RowDefinitions>
-                            <RowDefinition Height="Auto" MinHeight="102"/>
-                        </Grid.RowDefinitions>
-                        <GroupBox x:Name="SettingsGroupBox" Header="Settings" Foreground="Black" Background="#FFE5E0E0" BorderBrush="Gray" HorizontalAlignment="Left" Margin="26,0,0,0" VerticalAlignment="Top" Height="51" Width="165">
-                            <CheckBox x:Name="SettingsGraphsCheckBox" Content ="Show System Graphs" Foreground="Black" Background="White" HorizontalAlignment="Left" Margin="10,0,0,0" VerticalAlignment="Center" Checked="CheckBox_Checked" Unchecked="CheckBox_Unchecked" />
-                        </GroupBox>
-                    </Grid>
-                </TabItem>
-
             </TabControl>
-            <StatusBar Height="25" VerticalAlignment="Bottom" Grid.Row="1" Background="#FFDADADA">
+            <StatusBar Height="25" VerticalAlignment="Bottom" Grid.Row="1">
                 <StatusBar.ItemsPanel>
                     <ItemsPanelTemplate>
                         <Grid>
@@ -116,22 +116,23 @@
                         </Grid>
                     </ItemsPanelTemplate>
                 </StatusBar.ItemsPanel>
-                <StatusBarItem Margin="0,-2,0,2" Background="LightGray">
-                    <fbuild:GIFImage x:Name="StatusBarRunningGif" GifSource="Icon_animated" AutoStart="False" Margin="0,5,0,0" Width="20" Height="20" VerticalAlignment="Top"/>
+                <StatusBarItem Margin="0,-2,0,2">
+                    <!--<fbuild:GIFImage x:Name="StatusBarRunningGif" GifSource="icon" AutoStart="False" Margin="0,0,0,0" Width="16" Height="16" VerticalAlignment="Top"/>-->
+                    <Image x:Name="StatusBarRunning" Height="16" Width="16" />
                 </StatusBarItem>
-                <StatusBarItem Grid.Column="1" Background="LightGray">
-                    <TextBlock x:Name="StatusBarBuildStatus" Foreground="Black" Text =""/>
+                <StatusBarItem Grid.Column="1">
+                    <TextBlock x:Name="StatusBarBuildStatus"  Text =""/>
                 </StatusBarItem>
-                <Separator BorderBrush="Gray" Grid.Column="2" />
-                <StatusBarItem Grid.Column="3" Background="LightGray">
-                    <TextBlock x:Name="StatusBarDetails" Foreground="Black" Text =""/>
+                <Separator Grid.Column="2" />
+                <StatusBarItem Grid.Column="3">
+                    <TextBlock x:Name="StatusBarDetails"  Text =""/>
                 </StatusBarItem>
-                <Separator BorderBrush="Gray" Grid.Column="4" />
-                <StatusBarItem Grid.Column="5" Background="LightGray">
-                    <TextBlock x:Name="StatusBarBuildTime" Foreground="Black" Text =""/>
+                <Separator Grid.Column="4" />
+                <StatusBarItem Grid.Column="5">
+                    <TextBlock x:Name="StatusBarBuildTime"  Text =""/>
                 </StatusBarItem>
-                <Separator BorderBrush="Gray" Grid.Column="6" />
-                <StatusBarItem Grid.Column="7" Background="LightGray">
+                <Separator Grid.Column="6" />
+                <StatusBarItem Grid.Column="7">
                     <ProgressBar x:Name="StatusBarProgressBar" Value="0" Width="90" Height="16" />
                 </StatusBarItem>
             </StatusBar>

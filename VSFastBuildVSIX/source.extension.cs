@@ -12,9 +12,9 @@ namespace VSFastBuildVSIX
         public const string Name = "VSFastBuild";
         public const string Description = @"Integration of FASTBuild for Visual Studio.";
         public const string Language = "en-US";
-        public const string Version = "1.0";
-        public const string Author = "Company";
+        public const string Version = "0.1.0";
+        public const string Author = "taqu29";
         public const string Tags = "Build,FASTBuild";
-        public const bool IsPreview = false;
+        public const bool IsPreview = true;
     }
 }

@@ -1,7 +1,8 @@
+using System.CodeDom;
 using System.ComponentModel;
 using System.Runtime.InteropServices;
 
-namespace VSFastBuildVSIX.Options
+namespace VSFastBuildVSIX
 {
     internal partial class OptionsProvider
     {
@@ -14,10 +15,12 @@ namespace VSFastBuildVSIX.Options
     public class OptionsPage : BaseOptionModel<OptionsPage>
     {
         public const string DefaultPath = "FBuild.exe";
-        public const bool DefaultDistributed = true;
-        public const string DefaultArguments = "-dist -cache -ide -monitor";
+        public const string DefaultArguments = "-dist -ide -monitor";
+        public const bool DefaultEnableGeneration = true;
         public const bool DefaultGenOnly = false;
         public const bool DefaultUnity = false;
+        public const bool DefaultOpenMonitor = true;
+        public const bool DefaultShowSystemPerformance = false;
 
         [Category("Options")]
         [DisplayName("FBuild Path")]
@@ -26,16 +29,16 @@ namespace VSFastBuildVSIX.Options
         public string Path { get; set; } = DefaultPath;
 
         [Category("Options")]
-        [DisplayName("Distributed")]
-        [Description("Whether to compile distributed.")]
-        [DefaultValue(true)]
-        public bool Distributed { get; set; } = DefaultDistributed;
-
-        [Category("Options")]
         [DisplayName("Arguments")]
         [Description("Arguments which will be passed to FASTBuild (default \"-dist -cache -ide -monitor\").")]
         [DefaultValue(true)]
         public string Arguments { get; set; } = DefaultArguments;
+
+        [Category("Options")]
+        [DisplayName("Enable Generation")]
+        [Description("Enable bff file generation.")]
+        [DefaultValue(true)]
+        public bool EnableGeneration { get; set; } = DefaultEnableGeneration;
 
         [Category("Options")]
         [DisplayName("Generate Only")]
@@ -48,5 +51,11 @@ namespace VSFastBuildVSIX.Options
         [Description("Whether to do unity build.")]
         [DefaultValue(true)]
         public bool Unity { get; set; } = DefaultUnity;
+
+        [Category("Options")]
+        [DisplayName("Open Monitor")]
+        [Description("Whether to open monitor window automatically.")]
+        [DefaultValue(true)]
+        public bool OpenMonitor { get; set; } = DefaultOpenMonitor;
     }
 }

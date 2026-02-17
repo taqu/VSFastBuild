@@ -1,4 +1,4 @@
-using Microsoft.VisualStudio.Setup.Configuration;
+﻿using Microsoft.VisualStudio.Setup.Configuration;
 using Microsoft.Win32;
 using System;
 using System.IO;
@@ -15,6 +15,7 @@ namespace VSFastBuildCommon
         public string ToolsBinPath => toolsBinPath_;
         public string ToolsLibPath => toolsLibPath_;
         public string ToolsIncludePath => toolsIncludePath_;
+        public string SdkBasePath => sdkBasePath_;
         public string SdkBinPath => sdkBinPath_;
         public string SdkLibPath => sdkLibPath_;
         public string SdkIncludePath => sdkIncludePath_;
@@ -24,6 +25,7 @@ namespace VSFastBuildCommon
         private string toolsBinPath_ = string.Empty;
         private string toolsLibPath_ = string.Empty;
         private string toolsIncludePath_ = string.Empty;
+        private string sdkBasePath_ = string.Empty;
         private string sdkBinPath_ = string.Empty;
         private string sdkLibPath_ = string.Empty;
         private string sdkIncludePath_ = string.Empty;
@@ -51,7 +53,8 @@ namespace VSFastBuildCommon
                     if (fetched > 0)
                     {
                         var instance2 = (ISetupInstance2)instances[0];
-                        if (instance2.GetInstallationVersion().StartsWith(vsVersion))
+                        string installationVersion = instance2.GetInstallationVersion();
+                        if (installationVersion.StartsWith(vsVersion))
                         {
                             installPath = instance2.GetInstallationPath();
                             break;
@@ -100,6 +103,8 @@ namespace VSFastBuildCommon
                         return null;
                     }
                 }
+                sdkRoot = sdkRoot.TrimEnd(Path.DirectorySeparatorChar);
+                environment.sdkBasePath_ = sdkRoot;
                 environment.sdkIncludePath_ = Path.Combine(sdkRoot, "include", winSDKVersion);// "ucrt");
                 environment.sdkLibPath_ = Path.Combine(sdkRoot, "lib", winSDKVersion);// "ucrt", "x64");
                 environment.sdkBinPath_ = Path.Combine(sdkRoot, "bin", winSDKVersion, "x64");

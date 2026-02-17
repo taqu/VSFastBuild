@@ -1,4 +1,5 @@
 using System.Diagnostics;
+using System.IO.Packaging;
 using System.Windows.Media;
 using static VSFastBuildVSIX.ToolWindowMonitorControl;
 
@@ -26,9 +27,7 @@ namespace VSFastBuildVSIX.ToolWindows
         }
 
         // Constants
-        private const int TextLavelOffset = 4;
         private const float MinTextLabelWidthThreshold = 50.0f;
-        private const float MinDotDotDotWidthThreshold = 20.0f;
         private const float RacingIconWidth = 20.0f;
 
         private ToolWindowMonitorControl parent_;
@@ -57,13 +56,11 @@ namespace VSFastBuildVSIX.ToolWindows
         public System.Windows.Rect progressRect_;
 
         // LOD/Culling
-        public bool _isInLowLOD = false;
-        public bool _isDirty = false;
+        public bool isInLowLOD_ = false;
+        public bool isDirty_ = false;
 
         public BuildEvent(ToolWindowMonitorControl parent, string name, long timeStarted)
         {
-            ToolImages.Initialize();
-
             parent_ = parent;
             name_ = name;
             toolTipText_ = name_.Replace("\"", string.Empty);
@@ -85,14 +82,14 @@ namespace VSFastBuildVSIX.ToolWindows
 
             brush_ = ToolImages.RunningBrush;
 
-            toolTipText_ = "BUILDING: " + name_.Replace("\"", "");
+            toolTipText_ = "BUILDING: " + name_.Replace("\"", string.Empty);
         }
 
         public void Stop(long timeFinished, BuildEventState jobResult, bool bIsLocalJob)
         {
             timeFinished_ = timeFinished;
 
-            double totalTimeSeconds = (timeFinished_ - timeStarted_) / 1000.0f;
+            double totalTimeSeconds = Math.Max((timeFinished_ - timeStarted_) / 1000.0, 0.0);
 
             Debug.Assert(0.0f<=totalTimeSeconds);
 
@@ -165,7 +162,7 @@ namespace VSFastBuildVSIX.ToolWindows
             toolTipText_ += "\nStart Time: " + GetTimeFormattedString(timeStarted_);
             toolTipText_ += "\nEnd Time: " + GetTimeFormattedString(timeFinished_);
 
-            if (null != outputMessages_ && outputMessages_.Length > 0)
+            if (!string.IsNullOrEmpty(outputMessages_))
             {
                 // show only an extract of the errors so we don't flood the visual
                 int textLength = Math.Min(outputMessages_.Length, 100);
@@ -173,17 +170,21 @@ namespace VSFastBuildVSIX.ToolWindows
                 toolTipText_ += "\n" + outputMessages_.Substring(0, textLength);
                 toolTipText_ += "... [Double-Click on the event to see more details]";
 
-                outputMessages_ = string.Format("[Output {0}]: {1}", name_.Replace("\"", ""), Environment.NewLine) + outputMessages_;
-
-                parent_.AddOutputWindowFilterItem(this);
+                outputMessages_ = string.Format("[Output {0}]: {1}", name_.Replace("\"", string.Empty), Environment.NewLine) + outputMessages_;
             }
+            else
+            {
+                outputMessages_ = string.Format("{0} ", name_, state_);
+            }
+            parent_.AddOutputWindowFilterItem(this);
         }
 
         public bool JumpToEventLineInOutputBox()
         {
+            #if false
             bool bSuccess = false;
 
-            int index = parent_.OutputTextBox.Text.IndexOf(name_.Replace("\"", ""));
+            int index = parent_.OutputTextBox.Text.IndexOf(name_.Replace("\"",@string.Empty));
 
             int lineNumber = parent_.OutputTextBox.Text.Substring(0, index).Split(new string[] { Environment.NewLine }, StringSplitOptions.RemoveEmptyEntries).Length;
 
@@ -202,6 +203,9 @@ namespace VSFastBuildVSIX.ToolWindows
             }
 
             return bSuccess;
+            #else
+            return true;
+            #endif
         }
 
         public bool HandleDoubleClickEvent()
@@ -233,7 +237,7 @@ namespace VSFastBuildVSIX.ToolWindows
 
         public void RenderUpdate(ref double X, double Y)
         {
-            long duration = 0;
+            long duration = 1;
 
             bool bIsCompleted = false;
 
@@ -245,7 +249,7 @@ namespace VSFastBuildVSIX.ToolWindows
             if (state_ == BuildEventState.IN_PROGRESS)
             {
                 // Event is in progress
-                duration = (long)Math.Max(0.0f, parent_.GetCurrentBuildTimeMS(true) - timeStarted_);
+                duration = Math.Max(1, parent_.GetCurrentBuildTimeMS(true) - timeStarted_);
 
                 System.Windows.Point textSize = TextUtils.ComputeTextSize(fileName_);
 
@@ -261,7 +265,7 @@ namespace VSFastBuildVSIX.ToolWindows
             {
                 // Event is completed
                 bIsCompleted = true;
-                duration = timeFinished_ - timeStarted_;
+                duration = Math.Max(1, timeFinished_ - timeStarted_);
 
                 // Handle the zoom factor
                 OriginalWidthInPixels = parent_.ZoomFactor * PIX_PER_SECOND * (double)duration / (double)1000;
@@ -273,7 +277,8 @@ namespace VSFastBuildVSIX.ToolWindows
             }
 
             // Adjust the start time position if possible
-            double desiredX = parent_.ZoomFactor * PIX_PER_SECOND * (double)timeStarted_ / (double)1000;
+            long timeStarted = Math.Max(0, timeStarted_ - parent_.BuildStartTimeMS);
+            double desiredX = parent_.ZoomFactor * PIX_PER_SECOND * (double)timeStarted / 1000.0;
             if (desiredX > X)
             {
                 X = desiredX;
@@ -286,9 +291,9 @@ namespace VSFastBuildVSIX.ToolWindows
             System.Windows.Rect newBorderRect = new System.Windows.Rect(X, Y, borderRectWidth, PIX_HEIGHT);
             System.Windows.Rect newProgressRect = new System.Windows.Rect(X, Y, AdjustedWidthInPixels, PIX_HEIGHT);
 
-            _isDirty = !bordersRect_.Equals(newBorderRect) || !progressRect_.Equals(newProgressRect) || isInLowLOD != _isInLowLOD;
+            isDirty_ = !bordersRect_.Equals(newBorderRect) || !progressRect_.Equals(newProgressRect) || isInLowLOD != isInLowLOD_;
 
-            _isInLowLOD = isInLowLOD;
+            isInLowLOD_ = isInLowLOD;
             bordersRect_ = newBorderRect;
             progressRect_ = newProgressRect;
 
@@ -309,7 +314,7 @@ namespace VSFastBuildVSIX.ToolWindows
         public void OnRender(DrawingContext dc)
         {
             // if the current event is in lowLOD mode
-            if (_isInLowLOD)
+            if (isInLowLOD_)
             {
                 bool bStartNewLODBlock = false;
 
@@ -461,11 +466,11 @@ namespace VSFastBuildVSIX.ToolWindows
 #if ENABLE_RENDERING_STATS
                         parent_._numTextElementsDrawn++;
 #endif
-                        double allowedTextWidth = Math.Max(0.0f, bordersRect_.Width - 2 * TextLabeloffset_X - (isRacingJob_ ? RacingIconWidth : 0.0f));
+                        double allowedTextWidth = Math.Max(0.0f, bordersRect_.Width - 2 * TextLabelOffset_X - (isRacingJob_ ? RacingIconWidth : 0.0f));
 
-                        double textXOffset = bordersRect_.X + TextLabeloffset_X + (isRacingJob_ ? RacingIconWidth : 0.0f);
+                        double textXOffset = bordersRect_.X + TextLabelOffset_X + (isRacingJob_ ? RacingIconWidth : 0.0f);
 
-                        TextUtils.DrawText(dc, textToDisplay, textXOffset, bordersRect_.Y + TextLabeloffset_Y, allowedTextWidth, true, colorBrush);
+                        TextUtils.DrawText(dc, textToDisplay, textXOffset, bordersRect_.Y + TextLabelOffset_Y, allowedTextWidth, true, colorBrush);
                     }
                 }
             }
