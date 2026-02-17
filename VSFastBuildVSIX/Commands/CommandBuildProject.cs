@@ -343,7 +343,7 @@ namespace VSFastBuildVSIX
             string fbuildPath = optionPage.Path;
             string fbuldArgs = optionPage.Arguments;
             bool openMonitor = optionPage.OpenMonitor;
-            string arguments = $"\"{fbuildPath}\" -config \"{bffpath}\" {fbuldArgs}";
+            string arguments = $"-config \"{bffpath}\" {fbuldArgs}";
             if (!fbuldArgs.Contains("-j"))
             {
                 int numProcessors = VSFastBuildCommon.SystemEnvironment.GetPhysicalProcessorCount();
@@ -360,7 +360,7 @@ namespace VSFastBuildVSIX
 
             try
             {
-                FBProcess process = CommandBuildProject.CreateProcess(bffpath, arguments, workingDir);
+                FBProcess process = CommandBuildProject.CreateProcess(fbuildPath, arguments, workingDir);
                 if (process.Start())
                 {
                     await process.WaitForExitAsync(package.CancellationToken);

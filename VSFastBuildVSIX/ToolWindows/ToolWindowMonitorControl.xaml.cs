@@ -1,3 +1,4 @@
+//#define VSFASTBUILD_ENABLE_FILTER
 using EnvDTE;
 using EnvDTE80;
 using System.Collections.Generic;
@@ -301,7 +302,9 @@ namespace VSFastBuildVSIX
             OutputTextBox.KeyDown += OutputTextBox_KeyDown;
             OutputTextBox.LayoutUpdated += OutputTextBox_LayoutUpdated;
 
+            #if VSFASTBUILD_ENABLE_FILTER
             OutputWindowComboBox.SelectionChanged += OutputWindowComboBox_SelectionChanged;
+            #endif
         }
 
         public bool Start()
@@ -622,6 +625,7 @@ namespace VSFastBuildVSIX
         #region Output TextBox Handling
         public void ChangeOutputWindowComboBoxSelection(BuildEvent buildEvent)
         {
+            #if VSFASTBUILD_ENABLE_FILTER
             int index = 0;
             foreach (OutputFilterItem filter in outputComboBoxFilters_)
             {
@@ -632,6 +636,7 @@ namespace VSFastBuildVSIX
                 }
                 ++index;
             }
+            #endif
         }
 
         void ResetOutputWindowCombox()
@@ -647,13 +652,16 @@ namespace VSFastBuildVSIX
 
             outputComboBoxFilters_.Add(new OutputFilterItem("ALL"));
 
+            #if VSFASTBUILD_ENABLE_FILTER
             OutputWindowComboBox.ItemsSource = outputComboBoxFilters_;
             OutputWindowComboBox.SelectedIndex = 0;
+            #endif
         }
 
 
         public void AddOutputWindowFilterItem(BuildEvent buildEvent)
         {
+            #if VSFASTBUILD_ENABLE_FILTER
             OutputFilterItem outputFilterItem = new OutputFilterItem(buildEvent);
             outputComboBoxFilters_.Add(outputFilterItem);
             if (0 <= OutputWindowComboBox.SelectedIndex)
@@ -665,6 +673,7 @@ namespace VSFastBuildVSIX
                     OutputTextBox.AppendText(outputFilterItem.BuildEvent.outputMessages_ + "\n");
                 }
             }
+            #endif
         }
 
         private void OutputWindowComboBox_SelectionChanged(object sender, System.Windows.Controls.SelectionChangedEventArgs e)
@@ -676,7 +685,7 @@ namespace VSFastBuildVSIX
         {
             OutputTextBox.Clear();
 
-
+#if VSFASTBUILD_ENABLE_FILTER
             if (0 <= OutputWindowComboBox.SelectedIndex)
             {
                 OutputFilterItem selectedFilter = outputComboBoxFilters_[OutputWindowComboBox.SelectedIndex];
@@ -689,6 +698,16 @@ namespace VSFastBuildVSIX
                     }
                 }
             }
+#else
+            OutputFilterItem selectedFilter = outputComboBoxFilters_[0];
+            foreach (OutputFilterItem filter in outputComboBoxFilters_)
+            {
+                if (filter.BuildEvent != null && (selectedFilter.BuildEvent == null || filter.BuildEvent == selectedFilter.BuildEvent))
+                {
+                    OutputTextBox.AppendText(filter.BuildEvent.outputMessages_ + "\n");
+                }
+            }
+#endif
 
             // Since we changed the text inside the text box we now require a layout update to refresh
             // the internal state of the UIControl
@@ -819,7 +838,7 @@ namespace VSFastBuildVSIX
         private void OutputTextBox_KeyDown(object sender, KeyEventArgs e)
         {
             e.Handled = true;
-
+#if VSFASTBUILD_ENABLE_FILTER
             if (e.Key == Key.Space)
             {
                 if (OutputWindowComboBox.SelectedIndex != 0)
@@ -827,7 +846,9 @@ namespace VSFastBuildVSIX
                     OutputWindowComboBox.SelectedIndex = 0;
                 }
             }
-            else if (e.KeyboardDevice.Modifiers == ModifierKeys.Control && e.Key == Key.C)
+            else
+#endif
+            if (e.KeyboardDevice.Modifiers == ModifierKeys.Control && e.Key == Key.C)
             {
                 try {
                 Clipboard.SetText(OutputTextBox.SelectedText);

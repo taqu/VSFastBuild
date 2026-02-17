@@ -53,6 +53,7 @@
 			<Menu guid="VSFastBuildVSIX" id="VSFastBuildMenu" type="Menu">
 				<Strings>
 					<ButtonText>FastBuild</ButtonText>
+					<MenuText>FastBuild</MenuText>
 				</Strings>
 			</Menu>
 			<Menu guid="VSFastBuildVSIX" id="VSFastBuildMenuBFF00" type="Menu">
@@ -60,13 +61,15 @@
 				<CommandFlag>TextChanges</CommandFlag>
 				<Strings>
 					<ButtonText>MenuBFF00</ButtonText>
-				</Strings>
+					<MenuText>MenuBFF00</MenuText>
+			</Strings>
 			</Menu>
 			<Menu guid="VSFastBuildVSIX" id="VSFastBuildMenuBFF01" type="Menu">
 				<CommandFlag>DynamicVisibility</CommandFlag>
 				<CommandFlag>TextChanges</CommandFlag>
 				<Strings>
 					<ButtonText>MenuBFF01</ButtonText>
+					<MenuText>MenuBFF01</MenuText>
 				</Strings>
 			</Menu>
 			<Menu guid="VSFastBuildVSIX" id="VSFastBuildMenuBFF02" type="Menu">
@@ -74,6 +77,7 @@
 				<CommandFlag>TextChanges</CommandFlag>
 				<Strings>
 					<ButtonText>MenuBFF02</ButtonText>
+					<MenuText>MenuBFF02</MenuText>
 				</Strings>
 			</Menu>
 			<Menu guid="VSFastBuildVSIX" id="VSFastBuildMenuBFF03" type="Menu">
@@ -81,6 +85,7 @@
 				<CommandFlag>TextChanges</CommandFlag>
 				<Strings>
 					<ButtonText>MenuBFF03</ButtonText>
+					<MenuText>MenuBFF03</MenuText>
 				</Strings>
 			</Menu>
 			<Menu guid="VSFastBuildVSIX" id="VSFastBuildMenuBFF04" type="Menu">
@@ -88,6 +93,7 @@
 				<CommandFlag>TextChanges</CommandFlag>
 				<Strings>
 					<ButtonText>MenuBFF04</ButtonText>
+					<MenuText>MenuBFF04</MenuText>
 				</Strings>
 			</Menu>
 			<Menu guid="VSFastBuildVSIX" id="VSFastBuildMenuBFF05" type="Menu">
@@ -95,6 +101,7 @@
 				<CommandFlag>TextChanges</CommandFlag>
 				<Strings>
 					<ButtonText>MenuBFF05</ButtonText>
+					<MenuText>MenuBFF05</MenuText>
 				</Strings>
 			</Menu>
 			<Menu guid="VSFastBuildVSIX" id="VSFastBuildMenuBFF06" type="Menu">
@@ -102,6 +109,7 @@
 				<CommandFlag>TextChanges</CommandFlag>
 				<Strings>
 					<ButtonText>MenuBFF06</ButtonText>
+					<MenuText>MenuBFF06</MenuText>
 				</Strings>
 			</Menu>
 			<Menu guid="VSFastBuildVSIX" id="VSFastBuildMenuBFF07" type="Menu">
@@ -109,6 +117,7 @@
 				<CommandFlag>TextChanges</CommandFlag>
 				<Strings>
 					<ButtonText>MenuBFF07</ButtonText>
+					<MenuText>MenuBFF07</MenuText>
 				</Strings>
 			</Menu>
 			<Menu guid="VSFastBuildVSIX" id="VSFastBuildMenuBFF08" type="Menu">
@@ -116,6 +125,7 @@
 				<CommandFlag>TextChanges</CommandFlag>
 				<Strings>
 					<ButtonText>MenuBFF08</ButtonText>
+					<MenuText>MenuBFF08</MenuText>
 				</Strings>
 			</Menu>
 			<Menu guid="VSFastBuildVSIX" id="VSFastBuildMenuBFF09" type="Menu">
@@ -123,6 +133,7 @@
 				<CommandFlag>TextChanges</CommandFlag>
 				<Strings>
 					<ButtonText>MenuBFF09</ButtonText>
+					<MenuText>MenuBFF09</MenuText>
 				</Strings>
 			</Menu>
 			<Menu guid="VSFastBuildVSIX" id="VSFastBuildMenuBFF0A" type="Menu">
@@ -130,6 +141,7 @@
 				<CommandFlag>TextChanges</CommandFlag>
 				<Strings>
 					<ButtonText>MenuBFF0A</ButtonText>
+					<MenuText>MenuBFF0A</MenuText>
 				</Strings>
 			</Menu>
 			<Menu guid="VSFastBuildVSIX" id="VSFastBuildMenuBFF0B" type="Menu">
@@ -137,6 +149,7 @@
 				<CommandFlag>TextChanges</CommandFlag>
 				<Strings>
 					<ButtonText>MenuBFF0B</ButtonText>
+					<MenuText>MenuBFF0B</MenuText>
 				</Strings>
 			</Menu>
 			<Menu guid="VSFastBuildVSIX" id="VSFastBuildMenuBFF0C" type="Menu">
@@ -144,6 +157,7 @@
 				<CommandFlag>TextChanges</CommandFlag>
 				<Strings>
 					<ButtonText>MenuBFF0C</ButtonText>
+					<MenuText>MenuBFF0C</MenuText>
 				</Strings>
 			</Menu>
 			<Menu guid="VSFastBuildVSIX" id="VSFastBuildMenuBFF0D" type="Menu">
@@ -151,6 +165,7 @@
 				<CommandFlag>TextChanges</CommandFlag>
 				<Strings>
 					<ButtonText>MenuBFF0D</ButtonText>
+					<MenuText>MenuBFF0D</MenuText>
 				</Strings>
 			</Menu>
 			<Menu guid="VSFastBuildVSIX" id="VSFastBuildMenuBFF0E" type="Menu">
@@ -158,6 +173,7 @@
 				<CommandFlag>TextChanges</CommandFlag>
 				<Strings>
 					<ButtonText>MenuBFF0E</ButtonText>
+					<MenuText>MenuBFF0E</MenuText>
 				</Strings>
 			</Menu>
 			<Menu guid="VSFastBuildVSIX" id="VSFastBuildMenuBFF0F" type="Menu">
@@ -165,6 +181,7 @@
 				<CommandFlag>TextChanges</CommandFlag>
 				<Strings>
 					<ButtonText>MenuBFF0F</ButtonText>
+					<MenuText>MenuBFF0F</MenuText>
 				</Strings>
 			</Menu>
 			<Menu guid="VSFastBuildVSIX" id="VSFastBuildMenuBFF10" type="Menu">
@@ -172,6 +189,7 @@
 				<CommandFlag>TextChanges</CommandFlag>
 				<Strings>
 					<ButtonText>MenuBFF10</ButtonText>
+					<MenuText>MenuBFF10</MenuText>
 				</Strings>
 			</Menu>
 			<Menu guid="VSFastBuildVSIX" id="VSFastBuildMenuBFF11" type="Menu">
@@ -179,6 +197,7 @@
 				<CommandFlag>TextChanges</CommandFlag>
 				<Strings>
 					<ButtonText>MenuBFF11</ButtonText>
+					<MenuText>MenuBFF11</MenuText>
 				</Strings>
 			</Menu>
 			<Menu guid="VSFastBuildVSIX" id="VSFastBuildMenuBFF12" type="Menu">
@@ -186,6 +205,7 @@
 				<CommandFlag>TextChanges</CommandFlag>
 				<Strings>
 					<ButtonText>MenuBFF12</ButtonText>
+					<MenuText>MenuBFF12</MenuText>
 				</Strings>
 			</Menu>
 			<Menu guid="VSFastBuildVSIX" id="VSFastBuildMenuBFF13" type="Menu">
@@ -193,6 +213,7 @@
 				<CommandFlag>TextChanges</CommandFlag>
 				<Strings>
 					<ButtonText>MenuBFF13</ButtonText>
+					<MenuText>MenuBFF13</MenuText>
 				</Strings>
 			</Menu>
 			<Menu guid="VSFastBuildVSIX" id="VSFastBuildMenuBFF14" type="Menu">
@@ -200,6 +221,7 @@
 				<CommandFlag>TextChanges</CommandFlag>
 				<Strings>
 					<ButtonText>MenuBFF14</ButtonText>
+					<MenuText>MenuBFF14</MenuText>
 				</Strings>
 			</Menu>
 			<Menu guid="VSFastBuildVSIX" id="VSFastBuildMenuBFF15" type="Menu">
@@ -207,6 +229,7 @@
 				<CommandFlag>TextChanges</CommandFlag>
 				<Strings>
 					<ButtonText>MenuBFF15</ButtonText>
+					<MenuText>MenuBFF15</MenuText>
 				</Strings>
 			</Menu>
 			<Menu guid="VSFastBuildVSIX" id="VSFastBuildMenuBFF16" type="Menu">
@@ -214,6 +237,7 @@
 				<CommandFlag>TextChanges</CommandFlag>
 				<Strings>
 					<ButtonText>MenuBFF16</ButtonText>
+					<MenuText>MenuBFF16</MenuText>
 				</Strings>
 			</Menu>
 			<Menu guid="VSFastBuildVSIX" id="VSFastBuildMenuBFF17" type="Menu">
@@ -221,6 +245,7 @@
 				<CommandFlag>TextChanges</CommandFlag>
 				<Strings>
 					<ButtonText>MenuBFF17</ButtonText>
+					<MenuText>MenuBFF17</MenuText>
 				</Strings>
 			</Menu>
 			<Menu guid="VSFastBuildVSIX" id="VSFastBuildMenuBFF18" type="Menu">
@@ -228,6 +253,7 @@
 				<CommandFlag>TextChanges</CommandFlag>
 				<Strings>
 					<ButtonText>MenuBFF18</ButtonText>
+					<MenuText>MenuBFF18</MenuText>
 				</Strings>
 			</Menu>
 			<Menu guid="VSFastBuildVSIX" id="VSFastBuildMenuBFF19" type="Menu">
@@ -235,6 +261,7 @@
 				<CommandFlag>TextChanges</CommandFlag>
 				<Strings>
 					<ButtonText>MenuBFF19</ButtonText>
+					<MenuText>MenuBFF19</MenuText>
 				</Strings>
 			</Menu>
 			<Menu guid="VSFastBuildVSIX" id="VSFastBuildMenuBFF1A" type="Menu">
@@ -242,6 +269,7 @@
 				<CommandFlag>TextChanges</CommandFlag>
 				<Strings>
 					<ButtonText>MenuBFF1A</ButtonText>
+					<MenuText>MenuBFF1A</MenuText>
 				</Strings>
 			</Menu>
 			<Menu guid="VSFastBuildVSIX" id="VSFastBuildMenuBFF1B" type="Menu">
@@ -249,6 +277,7 @@
 				<CommandFlag>TextChanges</CommandFlag>
 				<Strings>
 					<ButtonText>MenuBFF1B</ButtonText>
+					<MenuText>MenuBFF1B</MenuText>
 				</Strings>
 			</Menu>
 			<Menu guid="VSFastBuildVSIX" id="VSFastBuildMenuBFF1C" type="Menu">
@@ -256,6 +285,7 @@
 				<CommandFlag>TextChanges</CommandFlag>
 				<Strings>
 					<ButtonText>MenuBFF1C</ButtonText>
+					<MenuText>MenuBFF1C</MenuText>
 				</Strings>
 			</Menu>
 			<Menu guid="VSFastBuildVSIX" id="VSFastBuildMenuBFF1D" type="Menu">
@@ -263,6 +293,7 @@
 				<CommandFlag>TextChanges</CommandFlag>
 				<Strings>
 					<ButtonText>MenuBFF1D</ButtonText>
+					<MenuText>MenuBFF1D</MenuText>
 				</Strings>
 			</Menu>
 			<Menu guid="VSFastBuildVSIX" id="VSFastBuildMenuBFF1E" type="Menu">
@@ -270,6 +301,7 @@
 				<CommandFlag>TextChanges</CommandFlag>
 				<Strings>
 					<ButtonText>MenuBFF1E</ButtonText>
+					<MenuText>MenuBFF1E</MenuText>
 				</Strings>
 			</Menu>
 			<Menu guid="VSFastBuildVSIX" id="VSFastBuildMenuBFF1F" type="Menu">
@@ -277,6 +309,7 @@
 				<CommandFlag>TextChanges</CommandFlag>
 				<Strings>
 					<ButtonText>MenuBFF1F</ButtonText>
+					<MenuText>MenuBFF1F</MenuText>
 				</Strings>
 			</Menu>
 		</Menus>
@@ -326,7 +359,7 @@
 				<!--<CommandFlag>DefaultDisabled</CommandFlag>-->
 				<CommandFlag>TextOnly</CommandFlag>
 				<Strings>
-					<ButtonText>BFF Files</ButtonText>
+					<ButtonText>Scan BFF Files</ButtonText>
 				</Strings>
 			</Button>
 			<Button guid="VSFastBuildVSIX" id="CommandFBuildBFF00" type="Button">

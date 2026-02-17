@@ -15,7 +15,6 @@ namespace VSFastBuildVSIX
     public class OptionsPage : BaseOptionModel<OptionsPage>
     {
         public const string DefaultPath = "FBuild.exe";
-        public const bool DefaultDistributed = true;
         public const string DefaultArguments = "-dist -ide -monitor";
         public const bool DefaultEnableGeneration = true;
         public const bool DefaultGenOnly = false;
@@ -28,12 +27,6 @@ namespace VSFastBuildVSIX
         [Description("Path to the FBuile.exe.")]
         [DefaultValue(true)]
         public string Path { get; set; } = DefaultPath;
-
-        [Category("Options")]
-        [DisplayName("Distributed")]
-        [Description("Whether to compile distributed.")]
-        [DefaultValue(true)]
-        public bool Distributed { get; set; } = DefaultDistributed;
 
         [Category("Options")]
         [DisplayName("Arguments")]
@@ -64,17 +57,5 @@ namespace VSFastBuildVSIX
         [Description("Whether to open monitor window automatically.")]
         [DefaultValue(true)]
         public bool OpenMonitor { get; set; } = DefaultOpenMonitor;
-
-        [Category("Options")]
-        [DisplayName("ShowSystemPerformance")]
-        [Description("Whether to show system performance graph as default.")]
-        [DefaultValue(true)]
-        public bool ShowSystemPerformance { get; set; } = DefaultShowSystemPerformance;
-
-        [Category("Options")]
-        [DisplayName("Threads")]
-        [Description("Number of threads to use.")]
-        [DefaultValue(-1)]
-        public int Threads { get; set; } = -1;
     }
 }

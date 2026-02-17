@@ -4,6 +4,7 @@ using Microsoft.VisualStudio.Shell;
 using Microsoft.VisualStudio.Shell.Interop;
 using System.Collections.Generic;
 using System.ComponentModel.Design;
+using System.IO.Packaging;
 using System.Linq;
 using System.Security.RightsManagement;
 using System.Windows.Forms.Design;
@@ -16,85 +17,7 @@ namespace VSFastBuildVSIX
     internal sealed class CommandBFFFiles : BaseCommand<CommandBFFFiles>
     {
         public const int MaxFileCount = 0xFE;
-        private static readonly int[] MenuIDs = new int[]
-        {
-            PackageIds.VSFastBuildMenuBFF00,
-            PackageIds.VSFastBuildMenuBFF01,
-            PackageIds.VSFastBuildMenuBFF02,
-            PackageIds.VSFastBuildMenuBFF03,
-            PackageIds.VSFastBuildMenuBFF04,
-            PackageIds.VSFastBuildMenuBFF05,
-            PackageIds.VSFastBuildMenuBFF06,
-            PackageIds.VSFastBuildMenuBFF07,
-            PackageIds.VSFastBuildMenuBFF08,
-            PackageIds.VSFastBuildMenuBFF09,
-            PackageIds.VSFastBuildMenuBFF0A,
-            PackageIds.VSFastBuildMenuBFF0B,
-            PackageIds.VSFastBuildMenuBFF0C,
-            PackageIds.VSFastBuildMenuBFF0D,
-            PackageIds.VSFastBuildMenuBFF0E,
-            PackageIds.VSFastBuildMenuBFF0F,
-            PackageIds.VSFastBuildMenuBFF10,
-            PackageIds.VSFastBuildMenuBFF11,
-            PackageIds.VSFastBuildMenuBFF12,
-            PackageIds.VSFastBuildMenuBFF13,
-            PackageIds.VSFastBuildMenuBFF14,
-            PackageIds.VSFastBuildMenuBFF15,
-            PackageIds.VSFastBuildMenuBFF16,
-            PackageIds.VSFastBuildMenuBFF17,
-            PackageIds.VSFastBuildMenuBFF18,
-            PackageIds.VSFastBuildMenuBFF19,
-            PackageIds.VSFastBuildMenuBFF1A,
-            PackageIds.VSFastBuildMenuBFF1B,
-            PackageIds.VSFastBuildMenuBFF1C,
-            PackageIds.VSFastBuildMenuBFF1D,
-            PackageIds.VSFastBuildMenuBFF1E,
-            PackageIds.VSFastBuildMenuBFF1F,
-        };
-
-        private static readonly int[] ButtonIDs = new int[]
-        {
-            PackageIds.CommandFBuildBFF00,
-            PackageIds.CommandFBuildBFF01,
-            PackageIds.CommandFBuildBFF02,
-            PackageIds.CommandFBuildBFF03,
-            PackageIds.CommandFBuildBFF03,
-            PackageIds.CommandFBuildBFF04,
-            PackageIds.CommandFBuildBFF05,
-            PackageIds.CommandFBuildBFF06,
-            PackageIds.CommandFBuildBFF07,
-            PackageIds.CommandFBuildBFF08,
-            PackageIds.CommandFBuildBFF09,
-            PackageIds.CommandFBuildBFF0A,
-            PackageIds.CommandFBuildBFF0B,
-            PackageIds.CommandFBuildBFF0C,
-            PackageIds.CommandFBuildBFF0D,
-            PackageIds.CommandFBuildBFF0E,
-            PackageIds.CommandFBuildBFF0F,
-            PackageIds.CommandFBuildBFF10,
-            PackageIds.CommandFBuildBFF11,
-            PackageIds.CommandFBuildBFF12,
-            PackageIds.CommandFBuildBFF13,
-            PackageIds.CommandFBuildBFF14,
-            PackageIds.CommandFBuildBFF15,
-            PackageIds.CommandFBuildBFF16,
-            PackageIds.CommandFBuildBFF17,
-            PackageIds.CommandFBuildBFF18,
-            PackageIds.CommandFBuildBFF19,
-            PackageIds.CommandFBuildBFF1A,
-            PackageIds.CommandFBuildBFF1B,
-            PackageIds.CommandFBuildBFF1C,
-            PackageIds.CommandFBuildBFF1D,
-            PackageIds.CommandFBuildBFF1E,
-            PackageIds.CommandFBuildBFF1F,
-        };
-
-        public enum Type
-        {
-            Menu,
-            Button,
-        }
-        public struct BFFFile
+        public class BFFFile
         {
             public CommandID id_;
             public int level_;
@@ -145,8 +68,6 @@ namespace VSFastBuildVSIX
                 }
                 menuCommandService.RemoveCommand(menuCommand);
             }
-            files_.Clear();
-            nodes_.Clear();
         }
 
         protected override void BeforeQueryStatus(EventArgs e)
@@ -156,9 +77,32 @@ namespace VSFastBuildVSIX
             {
                 return;
             }
-            IServiceProvider serviceProvider = package;
-            OleMenuCommandService menuCommandService = serviceProvider.GetService(typeof(IMenuCommandService)) as OleMenuCommandService;
-            if (menuCommandService == null)
+            List<BaseCommand> menus = package.Menus;
+            List<BaseCommand> commands = package.Commands;
+            foreach(BaseCommand menu in menus)            {
+                menu.Command.Visible = false;
+            }
+            foreach (BaseCommand command in commands)
+            {
+                command.Command.Visible = false;
+            }
+            package.JoinableTaskFactory.RunAsync(async delegate
+            {
+                try
+                {
+                    await ExecuteAsync(null);
+                }
+                catch (Exception ex)
+                {
+                    await ex.LogAsync();
+                }
+            }).FireAndForget();
+        }
+
+        protected override async Task ExecuteAsync(OleMenuCmdEventArgs e)
+        {
+            VSFastBuildVSIXPackage package;
+            if (!VSFastBuildVSIXPackage.TryGetPackage(out package))
             {
                 return;
             }
@@ -168,7 +112,6 @@ namespace VSFastBuildVSIX
                 return;
             }
 
-            OleMenuCommand rootCommand = Command;
             List<BFFFile> files = new List<BFFFile>();
             {
                 BFFFile bff = new BFFFile();
@@ -179,6 +122,7 @@ namespace VSFastBuildVSIX
                 bff.level_ = 0;
                 files.Add(bff);
             }
+            GatherBFFs(files, dte.Solution);
             foreach (EnvDTE.Project project in dte.Solution.Projects)
             {
                 if (null == project)
@@ -192,21 +136,86 @@ namespace VSFastBuildVSIX
                 }
                 if (ProjectTypes.ProjectFolders == project.Kind)
                 {
-                    TraverseProjectItems(files, project, string.Empty, 0);
+                    TraverseProjectItems(files, project, string.Empty, 1);
                     continue;
                 }
             }
             SortFiles(files);
-            if(IsSame(files_, files))
+            IServiceProvider serviceProvider = package;
+            OleMenuCommandService menuCommandService = serviceProvider.GetService(typeof(IMenuCommandService)) as OleMenuCommandService;
+            if (menuCommandService == null)
             {
                 return;
             }
-
-            ClearMenus(menuCommandService);
+            if(IsSame(files_, files))
+            {
+                RebuildMenus(package, menuCommandService);
+                return;
+            }
             files_ = files;
+            nodes_.Clear();
             BuildTree();
-            PrintTree();
-            rootCommand.Visible = true;
+            //PrintTree();
+            RebuildMenus(package, menuCommandService);
+        }
+
+        private void RebuildMenus(VSFastBuildVSIXPackage package, OleMenuCommandService menuCommandService)
+        {
+            ClearMenus(menuCommandService);
+            List<BaseCommand> menus = package.Menus;
+            List<BaseCommand> commands = package.Commands;
+            for(int i=0; i<nodes_.Count; ++i)
+            {
+                menus[i].Command.Visible = true;
+                menus[i].Command.Enabled = true;
+                menus[i].Command.Supported = true;
+                menus[i].Command.Text = string.IsNullOrEmpty(nodes_[i].name_)? "{root}" : nodes_[i].name_;
+                BaseCommand commandStart = commands[i];
+                for(int j=0; j < nodes_[i].siblings_.Count; ++j)
+                {
+                    int index = nodes_[i].siblings_[j].index_;
+                    BFFFile file = files_[index];
+                    CommandID id = new CommandID(commandStart.Command.CommandID.Guid, commandStart.Command.CommandID.ID+j);
+                    OleMenuCommand command = menuCommandService.FindCommand(id) as OleMenuCommand;
+                    if(null == command)
+                    {
+                        command = new OleMenuCommand(CommandExecute, id);
+                        menuCommandService.AddCommand(command);
+                    }
+                    command.Text = file.fileName_;
+                    command.Visible = true;
+                    command.Enabled = true;
+                    command.Supported = true;
+                    command.Properties["filepath"] = file.filePath_;
+                    file.id_ = id;
+                }
+            }
+            for(int i=nodes_.Count; i<menus.Count; ++i)
+            {
+                menus[i].Command.Visible = false;
+            }
+        }
+        private void CommandExecute(object sender, EventArgs e)
+        {
+            OleMenuCommand command = sender as OleMenuCommand;
+            if(null == command)
+            {
+                return;
+            }
+            if(!command.Properties.Contains("filepath")){
+                return;
+            }
+            string filepath = command.Properties["filepath"] as string;
+            if(string.IsNullOrEmpty(filepath) || !System.IO.File.Exists(filepath))
+            {
+                return;
+            }
+            VSFastBuildVSIXPackage package;
+            if (!VSFastBuildVSIXPackage.TryGetPackage(out package))
+            {
+                return;
+            }
+            CommandBuildProject.RunProcessAsync(package, filepath).FireAndForget();
         }
 
         private static void GatherBFFs(List<BFFFile> files, EnvDTE.Project project, string parentDir, int level)
@@ -215,6 +224,10 @@ namespace VSFastBuildVSIX
             try {
                 foreach (string filepath in System.IO.Directory.GetFiles(directoryPath, "*.bff"))
                 {
+                    if(Contains(files, filepath))
+                    {
+                        continue;
+                    }
                     string filename = System.IO.Path.GetFileName(filepath);
                     if (!filename.Contains(project.Name))
                     {
@@ -226,6 +239,43 @@ namespace VSFastBuildVSIX
                     bff.relativePath_ = System.IO.Path.Combine(parentDir, project.Name);
                     bff.fileName_ = filename;
                     bff.level_ = level;
+                    files.Add(bff);
+                }
+            }
+            catch
+            {
+            }
+        }
+
+        private static bool Contains(List<BFFFile> files, string path)
+        {
+            foreach(BFFFile file in files)
+            {
+                if(file.filePath_ == path)
+                {
+                    return true;
+                }
+            }
+            return false;
+        }
+
+        private static void GatherBFFs(List<BFFFile> files, EnvDTE.Solution solution)
+        {
+            string directoryPath = System.IO.Path.GetDirectoryName(solution.FullName);
+            try {
+                foreach (string filepath in System.IO.Directory.GetFiles(directoryPath, "*.bff"))
+                {
+                    if(Contains(files, filepath))
+                    {
+                        continue;
+                    }
+                    string filename = System.IO.Path.GetFileName(filepath);
+                    BFFFile bff = new BFFFile();
+                    bff.id_ = new CommandID(Guid.Empty, -1);
+                    bff.filePath_ = filepath;
+                    bff.relativePath_ = string.Empty;
+                    bff.fileName_ = filename;
+                    bff.level_ = 0;
                     files.Add(bff);
                 }
             }
@@ -261,34 +311,10 @@ namespace VSFastBuildVSIX
                 }
                 if (ProjectTypes.ProjectFolders == subProject.Kind)
                 {
-                    if("jpeg" == subProject.Name)
-                    {
-                        Log.OutputDebugLine("jpeg");
-                    }
                     TraverseProjectItems(files, subProject, parentDir, level+1);
                     continue;
                 }
             }
-        }
-
-        private string GetName(string path, int count)
-        {
-            if (count <= 0)
-            {
-                return string.Empty;
-            }
-            for (int i = 0; i < path.Length; ++i)
-            {
-                if (path[i] == '\\')
-                {
-                    --count;
-                    if (count <= 0)
-                    {
-                        return path.Substring(0, i);
-                    }
-                }
-            }
-            return string.Empty;
         }
 
         private static int FindFile(List<BFFFile> files, string relativePath)
@@ -315,46 +341,24 @@ namespace VSFastBuildVSIX
             });
         }
 
-        private void PrintNode(BFFNode node, int level)
-        {
-            string indent = string.Empty;
-            string name = node.name_;
-            for (int i = 0; i < level; ++i)
-            {
-                indent += "  ";
-            }
-            Log.OutputDebugLine($"{indent}+{level}.{name}");
-            for (int i = 0; i < 2; ++i)
-            {
-                indent += " ";
-            }
-            foreach (BFFNode sibling in node.siblings_)
-            {
-                Log.OutputDebugLine($"{indent}-{System.IO.Path.GetFileName(sibling.name_)} - {sibling.index_}");
-            }
-            ++level;
-        }
-
         private void PrintTree()
         {
-            if (nodes_.Count <= 0)
+            for(int i=0; i<nodes_.Count; ++i)
             {
-                return;
+                Log.OutputDebugLine($"[{i}] {nodes_[i].name_} - {nodes_[i].index_}");
+                for(int j=0; j < nodes_[i].siblings_.Count; ++j)
+                {
+                    Log.OutputDebugLine($"  [{j}] {nodes_[i].siblings_[j].name_} - {nodes_[i].siblings_[j].index_}");
+                }
             }
-            PrintNode(nodes_[0], 0);
         }
 
 
         private BFFNode FindDirectoryNode(string relativePath)
         {
-            string path = System.IO.Path.GetDirectoryName(relativePath);
-            if("3rdparth\\jpeg" == relativePath)
-            {
-                Log.OutputDebugLine("jpeg");
-            }
             for(int i=0; i<nodes_.Count; ++i)
             {
-                if (nodes_[i].name_ == path)
+                if (nodes_[i].name_ == relativePath)
                 {
                     return nodes_[i];
                 }
@@ -376,7 +380,8 @@ namespace VSFastBuildVSIX
                 }
                 else
                 {
-                    BFFNode directory = FindDirectoryNode(files_[i].relativePath_);
+                    string parentDir = (files_[i].relativePath_.Contains('\\'))? System.IO.Path.GetDirectoryName(files_[i].relativePath_) : string.Empty;
+                    BFFNode directory = FindDirectoryNode(parentDir);
                     System.Diagnostics.Debug.Assert(null != directory.name_);
                     BFFNode node = new BFFNode();
                     node.name_ = files_[i].relativePath_;
@@ -387,45 +392,6 @@ namespace VSFastBuildVSIX
                     }
                 }
             }
-        }
-
-        protected override async Task ExecuteAsync(OleMenuCmdEventArgs e)
-        {
-#if false
-            VSFastBuildVSIXPackage package = await VSFastBuildVSIXPackage.GetPackageAsync();
-            if (null == package)
-            {
-                return;
-            }
-            if (package.IsBuildProcessRunning())
-            {
-                return;
-            }
-            await Log.AddOutputPaneAsync(Log.PaneBuild);
-            await Log.ClearPanelAsync(Log.PaneBuild);
-            OptionsPage optionPage = VSFastBuildVSIXPackage.Options;
-            bool openMonitor = optionPage.OpenMonitor;
-            if (openMonitor)
-                {
-                    await CommandBuildProject.StartMonitorAsync(package, true);
-                }
-            try
-            {
-                Result result = new Result();
-                await Log.OutputBuildAsync($"--- VSFastBuild begin running {bff.FileName}---");
-                await RunProcessAsync(package, bff.FilePath);
-                await Log.OutputBuildAsync($"--- VSFastBuild end running {bff.FileName}---");
-            }
-            catch (Exception ex)
-            {
-                await Log.OutputDebugAsync(ex.Message);
-            }
-            if (openMonitor)
-            {
-                await CommandBuildProject.StopMonitorAsync(package);
-            }
-            package.LeaveBuildProcess();
-#endif
         }
     }
 }

@@ -84,8 +84,10 @@
                             <ColumnDefinition Width="311"/>
                             <ColumnDefinition Width="*"/>
                         </Grid.ColumnDefinitions>
+                        <!--
                         <ComboBox x:Name="OutputWindowComboBox" DisplayMemberPath="Name" HorizontalAlignment="Left" Margin="5,5,0,0" VerticalAlignment="Top" Width="330" Height="30" Grid.Row="0" Grid.Column="0"  HorizontalContentAlignment="Left" Grid.ColumnSpan="2"/>
                         <Label x:Name="label" Content="Press (SPACE) to reset filter"  Background="Transparent" HorizontalAlignment="Left" Margin="10,10,0,0" VerticalAlignment="Top" Width="155" Grid.Row="0" Grid.Column="2"/>
+                        -->
                         <TextBox x:Name="OutputTextBox" AcceptsReturn="True" HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Auto" IsReadOnly="True" Grid.Row="1" Grid.Column="0" Grid.ColumnSpan="3" Margin="5,5,5,5">
                             <TextBox.ContextMenu>
                                 <ContextMenu>

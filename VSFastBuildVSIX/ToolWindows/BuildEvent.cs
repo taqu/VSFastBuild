@@ -181,6 +181,7 @@ namespace VSFastBuildVSIX.ToolWindows
 
         public bool JumpToEventLineInOutputBox()
         {
+            #if false
             bool bSuccess = false;
 
             int index = parent_.OutputTextBox.Text.IndexOf(name_.Replace("\"",Å@string.Empty));
@@ -202,6 +203,9 @@ namespace VSFastBuildVSIX.ToolWindows
             }
 
             return bSuccess;
+            #else
+            return true;
+            #endif
         }
 
         public bool HandleDoubleClickEvent()
