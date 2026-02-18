@@ -77,35 +77,6 @@ namespace VSFastBuildVSIX
             {
                 return;
             }
-            List<BaseCommand> menus = package.Menus;
-            List<BaseCommand> commands = package.Commands;
-            foreach(BaseCommand menu in menus)            {
-                menu.Command.Visible = false;
-            }
-            foreach (BaseCommand command in commands)
-            {
-                command.Command.Visible = false;
-            }
-            package.JoinableTaskFactory.RunAsync(async delegate
-            {
-                try
-                {
-                    await ExecuteAsync(null);
-                }
-                catch (Exception ex)
-                {
-                    await ex.LogAsync();
-                }
-            }).FireAndForget();
-        }
-
-        protected override async Task ExecuteAsync(OleMenuCmdEventArgs e)
-        {
-            VSFastBuildVSIXPackage package;
-            if (!VSFastBuildVSIXPackage.TryGetPackage(out package))
-            {
-                return;
-            }
             EnvDTE80.DTE2 dte = package.DTE;
             if (null == dte.Solution || string.IsNullOrEmpty(dte.Solution.FullName))
             {

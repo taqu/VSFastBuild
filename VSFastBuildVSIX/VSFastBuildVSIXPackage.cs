@@ -192,8 +192,6 @@ namespace VSFastBuildVSIX
         protected override async Task InitializeAsync(CancellationToken cancellationToken, IProgress<ServiceProgressData> progress)
         {
             await JoinableTaskFactory.SwitchToMainThreadAsync(cancellationToken);
-            await this.RegisterCommandsAsync();
-            this.RegisterToolWindows();
 
             package_ = new WeakReference<VSFastBuildVSIXPackage>(this);
             dte2_ = await GetServiceAsync(typeof(EnvDTE.DTE)) as EnvDTE80.DTE2;
@@ -203,6 +201,8 @@ namespace VSFastBuildVSIX
                 cancellationTokenSource_.Dispose();
                 cancellationTokenSource_ = null;
             });
+            await this.RegisterCommandsAsync();
+            this.RegisterToolWindows();
         }
 
     }

@@ -58,6 +58,7 @@
 			</Menu>
 			<Menu guid="VSFastBuildVSIX" id="VSFastBuildMenuBFF00" type="Menu">
 				<CommandFlag>DynamicVisibility</CommandFlag>
+				<CommandFlag>DefaultInvisible</CommandFlag>
 				<CommandFlag>TextChanges</CommandFlag>
 				<Strings>
 					<ButtonText>MenuBFF00</ButtonText>
@@ -66,6 +67,7 @@
 			</Menu>
 			<Menu guid="VSFastBuildVSIX" id="VSFastBuildMenuBFF01" type="Menu">
 				<CommandFlag>DynamicVisibility</CommandFlag>
+				<CommandFlag>DefaultInvisible</CommandFlag>
 				<CommandFlag>TextChanges</CommandFlag>
 				<Strings>
 					<ButtonText>MenuBFF01</ButtonText>
@@ -74,6 +76,7 @@
 			</Menu>
 			<Menu guid="VSFastBuildVSIX" id="VSFastBuildMenuBFF02" type="Menu">
 				<CommandFlag>DynamicVisibility</CommandFlag>
+				<CommandFlag>DefaultInvisible</CommandFlag>
 				<CommandFlag>TextChanges</CommandFlag>
 				<Strings>
 					<ButtonText>MenuBFF02</ButtonText>
@@ -82,6 +85,7 @@
 			</Menu>
 			<Menu guid="VSFastBuildVSIX" id="VSFastBuildMenuBFF03" type="Menu">
 				<CommandFlag>DynamicVisibility</CommandFlag>
+				<CommandFlag>DefaultInvisible</CommandFlag>
 				<CommandFlag>TextChanges</CommandFlag>
 				<Strings>
 					<ButtonText>MenuBFF03</ButtonText>
@@ -90,6 +94,7 @@
 			</Menu>
 			<Menu guid="VSFastBuildVSIX" id="VSFastBuildMenuBFF04" type="Menu">
 				<CommandFlag>DynamicVisibility</CommandFlag>
+				<CommandFlag>DefaultInvisible</CommandFlag>
 				<CommandFlag>TextChanges</CommandFlag>
 				<Strings>
 					<ButtonText>MenuBFF04</ButtonText>
@@ -98,6 +103,7 @@
 			</Menu>
 			<Menu guid="VSFastBuildVSIX" id="VSFastBuildMenuBFF05" type="Menu">
 				<CommandFlag>DynamicVisibility</CommandFlag>
+				<CommandFlag>DefaultInvisible</CommandFlag>
 				<CommandFlag>TextChanges</CommandFlag>
 				<Strings>
 					<ButtonText>MenuBFF05</ButtonText>
@@ -106,6 +112,7 @@
 			</Menu>
 			<Menu guid="VSFastBuildVSIX" id="VSFastBuildMenuBFF06" type="Menu">
 				<CommandFlag>DynamicVisibility</CommandFlag>
+				<CommandFlag>DefaultInvisible</CommandFlag>
 				<CommandFlag>TextChanges</CommandFlag>
 				<Strings>
 					<ButtonText>MenuBFF06</ButtonText>
@@ -114,6 +121,7 @@
 			</Menu>
 			<Menu guid="VSFastBuildVSIX" id="VSFastBuildMenuBFF07" type="Menu">
 				<CommandFlag>DynamicVisibility</CommandFlag>
+				<CommandFlag>DefaultInvisible</CommandFlag>
 				<CommandFlag>TextChanges</CommandFlag>
 				<Strings>
 					<ButtonText>MenuBFF07</ButtonText>
@@ -122,6 +130,7 @@
 			</Menu>
 			<Menu guid="VSFastBuildVSIX" id="VSFastBuildMenuBFF08" type="Menu">
 				<CommandFlag>DynamicVisibility</CommandFlag>
+				<CommandFlag>DefaultInvisible</CommandFlag>
 				<CommandFlag>TextChanges</CommandFlag>
 				<Strings>
 					<ButtonText>MenuBFF08</ButtonText>
@@ -130,6 +139,7 @@
 			</Menu>
 			<Menu guid="VSFastBuildVSIX" id="VSFastBuildMenuBFF09" type="Menu">
 				<CommandFlag>DynamicVisibility</CommandFlag>
+				<CommandFlag>DefaultInvisible</CommandFlag>
 				<CommandFlag>TextChanges</CommandFlag>
 				<Strings>
 					<ButtonText>MenuBFF09</ButtonText>
@@ -138,6 +148,7 @@
 			</Menu>
 			<Menu guid="VSFastBuildVSIX" id="VSFastBuildMenuBFF0A" type="Menu">
 				<CommandFlag>DynamicVisibility</CommandFlag>
+				<CommandFlag>DefaultInvisible</CommandFlag>
 				<CommandFlag>TextChanges</CommandFlag>
 				<Strings>
 					<ButtonText>MenuBFF0A</ButtonText>
@@ -146,6 +157,7 @@
 			</Menu>
 			<Menu guid="VSFastBuildVSIX" id="VSFastBuildMenuBFF0B" type="Menu">
 				<CommandFlag>DynamicVisibility</CommandFlag>
+				<CommandFlag>DefaultInvisible</CommandFlag>
 				<CommandFlag>TextChanges</CommandFlag>
 				<Strings>
 					<ButtonText>MenuBFF0B</ButtonText>
@@ -154,6 +166,7 @@
 			</Menu>
 			<Menu guid="VSFastBuildVSIX" id="VSFastBuildMenuBFF0C" type="Menu">
 				<CommandFlag>DynamicVisibility</CommandFlag>
+				<CommandFlag>DefaultInvisible</CommandFlag>
 				<CommandFlag>TextChanges</CommandFlag>
 				<Strings>
 					<ButtonText>MenuBFF0C</ButtonText>
@@ -162,6 +175,7 @@
 			</Menu>
 			<Menu guid="VSFastBuildVSIX" id="VSFastBuildMenuBFF0D" type="Menu">
 				<CommandFlag>DynamicVisibility</CommandFlag>
+				<CommandFlag>DefaultInvisible</CommandFlag>
 				<CommandFlag>TextChanges</CommandFlag>
 				<Strings>
 					<ButtonText>MenuBFF0D</ButtonText>
@@ -170,6 +184,7 @@
 			</Menu>
 			<Menu guid="VSFastBuildVSIX" id="VSFastBuildMenuBFF0E" type="Menu">
 				<CommandFlag>DynamicVisibility</CommandFlag>
+				<CommandFlag>DefaultInvisible</CommandFlag>
 				<CommandFlag>TextChanges</CommandFlag>
 				<Strings>
 					<ButtonText>MenuBFF0E</ButtonText>
@@ -178,6 +193,7 @@
 			</Menu>
 			<Menu guid="VSFastBuildVSIX" id="VSFastBuildMenuBFF0F" type="Menu">
 				<CommandFlag>DynamicVisibility</CommandFlag>
+				<CommandFlag>DefaultInvisible</CommandFlag>
 				<CommandFlag>TextChanges</CommandFlag>
 				<Strings>
 					<ButtonText>MenuBFF0F</ButtonText>
@@ -186,6 +202,7 @@
 			</Menu>
 			<Menu guid="VSFastBuildVSIX" id="VSFastBuildMenuBFF10" type="Menu">
 				<CommandFlag>DynamicVisibility</CommandFlag>
+				<CommandFlag>DefaultInvisible</CommandFlag>
 				<CommandFlag>TextChanges</CommandFlag>
 				<Strings>
 					<ButtonText>MenuBFF10</ButtonText>
@@ -194,6 +211,7 @@
 			</Menu>
 			<Menu guid="VSFastBuildVSIX" id="VSFastBuildMenuBFF11" type="Menu">
 				<CommandFlag>DynamicVisibility</CommandFlag>
+				<CommandFlag>DefaultInvisible</CommandFlag>
 				<CommandFlag>TextChanges</CommandFlag>
 				<Strings>
 					<ButtonText>MenuBFF11</ButtonText>
@@ -202,6 +220,7 @@
 			</Menu>
 			<Menu guid="VSFastBuildVSIX" id="VSFastBuildMenuBFF12" type="Menu">
 				<CommandFlag>DynamicVisibility</CommandFlag>
+				<CommandFlag>DefaultInvisible</CommandFlag>
 				<CommandFlag>TextChanges</CommandFlag>
 				<Strings>
 					<ButtonText>MenuBFF12</ButtonText>
@@ -210,6 +229,7 @@
 			</Menu>
 			<Menu guid="VSFastBuildVSIX" id="VSFastBuildMenuBFF13" type="Menu">
 				<CommandFlag>DynamicVisibility</CommandFlag>
+				<CommandFlag>DefaultInvisible</CommandFlag>
 				<CommandFlag>TextChanges</CommandFlag>
 				<Strings>
 					<ButtonText>MenuBFF13</ButtonText>
@@ -218,6 +238,7 @@
 			</Menu>
 			<Menu guid="VSFastBuildVSIX" id="VSFastBuildMenuBFF14" type="Menu">
 				<CommandFlag>DynamicVisibility</CommandFlag>
+				<CommandFlag>DefaultInvisible</CommandFlag>
 				<CommandFlag>TextChanges</CommandFlag>
 				<Strings>
 					<ButtonText>MenuBFF14</ButtonText>
@@ -226,6 +247,7 @@
 			</Menu>
 			<Menu guid="VSFastBuildVSIX" id="VSFastBuildMenuBFF15" type="Menu">
 				<CommandFlag>DynamicVisibility</CommandFlag>
+				<CommandFlag>DefaultInvisible</CommandFlag>
 				<CommandFlag>TextChanges</CommandFlag>
 				<Strings>
 					<ButtonText>MenuBFF15</ButtonText>
@@ -234,6 +256,7 @@
 			</Menu>
 			<Menu guid="VSFastBuildVSIX" id="VSFastBuildMenuBFF16" type="Menu">
 				<CommandFlag>DynamicVisibility</CommandFlag>
+				<CommandFlag>DefaultInvisible</CommandFlag>
 				<CommandFlag>TextChanges</CommandFlag>
 				<Strings>
 					<ButtonText>MenuBFF16</ButtonText>
@@ -242,6 +265,7 @@
 			</Menu>
 			<Menu guid="VSFastBuildVSIX" id="VSFastBuildMenuBFF17" type="Menu">
 				<CommandFlag>DynamicVisibility</CommandFlag>
+				<CommandFlag>DefaultInvisible</CommandFlag>
 				<CommandFlag>TextChanges</CommandFlag>
 				<Strings>
 					<ButtonText>MenuBFF17</ButtonText>
@@ -250,6 +274,7 @@
 			</Menu>
 			<Menu guid="VSFastBuildVSIX" id="VSFastBuildMenuBFF18" type="Menu">
 				<CommandFlag>DynamicVisibility</CommandFlag>
+				<CommandFlag>DefaultInvisible</CommandFlag>
 				<CommandFlag>TextChanges</CommandFlag>
 				<Strings>
 					<ButtonText>MenuBFF18</ButtonText>
@@ -258,6 +283,7 @@
 			</Menu>
 			<Menu guid="VSFastBuildVSIX" id="VSFastBuildMenuBFF19" type="Menu">
 				<CommandFlag>DynamicVisibility</CommandFlag>
+				<CommandFlag>DefaultInvisible</CommandFlag>
 				<CommandFlag>TextChanges</CommandFlag>
 				<Strings>
 					<ButtonText>MenuBFF19</ButtonText>
@@ -266,6 +292,7 @@
 			</Menu>
 			<Menu guid="VSFastBuildVSIX" id="VSFastBuildMenuBFF1A" type="Menu">
 				<CommandFlag>DynamicVisibility</CommandFlag>
+				<CommandFlag>DefaultInvisible</CommandFlag>
 				<CommandFlag>TextChanges</CommandFlag>
 				<Strings>
 					<ButtonText>MenuBFF1A</ButtonText>
@@ -274,6 +301,7 @@
 			</Menu>
 			<Menu guid="VSFastBuildVSIX" id="VSFastBuildMenuBFF1B" type="Menu">
 				<CommandFlag>DynamicVisibility</CommandFlag>
+				<CommandFlag>DefaultInvisible</CommandFlag>
 				<CommandFlag>TextChanges</CommandFlag>
 				<Strings>
 					<ButtonText>MenuBFF1B</ButtonText>
@@ -282,6 +310,7 @@
 			</Menu>
 			<Menu guid="VSFastBuildVSIX" id="VSFastBuildMenuBFF1C" type="Menu">
 				<CommandFlag>DynamicVisibility</CommandFlag>
+				<CommandFlag>DefaultInvisible</CommandFlag>
 				<CommandFlag>TextChanges</CommandFlag>
 				<Strings>
 					<ButtonText>MenuBFF1C</ButtonText>
@@ -290,6 +319,7 @@
 			</Menu>
 			<Menu guid="VSFastBuildVSIX" id="VSFastBuildMenuBFF1D" type="Menu">
 				<CommandFlag>DynamicVisibility</CommandFlag>
+				<CommandFlag>DefaultInvisible</CommandFlag>
 				<CommandFlag>TextChanges</CommandFlag>
 				<Strings>
 					<ButtonText>MenuBFF1D</ButtonText>
@@ -298,6 +328,7 @@
 			</Menu>
 			<Menu guid="VSFastBuildVSIX" id="VSFastBuildMenuBFF1E" type="Menu">
 				<CommandFlag>DynamicVisibility</CommandFlag>
+				<CommandFlag>DefaultInvisible</CommandFlag>
 				<CommandFlag>TextChanges</CommandFlag>
 				<Strings>
 					<ButtonText>MenuBFF1E</ButtonText>
@@ -306,6 +337,7 @@
 			</Menu>
 			<Menu guid="VSFastBuildVSIX" id="VSFastBuildMenuBFF1F" type="Menu">
 				<CommandFlag>DynamicVisibility</CommandFlag>
+				<CommandFlag>DefaultInvisible</CommandFlag>
 				<CommandFlag>TextChanges</CommandFlag>
 				<Strings>
 					<ButtonText>MenuBFF1F</ButtonText>
@@ -356,7 +388,6 @@
 			</Button>
 			<Button guid="VSFastBuildVSIX" id="CommandFBuildBFFFiles" type="Button">
 				<CommandFlag>DynamicVisibility</CommandFlag>
-				<!--<CommandFlag>DefaultDisabled</CommandFlag>-->
 				<CommandFlag>TextOnly</CommandFlag>
 				<Strings>
 					<ButtonText>Scan BFF Files</ButtonText>
@@ -728,6 +759,9 @@
 		<CommandPlacement guid="VSFastBuildVSIX" id="CommandFBuildMonitor" priority="0x101">
 			<Parent guid="VSFastBuildVSIX" id="VSFastBuildMenuToolGroup" />
 		</CommandPlacement>
+		<CommandPlacement guid="VSFastBuildVSIX" id="CommandFBuildBFFFiles" priority="0x102">
+			<Parent guid="VSFastBuildVSIX" id="VSFastBuildMenuBFFGroup" />
+		</CommandPlacement>
 		<CommandPlacement guid="VSFastBuildVSIX" id="VSFastBuildMenuBFF00" priority="0x103">
 			<Parent guid="VSFastBuildVSIX" id="VSFastBuildMenuBFFGroup" />
 		</CommandPlacement>
@@ -824,10 +858,7 @@
 		<CommandPlacement guid="VSFastBuildVSIX" id="VSFastBuildMenuBFF1F" priority="0x127">
 			<Parent guid="VSFastBuildVSIX" id="VSFastBuildMenuBFFGroup" />
 		</CommandPlacement>
-		<CommandPlacement guid="VSFastBuildVSIX" id="CommandFBuildBFFFiles" priority="0x200">
-			<Parent guid="VSFastBuildVSIX" id="VSFastBuildMenuBFFGroup" />
-		</CommandPlacement>
-
+		
 		<CommandPlacement guid="VSFastBuildVSIX" id="CommandFBuildBFF00" priority="0x100">
 			<Parent guid="VSFastBuildVSIX" id="VSFastBuildMenuBFF00Group" />
 		</CommandPlacement>
