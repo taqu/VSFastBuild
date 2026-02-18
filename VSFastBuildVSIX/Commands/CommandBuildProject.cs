@@ -140,7 +140,7 @@ namespace VSFastBuildVSIX
             {
                 List<Result> results = new List<Result>();
                 List<EnvDTE.Project> tempTargets = new List<EnvDTE.Project>(1);
-                List<VSFastProject> vSFastProjects = GetDependencies(package, targets);
+                List<VSFastProject> vSFastProjects = await GetDependenciesAsync(package, targets);
                 await Log.OutputBuildLineAsync($"--- VSFastBuild begin building ---");
                 foreach (VSFastProject project in vSFastProjects)
                 {
@@ -804,7 +804,7 @@ namespace VSFastBuildVSIX
             }
         }
 
-        public static List<VSFastProject> GetDependencies(VSFastBuildVSIXPackage package, List<EnvDTE.Project> projects)
+        public static async Task<List<VSFastProject>> GetDependenciesAsync(VSFastBuildVSIXPackage package, List<EnvDTE.Project> projects)
         {
             SolutionBuild2 solutionBuild = package.DTE.Solution.SolutionBuild as SolutionBuild2;
             List<VSFastProject> vsFastProjects = new List<VSFastProject>(projects.Capacity);
@@ -879,16 +879,18 @@ namespace VSFastBuildVSIX
                 return string.Compare(x0.targetName_, x1.targetName_);
             });
             TopologicalSort(vsFastProjects);
-            foreach (VSFastProject vSFastProject in vsFastProjects)
+            await Log.OutputBuildLineAsync("Projects:");
+            foreach (VSFastProject vsFastProject in vsFastProjects)
             {
-                foreach (string dependName in vSFastProject.dependNames_)
+                foreach (string dependName in vsFastProject.dependNames_)
                 {
                     VSFastProject dependProject = vsFastProjects.Find((x) => x.uniqueName_ == dependName);
                     if (null != dependProject)
                     {
-                        vSFastProject.dependencies_.Add(dependProject);
+                        vsFastProject.dependencies_.Add(dependProject);
                     }
                 }
+                await Log.OutputBuildAsync($"  {vsFastProject.targetName_}");
             }
             projectCollection.UnloadAllProjects();
             return vsFastProjects;
@@ -1027,6 +1029,7 @@ namespace VSFastBuildVSIX
             System.Diagnostics.Debug.Assert(null != package);
             System.Diagnostics.Debug.Assert(null != vsFastProject);
 
+            await Log.OutputBuildLineAsync($"  Build {vsFastProject.bffName_}");
             BuildContext buildContext = new BuildContext();
             buildContext.stringBuilder_ = new StringBuilder(1024);
             buildContext.optionBuilder_ = new StringBuilder(1024);
@@ -1106,6 +1109,7 @@ namespace VSFastBuildVSIX
             if (!tuple.Item1)
             {
                 result.success_ = true;
+                await Log.OutputBuildLineAsync($"  End No Change {vsFastProject.bffName_}");
                 return result;
             }
 
@@ -1113,6 +1117,7 @@ namespace VSFastBuildVSIX
             if (null == buildContext.CppTaskAssembly_)
             {
                 result.success_ = false;
+                await Log.OutputBuildLineAsync($"  End Fail to Get Assembly {vsFastProject.bffName_}");
                 return result;
             }
             {
@@ -1370,26 +1375,6 @@ namespace VSFastBuildVSIX
 
             AddProject(buildContext, vsFastProject);
 
-#if false
-            // All
-            if (0 < vSFastProjects.Count)
-            {
-                List<string> projectTargets = new List<string>(vSFastProjects.Count);
-                foreach (VSFastProject project in vSFastProjects)
-                {
-                    projectTargets.Add(project.postDepend_);
-                }
-                stringBuilder.AppendLine("{");
-                stringBuilder.AppendLine("  Alias('all')");
-                stringBuilder.AppendLine("  {");
-                stringBuilder.AppendLine("    .Targets =");
-                stringBuilder.AppendLine("    {");
-                addStringList(stringBuilder, projectTargets, "      ");
-                stringBuilder.AppendLine("    }");
-                stringBuilder.AppendLine("  }");
-                stringBuilder.AppendLine("}");
-            }
-#endif
             // Clean
             if (0 < buildContext.targets_.Count)
             {
@@ -1444,6 +1429,7 @@ namespace VSFastBuildVSIX
             }
             catch { }
             result.success_ = true;
+            await Log.OutputBuildLineAsync($"  End Success {vsFastProject.bffName_}");
             return result;
         }
 
