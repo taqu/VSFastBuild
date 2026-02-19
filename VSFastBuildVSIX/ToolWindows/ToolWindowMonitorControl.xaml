@@ -57,9 +57,12 @@
                         </ScrollViewer>
                         <StackPanel Orientation="Horizontal" Grid.Row="3" Grid.Column="3">
                             <Button x:Name="StartStopButton" Content="Start" Click="OnClick_StartStop" VerticalAlignment="Center" Width="60" Height="25" Margin="5,5,5,10" FontSize="14"/>
-                            <GroupBox x:Name="SettingsGroupBox" Header="Settings" HorizontalAlignment="Left" Margin="0,5,0,0" VerticalAlignment="Top" Height="Auto" Width="220" Background="LightGray">
+                            <Button x:Name="GraphClearButton" Content="Clear" Click="OnClick_Clear" VerticalAlignment="Center" Width="60" Height="25" Margin="5,5,5,10" FontSize="14"/>
+                            <GroupBox x:Name="SettingsGroupBox" Header="Settings" HorizontalAlignment="Left" Margin="0,5,0,0" VerticalAlignment="Top" Height="Auto" Width="360" Background="LightGray">
                                 <StackPanel Orientation="Horizontal">
-                                    <CheckBox x:Name="SettingsGraphsCheckBox" Content="System Graphs" Margin="5,0,5,0" VerticalAlignment="Center" Checked="CheckBox_SystemGraph_Checked" Unchecked="CheckBox_SystemGraph_Unchecked" Foreground="Black" />
+                                    <CheckBox x:Name="SettingsGraphsCheckBox" Content="System Graphs" Margin="5,0,5,0" VerticalAlignment="Center" Checked="CheckBox_SystemGraph_Checked" Unchecked="CheckBox_SystemGraph_Unchecked" Foreground="Black" Background="LightGray"/>
+                                    <CheckBox x:Name="SettingsAutoStartBox" Content="Auto Start" Margin="5,0,5,0" VerticalAlignment="Center"  Foreground="Black" Background="LightGray"/>
+                                    <CheckBox x:Name="SettingsAutoStopBox" Content="Auto Stop" Margin="5,0,5,0" VerticalAlignment="Center"  Foreground="Black" Background="LightGray"/>
                                     <Button Content="Auto Scroll" Click="OnClick_SettingsAutoScroll" VerticalAlignment="Center" Margin="5,5,5,5"/>
                                 </StackPanel>
                             </GroupBox>
@@ -88,6 +91,7 @@
                         <ComboBox x:Name="OutputWindowComboBox" DisplayMemberPath="Name" HorizontalAlignment="Left" Margin="5,5,0,0" VerticalAlignment="Top" Width="330" Height="30" Grid.Row="0" Grid.Column="0"  HorizontalContentAlignment="Left" Grid.ColumnSpan="2"/>
                         <Label x:Name="label" Content="Press (SPACE) to reset filter"  Background="Transparent" HorizontalAlignment="Left" Margin="10,10,0,0" VerticalAlignment="Top" Width="155" Grid.Row="0" Grid.Column="2"/>
                         -->
+                        <Button x:Name="OutputClearButton" Content="Clear" Click="OnClick_Clear" VerticalAlignment="Center" HorizontalAlignment="Left" Width="60" Height="25" Margin="5,5,5,10" FontSize="14" Grid.Row="0" Grid.Column="0" Grid.ColumnSpan="2"/>
                         <TextBox x:Name="OutputTextBox" AcceptsReturn="True" HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Auto" IsReadOnly="True" Grid.Row="1" Grid.Column="0" Grid.ColumnSpan="3" Margin="5,5,5,5">
                             <TextBox.ContextMenu>
                                 <ContextMenu>

@@ -20,7 +20,8 @@ namespace VSFastBuildVSIX
         public const bool DefaultGenOnly = false;
         public const bool DefaultUnity = false;
         public const bool DefaultOpenMonitor = true;
-        public const bool DefaultShowSystemPerformance = false;
+        public const bool DefaultAutoStart = false;
+        public const bool DefaultAutoStop = true;
 
         [Category("Options")]
         [DisplayName("FBuild Path")]
@@ -43,13 +44,13 @@ namespace VSFastBuildVSIX
         [Category("Options")]
         [DisplayName("Generate Only")]
         [Description("Generate bff file only.")]
-        [DefaultValue(true)]
+        [DefaultValue(false)]
         public bool GenOnly { get; set; } = DefaultGenOnly;
 
         [Category("Options")]
         [DisplayName("Unity")]
         [Description("Whether to do unity build.")]
-        [DefaultValue(true)]
+        [DefaultValue(false)]
         public bool Unity { get; set; } = DefaultUnity;
 
         [Category("Options")]
@@ -57,5 +58,17 @@ namespace VSFastBuildVSIX
         [Description("Whether to open monitor window automatically.")]
         [DefaultValue(true)]
         public bool OpenMonitor { get; set; } = DefaultOpenMonitor;
+
+        [Category("Auto Start")]
+        [DisplayName("Unity")]
+        [Description("Automatically start monitoring.")]
+        [DefaultValue(false)]
+        public bool AutoStart { get; set; } = DefaultAutoStart;
+
+        [Category("Auto Stop")]
+        [DisplayName("Unity")]
+        [Description("Automatically stop monitoring.")]
+        [DefaultValue(false)]
+        public bool AutoStop { get; set; } = DefaultAutoStop;
     }
 }

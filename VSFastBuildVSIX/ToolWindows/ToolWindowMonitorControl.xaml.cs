@@ -302,9 +302,16 @@ namespace VSFastBuildVSIX
             OutputTextBox.KeyDown += OutputTextBox_KeyDown;
             OutputTextBox.LayoutUpdated += OutputTextBox_LayoutUpdated;
 
-            #if VSFASTBUILD_ENABLE_FILTER
+            OptionsPage options = VSFastBuildVSIXPackage.Options;
+            SettingsAutoStartBox.IsChecked = options.AutoStart;
+            SettingsAutoStopBox.IsChecked = options.AutoStop;
+#if VSFASTBUILD_ENABLE_FILTER
             OutputWindowComboBox.SelectionChanged += OutputWindowComboBox_SelectionChanged;
-            #endif
+#endif
+            if (options.AutoStart)
+            {
+                Start();
+            }
         }
 
         public bool Start()
@@ -332,7 +339,7 @@ namespace VSFastBuildVSIX
 
         private void StopInternal()
         {
-            if(null == timer_)
+            if (null == timer_)
             {
                 return;
             }
@@ -348,6 +355,11 @@ namespace VSFastBuildVSIX
                 fileStream_.Close();
                 fileStream_ = null;
             }
+            Clear();
+        }
+
+        public void Clear()
+        {
             fileStreamPosition_ = 0;
             fileBuffer_.Clear();
 
@@ -625,7 +637,7 @@ namespace VSFastBuildVSIX
         #region Output TextBox Handling
         public void ChangeOutputWindowComboBoxSelection(BuildEvent buildEvent)
         {
-            #if VSFASTBUILD_ENABLE_FILTER
+#if VSFASTBUILD_ENABLE_FILTER
             int index = 0;
             foreach (OutputFilterItem filter in outputComboBoxFilters_)
             {
@@ -636,7 +648,7 @@ namespace VSFastBuildVSIX
                 }
                 ++index;
             }
-            #endif
+#endif
         }
 
         void ResetOutputWindowCombox()
@@ -652,16 +664,16 @@ namespace VSFastBuildVSIX
 
             outputComboBoxFilters_.Add(new OutputFilterItem("ALL"));
 
-            #if VSFASTBUILD_ENABLE_FILTER
+#if VSFASTBUILD_ENABLE_FILTER
             OutputWindowComboBox.ItemsSource = outputComboBoxFilters_;
             OutputWindowComboBox.SelectedIndex = 0;
-            #endif
+#endif
         }
 
 
         public void AddOutputWindowFilterItem(BuildEvent buildEvent)
         {
-            #if VSFASTBUILD_ENABLE_FILTER
+#if VSFASTBUILD_ENABLE_FILTER
             OutputFilterItem outputFilterItem = new OutputFilterItem(buildEvent);
             outputComboBoxFilters_.Add(outputFilterItem);
             if (0 <= OutputWindowComboBox.SelectedIndex)
@@ -673,7 +685,7 @@ namespace VSFastBuildVSIX
                     OutputTextBox.AppendText(outputFilterItem.BuildEvent.outputMessages_ + "\n");
                 }
             }
-            #endif
+#endif
         }
 
         private void OutputWindowComboBox_SelectionChanged(object sender, System.Windows.Controls.SelectionChangedEventArgs e)
@@ -850,8 +862,9 @@ namespace VSFastBuildVSIX
 #endif
             if (e.KeyboardDevice.Modifiers == ModifierKeys.Control && e.Key == Key.C)
             {
-                try {
-                Clipboard.SetText(OutputTextBox.SelectedText);
+                try
+                {
+                    Clipboard.SetText(OutputTextBox.SelectedText);
                 }
                 catch { }
             }
@@ -1105,7 +1118,7 @@ namespace VSFastBuildVSIX
             StatusBarDetails.Text = string.Format("{0} Agents - {1} Cores", buildHosts_.Count, numCores);
         }
 
-        private void UpdateBuildProgress(float progressPCT, bool buildStop=false)
+        private void UpdateBuildProgress(float progressPCT, bool buildStop = false)
         {
             currentProgressPCT_ = progressPCT;
 
@@ -1131,7 +1144,7 @@ namespace VSFastBuildVSIX
             }
             else
             {
-                float rate = currentProgressPCT_/100.0f;
+                float rate = currentProgressPCT_ / 100.0f;
                 ToolImages.StatusProgressBrush.Viewbox = new Rect(0.0f, 0.0f, rate, 1.0f);
                 StatusBarProgressBar.Foreground = ToolImages.StatusProgressBrush;
             }
@@ -1561,7 +1574,7 @@ namespace VSFastBuildVSIX
                 ToolTip newToolTip = new ToolTip();
                 StatusBarRunning.ToolTip = newToolTip;
                 newToolTip.Content = "Build in Progress...";
-                if (preparingBuildsteps_)
+                if (preparingBuildsteps_ && null != localHost_)
                 {
                     localHost_.OnCompleteEvent(eventLocalTimeMS, PrepareBuildStepsText, string.Empty, BuildEventState.SUCCEEDED_COMPLETED, string.Empty);
                     preparingBuildsteps_ = false;
@@ -1600,7 +1613,9 @@ namespace VSFastBuildVSIX
                 systemPerformanceGraphs_.CloseSession();
                 isLiveSession_ = false;
             }
-            StopInternal();
+            if((bool)SettingsAutoStopBox.IsChecked){
+                StopInternal();
+            }
         }
 
         private void ExecuteCommandStartJob(string[] tokens, long eventLocalTimeMS)
@@ -1610,7 +1625,7 @@ namespace VSFastBuildVSIX
             string hostName = tokens[CommandArgumentIndex.START_JOB_HOST_NAME];
             string eventName = tokens[CommandArgumentIndex.START_JOB_EVENT_NAME];
 
-            if (preparingBuildsteps_)
+            if (preparingBuildsteps_ && null != localHost_)
             {
                 localHost_.OnCompleteEvent(timeStamp, PrepareBuildStepsText, hostName, BuildEventState.SUCCEEDED_COMPLETED, string.Empty);
 
@@ -1762,12 +1777,11 @@ namespace VSFastBuildVSIX
         private void OnClick_StartStop(object sender, RoutedEventArgs e)
         {
             e.Handled = true;
-            if(null == timer_)
+            if (null == timer_)
             {
                 Start();
             }
-            else
-            {
+            else if((bool)SettingsAutoStopBox.IsChecked){
                 StopInternal();
             }
         }
@@ -1789,6 +1803,12 @@ namespace VSFastBuildVSIX
         {
             e.Handled = true;
             autoScrolling_ = true;
+        }
+
+        private void OnClick_Clear(object sender, RoutedEventArgs e)
+        {
+            e.Handled = true;
+            Clear();
         }
     }
 }
