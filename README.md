@@ -25,6 +25,8 @@ Can access from Extensions.
 | Generate Only | Don't run FASTBuild process|
 | Open Monitor | Automatically open monitor window |
 | Unity | Enable Unity (Jambo) build |
+| Auto Start | Automatically start monitoring |
+| Auto Stop | Automatically stop monitoring |
 
 # TODO
 - Fix warnings
@@ -36,4 +38,18 @@ Can access from Extensions.
 This project is licensed under the **MIT License**.
 Portions of the project are derived from **FASTBuild** and **FASTBuildMonitor**.
 For details, see the license files in the `doc` directory.
+
+# Release Notes
+- v.0.1.3
+  - Fix menu initialization
+  - Improve graph view
+- v.0.1.2
+  - Fix menu initialization
+- v.0.1.1
+  - Preview release
+  - Generate FASTBuild's bff files from vcxproj
+  - List bff files in a solution
+  - Run FASTBuild
+  - Monitoring FASTBuild's log
+
 

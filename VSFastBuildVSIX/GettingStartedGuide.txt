@@ -21,4 +21,6 @@ Can access from Extensions.
 | Generate Only | Don't run FASTBuild process|
 | Open Monitor | Automatically open monitor window |
 | Unity | Enable Unity (Jambo) build |
+| Auto Start | Automatically start monitoring |
+| Auto Stop | Automatically stop monitoring |
 
