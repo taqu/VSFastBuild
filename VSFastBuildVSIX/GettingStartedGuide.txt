@@ -1,6 +1,24 @@
-# Overview
-# Release
+# Features
+- Generate FASTBuild's bff files from vcxproj
+- List bff files in a solution
+- Run FASTBuild
+- Monitoring FASTBuild's log
+![Monitor](doc/monitor00.jpg "Monitor")
 
-- v.0.1.0
-  - Preview release
+# Menus
+![Menus](doc/menus00.jpg "Menus")
+
+Can access from Extensions.
+
+# Options
+![Options](doc/options00.jpg "Options")
+
+| Name | Description |
+| :--- | :--- |
+| Arguments | FASTBuild arguments |
+| Enable Generation | Enables generation commands |
+| FBuild Path | FASTBuild execution path|
+| Generate Only | Don't run FASTBuild process|
+| Open Monitor | Automatically open monitor window |
+| Unity | Enable Unity (Jambo) build |
 
